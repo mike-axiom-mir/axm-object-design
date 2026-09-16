@@ -4,7 +4,7 @@
   "asset_id": "modular-equipment-case-001",
   "host_source_sha256": "49b1f9ed9865893d6de6f1ec8f069576732df694853fde4e3fcff366de32644a",
   "ownership_contract_id": "front-latch-ownership-001",
-  "ownership_contract_sha256": "c42a46bf645a3661661610c034437720f33fae14b52c901e3392484585155e77",
+  "ownership_donor_head": "d3fa10a270faae7925811f44f03381fe5c5d0215",
   "purpose": "derive one bilateral review-only +X latch-lever articulation from the exact existing lower lever and front-service-panel proof geometry, preserving source and ownership identity while measuring when the moving lever proof volume separates from the fixed lid-owned keeper proof volume",
   "joint_axis": [1.0, 0.0, 0.0],
   "pivot_rule": "source_x__panel_negative_y_face__lever_min_z",
