@@ -1,0 +1,77 @@
+{
+  "schema": "axm.object-hard-surface/v0.1",
+  "asset_id": "modular-equipment-case-001",
+  "units": "meters",
+  "intent": "bounded manufactured equipment case proving explicit source-owned mechanical interfaces while reusing the existing UC Asset Atom socket descriptor as a donor contract; no load, motion, collision, material, renderer or runtime acceptance",
+  "dimensions_m": {
+    "width": 0.78,
+    "depth": 0.48,
+    "body_height": 0.30,
+    "lid_height": 0.11,
+    "split_gap": 0.012
+  },
+  "front_panel": {"depth": 0.018},
+  "latches": {"x_positions": [-0.22, 0.22]},
+  "socket_contract_donor": {
+    "repository": "mike-axiom-mir/axm-universal-creation",
+    "commit": "87f93e1a27b2e3414f6422cd38e31b00e89d6a56",
+    "schema": "axm.asset-atom-package/v0.1",
+    "atom_kind": "socket",
+    "source_path": "src/axm_uc/asset_atoms.py",
+    "truth_boundary": "descriptor validation only; no 3D attachment instantiation or fit is inherited"
+  },
+  "sockets": [
+    {
+      "id": "left-service-socket",
+      "uc_descriptor": {
+        "owner": "case-part",
+        "name": "left_service",
+        "transform": {"position": [-0.39, 0.0, 0.16], "rotation_euler": [0, -90, 0], "scale": [1, 1, 1]},
+        "accepts": ["utility-module", "sensor", "handle"],
+        "required": false
+      },
+      "frame_basis": {"normal": [-1, 0, 0], "up": [0, 0, 1]},
+      "footprint_m": [0.12, 0.09],
+      "plate_thickness": 0.012,
+      "bolt_offsets_m": [[-0.038, -0.025], [-0.038, 0.025], [0.038, -0.025], [0.038, 0.025]],
+      "semantics": "external_attachment_reference_only"
+    },
+    {
+      "id": "right-service-socket",
+      "uc_descriptor": {
+        "owner": "case-part",
+        "name": "right_service",
+        "transform": {"position": [0.39, 0.0, 0.16], "rotation_euler": [0, 90, 0], "scale": [1, 1, 1]},
+        "accepts": ["utility-module", "sensor", "handle"],
+        "required": false
+      },
+      "frame_basis": {"normal": [1, 0, 0], "up": [0, 0, 1]},
+      "footprint_m": [0.12, 0.09],
+      "plate_thickness": 0.012,
+      "bolt_offsets_m": [[-0.038, -0.025], [-0.038, 0.025], [0.038, -0.025], [0.038, 0.025]],
+      "semantics": "external_attachment_reference_only"
+    }
+  ],
+  "hinge": {
+    "axis": [1, 0, 0],
+    "offset_y": 0.012,
+    "offset_z": 0.006,
+    "knuckle_radius": 0.021,
+    "pin_radius": 0.009,
+    "pin_length": 0.70,
+    "segments": 12,
+    "min_axial_clearance": 0.010,
+    "knuckles": [
+      {"id": "b0", "owner": "body", "center_x": -0.28, "length": 0.10},
+      {"id": "l0", "owner": "lid", "center_x": -0.14, "length": 0.10},
+      {"id": "b1", "owner": "body", "center_x": 0.00, "length": 0.10},
+      {"id": "l1", "owner": "lid", "center_x": 0.14, "length": 0.10},
+      {"id": "b2", "owner": "body", "center_x": 0.28, "length": 0.10}
+    ]
+  },
+  "provenance": {
+    "method": "self-authored deterministic primitive construction",
+    "external_assets": [],
+    "external_geometry": false
+  }
+}
