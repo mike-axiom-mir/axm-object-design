@@ -5,9 +5,9 @@ const RECEIPT := "res://articulation-lookdev-runtime-receipt.json"
 
 var payload: Dictionary = {}
 var receipt := {
-    "schema": "axm.object-articulated-material-lookdev-runtime/v0.1",
+    "schema": "axm.object-articulated-material-lookdev-runtime/v0.2",
     "promotion_effect": "NONE",
-    "renderer_boundary": "Godot 4.7.2 GL Compatibility static-pose material proof reconstructed from exact source component dimensions. Pose angles are sampled from a pinned source-owned Animation candidate; this is not AnimationPlayer/controller/runtime acceptance."
+    "renderer_boundary": "Godot 4.7.2 GL Compatibility static-pose material proof reconstructed from exact source component dimensions. Pose angles are sampled from a pinned source-owned Animation candidate. Exact Hard-Surface latch ownership is consumed only to rigidly carry lid-owned keeper proof boxes with the lid for lookdev review; this is not latch articulation, AnimationPlayer/controller/runtime acceptance, collision clearance, retention or release behavior."
 }
 
 func write_receipt() -> void:
@@ -63,13 +63,28 @@ func material_spec(variant: String, component: Dictionary) -> Dictionary:
     var material_id := String(component["baseline_material"] if variant == "baseline" else component["candidate_material"])
     return family[material_id]
 
-func role_moves(role: String) -> bool:
-    for raw_role in payload["moving_component_roles"]:
-        if String(raw_role) == role:
+func string_array_contains(values: Array, target: String) -> bool:
+    for raw_value in values:
+        if String(raw_value) == target:
             return true
     return false
 
-func make_component(component: Dictionary, variant: String, pose: Dictionary) -> MeshInstance3D:
+func component_moves(component: Dictionary, ownership_mode: String) -> bool:
+    var role := String(component["role"])
+    if string_array_contains(payload["direct_moving_component_roles"], role):
+        return true
+    if ownership_mode == "owner_bound":
+        return string_array_contains(payload["rigid_owner_follow_component_names"], String(component["name"]))
+    return false
+
+func component_rotates_rigidly_with_lid(component: Dictionary, ownership_mode: String) -> bool:
+    if String(component["role"]) == "lid_shell":
+        return true
+    if ownership_mode == "owner_bound":
+        return string_array_contains(payload["rigid_owner_follow_component_names"], String(component["name"]))
+    return false
+
+func make_component(component: Dictionary, variant: String, pose: Dictionary, ownership_mode: String) -> MeshInstance3D:
     var node := MeshInstance3D.new()
     node.name = String(component["name"])
     var kind := String(component["kind"])
@@ -90,11 +105,10 @@ func make_component(component: Dictionary, variant: String, pose: Dictionary) ->
         return null
 
     var source_center: Array = component["center_m"]
-    var role := String(component["role"])
     var math_angle := float(pose["mathematical_rotation_deg"])
-    if role_moves(role):
+    if component_moves(component, ownership_mode):
         source_center = rotate_source_x(source_center, payload["hinge_origin_m"], math_angle)
-        if role == "lid_shell" and kind == "box":
+        if kind == "box" and component_rotates_rigidly_with_lid(component, ownership_mode):
             node.rotation_degrees = Vector3(math_angle, 0.0, 0.0)
     node.position = source_vec3(source_center)
     node.material_override = make_material(material_spec(variant, component))
@@ -162,14 +176,14 @@ func make_viewport(context: String) -> Dictionary:
     configure_camera(camera, context)
     return {"viewport": viewport, "root": root3d}
 
-func capture_variant(context: String, variant: String, pose: Dictionary, capture_path: String) -> Dictionary:
+func capture_variant(context: String, variant: String, pose: Dictionary, ownership_mode: String, capture_path: String) -> Dictionary:
     var setup := make_viewport(context)
     var viewport := setup["viewport"] as SubViewport
     var root3d := setup["root"] as Node3D
     var count := 0
     for raw_component in payload["components"]:
         var component := raw_component as Dictionary
-        var node := make_component(component, variant, pose)
+        var node := make_component(component, variant, pose, ownership_mode)
         if node == null:
             viewport.queue_free()
             return {"state": "FAIL_COMPONENT"}
@@ -192,7 +206,8 @@ func capture_variant(context: String, variant: String, pose: Dictionary, capture
         "bytes": FileAccess.get_file_as_bytes(capture_path).size(),
         "pose_id": pose["id"],
         "open_angle_deg": pose["open_angle_deg"],
-        "mathematical_rotation_deg": pose["mathematical_rotation_deg"]
+        "mathematical_rotation_deg": pose["mathematical_rotation_deg"],
+        "ownership_mode": ownership_mode
     }
     viewport.queue_free()
     for _i in range(2):
@@ -232,7 +247,7 @@ func compare_images(a: Image, b: Image) -> Dictionary:
 
 func _initialize() -> void:
     payload = read_json(PAYLOAD)
-    if payload.get("schema") != "axm.object-articulated-material-lookdev-payload/v0.1":
+    if payload.get("schema") != "axm.object-articulated-material-lookdev-payload/v0.2":
         fail("missing or invalid articulated material lookdev payload")
         return
 
@@ -247,8 +262,8 @@ func _initialize() -> void:
             var context := String(raw_context)
             var baseline_path := "res://articulation-%s-%s-baseline.png" % [pose_id, context]
             var candidate_path := "res://articulation-%s-%s-candidate.png" % [pose_id, context]
-            var baseline := await capture_variant(context, "baseline", pose, baseline_path)
-            var candidate := await capture_variant(context, "candidate", pose, candidate_path)
+            var baseline := await capture_variant(context, "baseline", pose, "owner_bound", baseline_path)
+            var candidate := await capture_variant(context, "candidate", pose, "owner_bound", candidate_path)
             if not baseline.has("meta") or not candidate.has("meta"):
                 fail("articulation material capture failed for " + pose_id + "/" + context)
                 return
@@ -279,11 +294,51 @@ func _initialize() -> void:
                 return
             pose_differences[pose_id][context] = diff
 
-    receipt["state"] = "PASS_TARGET_HOST_ARTICULATED_SURFACE_AB_READY"
+    var ownership_differences := {}
+    var ownership_changed_total := 0
+    for raw_pose in payload["poses"]:
+        var pose := raw_pose as Dictionary
+        var pose_id := String(pose["id"])
+        if pose_id == closed_id:
+            continue
+        ownership_differences[pose_id] = {}
+        var pose_changed_total := 0
+        for raw_context in payload["camera_contexts"]:
+            var context := String(raw_context)
+            var legacy_path := "res://articulation-ownership-%s-%s-legacy_fixed.png" % [pose_id, context]
+            var legacy := await capture_variant(context, "candidate", pose, "legacy_fixed", legacy_path)
+            if not legacy.has("meta"):
+                fail("legacy ownership control capture failed for " + pose_id + "/" + context)
+                return
+            var diff := compare_images(legacy["image"] as Image, candidate_images[pose_id][context] as Image)
+            if diff.get("state") != "PASS":
+                fail("ownership comparison failed for " + pose_id + "/" + context)
+                return
+            ownership_differences[pose_id][context] = {
+                "legacy_fixed": legacy["meta"],
+                "owner_bound": rows[pose_id][context]["candidate"],
+                "pixel_difference": diff
+            }
+            pose_changed_total += int(diff["changed_pixels"])
+            ownership_changed_total += int(diff["changed_pixels"])
+        if pose_changed_total <= 0:
+            fail("source-owned keeper inheritance produced no visible delta for " + pose_id)
+            return
+    if ownership_changed_total <= 0:
+        fail("source-owned keeper inheritance produced no visible delta")
+        return
+
+    receipt["state"] = "PASS_TARGET_HOST_ARTICULATED_SURFACE_OWNER_BOUND_AB_READY"
     receipt["poses"] = rows
     receipt["candidate_pose_differences_from_closed"] = pose_differences
+    receipt["ownership_differences_from_legacy_fixed"] = ownership_differences
     receipt["animation_dependency"] = payload["animation_dependency"]
     receipt["rig_dependency"] = payload["rig_dependency"]
+    receipt["ownership_dependency"] = payload["ownership_dependency"]
+    receipt["observed_ownership_contract_digest"] = payload["observed_ownership_contract_digest"]
+    receipt["rigid_owner_component"] = payload["rigid_owner_component"]
+    receipt["rigid_owner_follow_component_names"] = payload["rigid_owner_follow_component_names"]
+    receipt["rigid_owner_inheritance_semantics"] = payload["rigid_owner_inheritance_semantics"]
     receipt["material_profile_sha256"] = payload["material_profile_sha256"]
     receipt["base_geometry_contract_sha256"] = payload["base_geometry_contract_sha256"]
     receipt["godot_version"] = Engine.get_version_info()
