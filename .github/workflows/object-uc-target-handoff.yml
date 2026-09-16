@@ -23,8 +23,10 @@ jobs:
       matrix:
         python-version: ['3.11', '3.13']
     steps:
-      - name: Checkout Object target-handoff lane
+      - name: Checkout exact Object PR head
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
 
       - name: Checkout exact Universal Creation
         uses: actions/checkout@v4
@@ -61,7 +63,9 @@ jobs:
           from pathlib import Path
           root=Path('target-proof/generated')
           r=json.loads((root/'uc-target-handoff-receipt.json').read_text())
+          object_head=(root/'exact-object-head.txt').read_text().strip()
           assert r['result']=='PASS_SOURCE_FRAME_BOUND_UC_GLB_HANDOFF_READY_FOR_TARGET_IMPORT',r
+          assert r['source_repository_head']==object_head,r
           assert r['observed_uc_commit']=='646c69df21eb3b1f85ab4b005368bda827b37a14',r
           assert r['socket_binding']['socket_name']=='right_service',r
           assert r['socket_atom_preserved_exactly_by_uc_compile'] is True,r
@@ -117,6 +121,7 @@ jobs:
           target=json.loads((root/'target-import-runtime-receipt.json').read_text())
           assert target['state']=='PASS_SOURCE_FRAME_BOUND_UC_GLB_GODOT_HANDOFF',target
           assert target['glb_sha256']==source['assembly_glb_sha256'],(source,target)
+          assert target['source_repository_head']==source['source_repository_head'],(source,target)
           assert target['imported']['mesh_instances']==2,target
           assert target['imported']['triangles']==824,target
           assert target['capture']['coverage']['changed_pixels']>=3000,target
