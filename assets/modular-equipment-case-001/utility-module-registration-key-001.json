@@ -1,0 +1,29 @@
+{
+  "schema": "axm.object-service-module-registration-key/v0.1",
+  "asset_id": "utility-module-registration-key-001",
+  "host_asset_id": "modular-equipment-case-001",
+  "module_asset_id": "utility-module-001",
+  "units": "meters",
+  "intent": "bounded source-owned asymmetric registration datum overlay for the existing service-module interface; breaks the physically ambiguous 180-degree orientation of the symmetric four-point mount pattern without rewriting the proven host or module sources",
+  "source_identity": {
+    "host_source_sha256": "49b1f9ed9865893d6de6f1ec8f069576732df694853fde4e3fcff366de32644a",
+    "module_source_sha256": "ffd7b42294d3af71e02aa172157beccefa08c6af2c1198f88836862d2a50fc2e",
+    "hard_surface_prerequisite_head": "9a0524319cc3fe33bdbb2d76505b2c89a7a9f190"
+  },
+  "datum": {
+    "position_local_lateral_up_m": [0.027, 0.014],
+    "host_pin_radius_m": 0.0025,
+    "host_pin_projection_m": 0.004,
+    "module_recess_radius_m": 0.003,
+    "module_recess_depth_m": 0.006,
+    "minimum_edge_margin_m": 0.005,
+    "maximum_center_residual_m": 0.0005
+  },
+  "orientation_contract": "The module keeps the existing source-frame convention. In the seated orientation the module registration recess is at the same local lateral/up coordinate as the host pin. A 180-degree in-plane rotation must not remain capturable by this datum.",
+  "provenance": {
+    "method": "AXM self-authored deterministic hard-surface registration candidate",
+    "external_assets": [],
+    "external_geometry": false
+  },
+  "truth_boundary": "This overlay proves only a bounded asymmetric physical registration datum against the exact existing host/module interface geometry. It does not prove fastener retention, engineering load, vibration, tolerance stack, wear, waterproofing, runtime attachment, physics, gameplay, final topology/materials, Art Direction acceptance, CANON or production readiness."
+}
