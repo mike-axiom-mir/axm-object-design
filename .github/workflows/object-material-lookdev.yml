@@ -1,0 +1,135 @@
+name: Object material lookdev evidence
+
+on:
+  push:
+    branches: [studio/materials-object-functional-surface-001]
+  pull_request:
+    paths:
+      - "lookdev/**"
+      - "lookdev-proof/**"
+      - "tests/test_materials_lookdev.py"
+      - "tools/build_object_material_lookdev_evidence.py"
+      - ".github/workflows/object-material-lookdev.yml"
+      - "assets/modular-equipment-case-001/source.json"
+      - "assets/modular-equipment-case-001/utility-module-001.json"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  exact-object-lookdev:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      matrix:
+        python-version: ['3.11', '3.13']
+    steps:
+      - name: Checkout Object Materials lane
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Compile and run complete object tests
+        run: |
+          python -m compileall -q tools tests
+          python -m unittest discover -s tests -v
+
+      - name: Build exact source-bound material payload
+        run: python tools/build_object_material_lookdev_evidence.py
+
+      - name: Validate structural material payload
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          root=Path('lookdev-proof/generated')
+          r=json.loads((root/'build_receipt.json').read_text())
+          p=json.loads((root/'object_material_payload.json').read_text())
+          assert r['result']=='PASS_SOURCE_BOUND_FUNCTIONAL_SURFACE_PAYLOAD',r
+          assert r['module_fit_prerequisite']['result']=='PASS_BILATERAL_SERVICE_MODULE_FIT_PROOF',r
+          assert p['truth_boundary']['same_geometry_baseline_candidate'] is True,p
+          assert p['truth_boundary']['textures'] is False,p
+          assert len(p['components'])==r['component_count'] and len(p['components'])>20,(r,p)
+          assert set(p['contexts'])=={'front_service','three_quarter','rear_hinge'},p
+          print(json.dumps(r,indent=2))
+          PY
+
+      - name: Download pinned Godot 4.7.2
+        if: matrix.python-version == '3.11'
+        env:
+          GODOT_URL: https://github.com/godotengine/godot-builds/releases/download/4.7.2-stable/Godot_v4.7.2-stable_linux.x86_64.zip
+          GODOT_SHA256: cadd3204e728a35d3f13adb7fd0d7902636b79f6b95c40c265eb73b6c35329e4
+        run: |
+          set -euo pipefail
+          mkdir -p .godot-bin
+          curl --fail --location --retry 3 --retry-delay 2 "$GODOT_URL" --output .godot-bin/godot.zip
+          echo "$GODOT_SHA256  .godot-bin/godot.zip" | sha256sum --check --strict
+          unzip -q .godot-bin/godot.zip -d .godot-bin
+          chmod +x .godot-bin/Godot_v4.7.2-stable_linux.x86_64
+          .godot-bin/Godot_v4.7.2-stable_linux.x86_64 --version
+
+      - name: Install virtual display when needed
+        if: matrix.python-version == '3.11'
+        run: |
+          if ! command -v xvfb-run >/dev/null 2>&1; then
+            sudo apt-get update
+            sudo apt-get install -y xvfb
+          fi
+
+      - name: Render exact baseline and candidate in three contexts
+        if: matrix.python-version == '3.11'
+        run: |
+          set -euo pipefail
+          rm -f lookdev-proof/material-lookdev-runtime-receipt.json lookdev-proof/*.png
+          xvfb-run --auto-servernum --server-args="-screen 0 1000x760x24" \
+            .godot-bin/Godot_v4.7.2-stable_linux.x86_64 \
+            --display-driver x11 \
+            --rendering-method gl_compatibility \
+            --path lookdev-proof \
+            --script observe.gd
+
+      - name: Validate target-host A/B evidence
+        if: matrix.python-version == '3.11'
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          root=Path('lookdev-proof')
+          r=json.loads((root/'material-lookdev-runtime-receipt.json').read_text())
+          assert r['state']=='PASS_TARGET_HOST_FUNCTIONAL_SURFACE_AB_READY',r
+          assert r['promotion_effect']=='NONE',r
+          assert set(r['contexts'])=={'front_service','three_quarter','rear_hinge'},r
+          for context,row in r['contexts'].items():
+            assert row['baseline']['state']=='PASS',(context,row)
+            assert row['candidate']['state']=='PASS',(context,row)
+            assert row['baseline']['component_count']==row['candidate']['component_count'],(context,row)
+            assert row['pixel_difference']['changed_pixels']>0,(context,row)
+            assert row['pixel_difference']['changed_fraction']>0.001,(context,row)
+            for prefix in ('baseline','candidate'):
+              path=root/f'{prefix}-{context}.png'
+              assert path.stat().st_size>2000,path
+          print(json.dumps(r,indent=2))
+          PY
+
+      - name: Retain exact material comparison evidence
+        if: matrix.python-version == '3.11' && always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: object-material-lookdev-001-${{ github.event.pull_request.head.sha || github.sha }}
+          path: |
+            lookdev/object_material_profile_001.json
+            lookdev-proof/generated/object_material_payload.json
+            lookdev-proof/generated/build_receipt.json
+            lookdev-proof/material-lookdev-runtime-receipt.json
+            lookdev-proof/baseline-front_service.png
+            lookdev-proof/candidate-front_service.png
+            lookdev-proof/baseline-three_quarter.png
+            lookdev-proof/candidate-three_quarter.png
+            lookdev-proof/baseline-rear_hinge.png
+            lookdev-proof/candidate-rear_hinge.png
+          if-no-files-found: warn
+          retention-days: 30
