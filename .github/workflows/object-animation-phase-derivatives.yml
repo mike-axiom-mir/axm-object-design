@@ -1,0 +1,216 @@
+name: Object animation phase-derivative diagnosis
+
+on:
+  pull_request:
+    paths:
+      - 'tools/diagnose_animation_phase_derivatives.py'
+      - 'tests/test_animation_phase_derivatives.py'
+      - '.github/workflows/object-animation-phase-derivatives.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CURRENT_ANIMATION_AUTHORITY_HEAD: 6c81740c7895c90d6bb3a617d74f0863c52053f6
+  PRIOR_ANIMATION_HEAD: 5cb073f9fcf825014556ed165ee081e1eca71cdc
+  LID_RIG_HEAD: 4b72c9918c5fc1e89bd18a0be24fb4afac6e7775
+  HISTORICAL_LATCH_RIG_HEAD: 3b667ff5d30c46ec2fe7da7679518970f8610018
+  HISTORICAL_OWNERSHIP_HEAD: d3fa10a270faae7925811f44f03381fe5c5d0215
+  SOURCE_RIG_HEAD: a1acd2bcb2074f41e536562f2673508e2cb0a4d5
+  SOURCE_INTERFACE_HEAD: 6086f39a3da344c57a68653f90d040e03e04cec2
+
+jobs:
+  exact-phase-derivative-diagnosis:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout exact Animation PR head with ancestry
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+      - name: Bind exact head and prove current authority ancestry
+        run: |
+          set -euo pipefail
+          EXACT_HEAD_SHA="$(git rev-parse HEAD)"
+          echo "EXACT_HEAD_SHA=$EXACT_HEAD_SHA" >> "$GITHUB_ENV"
+          git merge-base --is-ancestor "$CURRENT_ANIMATION_AUTHORITY_HEAD" "$EXACT_HEAD_SHA"
+          git diff --exit-code "$CURRENT_ANIMATION_AUTHORITY_HEAD" -- \
+            assets/modular-equipment-case-001/source-authority-motion-rebind-002.json \
+            assets/modular-equipment-case-001/lid-latch-motion-sequence-001.json \
+            assets/modular-equipment-case-001/lid-motion-clip.json \
+            tools/verify_animation_source_authority_rebind.py
+      - name: Checkout exact prior Animation choreography donor
+        uses: actions/checkout@v4
+        with:
+          repository: mike-axiom-mir/axm-object-design
+          ref: ${{ env.PRIOR_ANIMATION_HEAD }}
+          path: .prior-animation
+      - name: Checkout exact current source-rig authority donor
+        uses: actions/checkout@v4
+        with:
+          repository: mike-axiom-mir/axm-object-design
+          ref: ${{ env.SOURCE_RIG_HEAD }}
+          path: .source-rig
+      - name: Checkout exact historical Rigging donor
+        uses: actions/checkout@v4
+        with:
+          repository: mike-axiom-mir/axm-object-design
+          ref: ${{ env.HISTORICAL_LATCH_RIG_HEAD }}
+          path: .historical-rig
+      - name: Checkout exact historical ownership donor
+        uses: actions/checkout@v4
+        with:
+          repository: mike-axiom-mir/axm-object-design
+          ref: ${{ env.HISTORICAL_OWNERSHIP_HEAD }}
+          path: .ownership
+      - name: Checkout exact lid-rig donor
+        uses: actions/checkout@v4
+        with:
+          repository: mike-axiom-mir/axm-object-design
+          ref: ${{ env.LID_RIG_HEAD }}
+          path: .lid-rig
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Run current exact Object structural suite
+        run: |
+          python -m compileall -q tools tests
+          python -m unittest discover -s tests -v
+      - name: Rebuild exact prior Animation choreography evidence
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/axm-prior-lid-motion /tmp/axm-prior-latch-rig /tmp/axm-prior-sequence
+          python .prior-animation/tools/build_lid_motion_evidence.py \
+            --source .prior-animation/assets/modular-equipment-case-001/source.json \
+            --rig .lid-rig/assets/modular-equipment-case-001/articulation.json \
+            --clip .prior-animation/assets/modular-equipment-case-001/lid-motion-clip.json \
+            --out /tmp/axm-prior-lid-motion \
+            --exact-head "$PRIOR_ANIMATION_HEAD"
+          PYTHONPATH=".historical-rig/tools" python .historical-rig/tools/verify_front_latch_articulation.py \
+            --host .prior-animation/assets/modular-equipment-case-001/source.json \
+            --ownership .ownership/assets/modular-equipment-case-001/front-latch-ownership-001.json \
+            --plan .historical-rig/assets/modular-equipment-case-001/front-latch-articulation-001.json \
+            --out /tmp/axm-prior-latch-rig
+          python .prior-animation/tools/build_lid_latch_motion_evidence.py \
+            --source .prior-animation/assets/modular-equipment-case-001/source.json \
+            --sequence .prior-animation/assets/modular-equipment-case-001/lid-latch-motion-sequence-001.json \
+            --motion-evidence /tmp/axm-prior-lid-motion/lid-motion-evidence.json \
+            --ownership .ownership/assets/modular-equipment-case-001/front-latch-ownership-001.json \
+            --rig-receipt /tmp/axm-prior-latch-rig/front-latch-articulation.receipt.json \
+            --rig-head "$HISTORICAL_LATCH_RIG_HEAD" \
+            --rig-plan-sha256 81c27ab7b73ed9a43cb3f554b56c3f4294b893712075e33d13f5b02e008455db \
+            --out /tmp/axm-prior-sequence \
+            --exact-head "$PRIOR_ANIMATION_HEAD"
+      - name: Rebuild exact current source-owned Rigging acceptance
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/axm-source-rig
+          PYTHONPATH=".source-rig/tools" python .source-rig/tools/verify_front_latch_source_rig_binding.py \
+            --host assets/modular-equipment-case-001/source.json \
+            --ownership .ownership/assets/modular-equipment-case-001/front-latch-ownership-001.json \
+            --interface .source-rig/assets/modular-equipment-case-001/front-latch-pivot-interface-001.json \
+            --historical-plan .historical-rig/assets/modular-equipment-case-001/front-latch-articulation-001.json \
+            --binding .source-rig/assets/modular-equipment-case-001/front-latch-source-rig-binding-002.json \
+            --out /tmp/axm-source-rig
+      - name: Re-prove exact source-authority motion identity
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/axm-animation-source-rebind
+          python tools/verify_animation_source_authority_rebind.py \
+            --host assets/modular-equipment-case-001/source.json \
+            --contract assets/modular-equipment-case-001/source-authority-motion-rebind-002.json \
+            --prior-sequence-evidence /tmp/axm-prior-sequence/lid-latch-motion-evidence.json \
+            --source-interface .source-rig/assets/modular-equipment-case-001/front-latch-pivot-interface-001.json \
+            --source-rig-receipt /tmp/axm-source-rig/front-latch-source-rig-binding-evidence.json \
+            --exact-head "$EXACT_HEAD_SHA" \
+            --out /tmp/axm-animation-source-rebind
+      - name: Diagnose exact phase-boundary derivatives without changing motion
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/axm-animation-phase-derivatives
+          python tools/diagnose_animation_phase_derivatives.py \
+            --sequence-evidence /tmp/axm-prior-sequence/lid-latch-motion-evidence.json \
+            --authority-rebind /tmp/axm-animation-source-rebind/animation-source-authority-rebind-evidence.json \
+            --exact-head "$EXACT_HEAD_SHA" \
+            --out /tmp/axm-animation-phase-derivatives
+      - name: Negative controls fail closed
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/axm-derivative-negative && mkdir -p /tmp/axm-derivative-negative
+          cp /tmp/axm-prior-sequence/lid-latch-motion-evidence.json /tmp/axm-derivative-negative/sequence-time.json
+          cp /tmp/axm-prior-sequence/lid-latch-motion-evidence.json /tmp/axm-derivative-negative/sequence-digest.json
+          cp /tmp/axm-animation-source-rebind/animation-source-authority-rebind-evidence.json /tmp/axm-derivative-negative/authority.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('/tmp/axm-derivative-negative/sequence-time.json'); d=json.loads(p.read_text()); d['samples'][50]['time_s'] += 0.001; p.write_text(json.dumps(d,indent=2)+'\n')
+          p=Path('/tmp/axm-derivative-negative/sequence-digest.json'); d=json.loads(p.read_text()); d['sequence_digest']='0'*64; p.write_text(json.dumps(d,indent=2)+'\n')
+          p=Path('/tmp/axm-derivative-negative/authority.json'); d=json.loads(p.read_text()); d['motion_change']=True; p.write_text(json.dumps(d,indent=2)+'\n')
+          PY
+          if python tools/diagnose_animation_phase_derivatives.py --sequence-evidence /tmp/axm-derivative-negative/sequence-time.json --authority-rebind /tmp/axm-animation-source-rebind/animation-source-authority-rebind-evidence.json --exact-head "$EXACT_HEAD_SHA" --out /tmp/neg-time; then exit 1; fi
+          if python tools/diagnose_animation_phase_derivatives.py --sequence-evidence /tmp/axm-derivative-negative/sequence-digest.json --authority-rebind /tmp/axm-animation-source-rebind/animation-source-authority-rebind-evidence.json --exact-head "$EXACT_HEAD_SHA" --out /tmp/neg-digest; then exit 1; fi
+          if python tools/diagnose_animation_phase_derivatives.py --sequence-evidence /tmp/axm-prior-sequence/lid-latch-motion-evidence.json --authority-rebind /tmp/axm-derivative-negative/authority.json --exact-head "$EXACT_HEAD_SHA" --out /tmp/neg-authority; then exit 1; fi
+          echo "all derivative diagnosis negative controls rejected as expected"
+      - name: Validate exact diagnosis
+        run: |
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          p=Path('/tmp/axm-animation-phase-derivatives/object-animation-phase-derivative-diagnosis.json')
+          d=json.loads(p.read_text())
+          assert d['result']=='PASS_OBJECT_PHASE_DERIVATIVE_DIAGNOSIS_MOTION_UNCHANGED',d
+          assert d['exact_receiving_head']==os.environ['EXACT_HEAD_SHA'],d
+          assert d['diagnosed_authority_head']==os.environ['EXACT_HEAD_SHA'],d
+          assert d['sequence_id']=='lid-latch-open-hold-close-001',d
+          assert d['motion_changed'] is False and d['retimed'] is False and d['retargeted'] is False and d['key_count_changed'] is False,d
+          lid=d['tracks']['lid_open_angle_deg']; latch=d['tracks']['latch_lever_angle_deg']
+          assert lid['interval_count']==100 and latch['interval_count']==100,d
+          assert lid['interior_boundary_count']==99 and latch['interior_boundary_count']==99,d
+          assert lid['interior_boundaries_with_nonzero_velocity_jump']==60,lid
+          assert latch['interior_boundaries_with_nonzero_velocity_jump']==18,latch
+          assert abs(lid['repeat_seam']['absolute_velocity_jump_deg_per_s'])<=1e-9,lid
+          assert abs(latch['repeat_seam']['absolute_velocity_jump_deg_per_s']-112.0)<=1e-9,latch
+          assert d['observations']['endpoint_position_continuity_exact'] is True,d
+          assert d['observations']['current_linear_interpolation_c1_continuous_all_tracks'] is False,d
+          assert d['synthetic_controls']['constant_speed_control']=='PASS_ZERO_INTERIOR_JUMP',d
+          assert d['synthetic_controls']['deliberate_kink_control']=='PASS_NONZERO_INTERIOR_JUMP_DETECTED',d
+          print(json.dumps({
+            'result':d['result'],
+            'lid_nonzero_interior_boundaries':lid['interior_boundaries_with_nonzero_velocity_jump'],
+            'latch_nonzero_interior_boundaries':latch['interior_boundaries_with_nonzero_velocity_jump'],
+            'lid_worst_jump_deg_per_s':lid['maximum_interior_absolute_velocity_jump_deg_per_s'],
+            'lid_worst_boundary':lid['worst_interior_boundary_sample_index'],
+            'latch_worst_jump_deg_per_s':latch['maximum_interior_absolute_velocity_jump_deg_per_s'],
+            'latch_worst_boundary':latch['worst_interior_boundary_sample_index'],
+            'latch_repeat_seam_jump_deg_per_s':latch['repeat_seam']['absolute_velocity_jump_deg_per_s'],
+          },indent=2))
+          PY
+      - name: Retain exact phase-derivative evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: object-animation-phase-derivatives-${{ github.event.pull_request.head.sha || github.sha }}
+          path: |
+            /tmp/axm-animation-phase-derivatives/object-animation-phase-derivative-diagnosis.json
+            /tmp/axm-animation-phase-derivatives/object-animation-phase-derivative-diagnosis.svg
+            /tmp/axm-animation-phase-derivatives/exact-head.txt
+            /tmp/axm-animation-source-rebind/animation-source-authority-rebind-evidence.json
+            /tmp/axm-prior-sequence/lid-latch-motion-evidence.json
+          if-no-files-found: warn
+          retention-days: 30
+
+  python313-compat:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - run: |
+          python -m compileall -q tools tests
+          python -m unittest tests.test_animation_phase_derivatives -v
