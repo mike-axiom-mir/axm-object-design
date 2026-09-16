@@ -1,0 +1,27 @@
+{
+  "schema": "axm.object-hinge-pin-axial-stop/v0.1",
+  "asset_id": "modular-equipment-case-001",
+  "host_source_sha256": "49b1f9ed9865893d6de6f1ec8f069576732df694853fde4e3fcff366de32644a",
+  "base_hard_surface_head": "6086f39a3da344c57a68653f90d040e03e04cec2",
+  "joint_axis": [1.0, 0.0, 0.0],
+  "minimum_radial_overhang_m": 0.003,
+  "minimum_outer_knuckle_clearance_m": 0.010,
+  "stops": [
+    {
+      "id": "hinge-pin-stop-left",
+      "side": "left",
+      "center_x_m": -0.347,
+      "thickness_m": 0.006,
+      "radius_m": 0.013
+    },
+    {
+      "id": "hinge-pin-stop-right",
+      "side": "right",
+      "center_x_m": 0.347,
+      "thickness_m": 0.006,
+      "radius_m": 0.013
+    }
+  ],
+  "intent": "source-owned proof-scale bilateral axial-stop geometry for the existing hinge pin; preserve the host source and existing hinge line while making pin-end stop intent explicit",
+  "truth_boundary": "proves only exact source-space stop placement, bilateral symmetry, pin-end seating, radial overhang and clearance from the outer knuckle proof volumes; does not prove a bored knuckle, press/snap fit, retention force, tolerance stack, strength, wear, manufacturability, service procedure, runtime physics, gameplay or final visual acceptance"
+}
