@@ -1,0 +1,64 @@
+name: Object hard-surface interface evidence
+
+on:
+  pull_request:
+  push:
+    branches:
+      - studio/hard-surface-object-interface-001
+
+jobs:
+  structural:
+    strategy:
+      matrix:
+        python-version: ['3.11', '3.13']
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Unit tests
+        run: python -m unittest -v tests/test_modular_case.py
+      - name: Generate exact structural proof
+        run: |
+          rm -rf evidence-out
+          python tools/build_modular_case.py \
+            --source assets/modular-equipment-case-001/source.json \
+            --out-dir evidence-out
+
+  pinned-uc-socket-descriptor:
+    runs-on: ubuntu-latest
+    needs: structural
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: mike-axiom-mir/axm-universal-creation
+          ref: 87f93e1a27b2e3414f6422cd38e31b00e89d6a56
+          path: uc
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Generate exact structural proof
+        run: |
+          rm -rf evidence-out
+          python tools/build_modular_case.py \
+            --source assets/modular-equipment-case-001/source.json \
+            --out-dir evidence-out
+      - name: Validate projected sockets with pinned UC
+        run: |
+          python tools/verify_uc_socket_package.py \
+            --package evidence-out/uc-socket-package.json \
+            --uc-root uc \
+            --expected-uc-commit 87f93e1a27b2e3414f6422cd38e31b00e89d6a56 \
+            --report evidence-out/uc-socket-validation.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: modular-equipment-case-001-evidence
+          path: |
+            assets/modular-equipment-case-001/source.json
+            evidence-out/modular-equipment-case-001.obj
+            evidence-out/proof-front-side.svg
+            evidence-out/uc-socket-package.json
+            evidence-out/structural-receipt.json
+            evidence-out/uc-socket-validation.json
