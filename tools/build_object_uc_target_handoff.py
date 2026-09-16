@@ -65,8 +65,6 @@ def _source_basis(socket: dict[str, Any]) -> tuple[list[float], list[float], lis
         raise AssertionError("source socket basis vectors must be normalized")
     if abs(_dot(normal, up)) > 1e-9 or abs(_length(lateral) - 1.0) > 1e-9:
         raise AssertionError("source socket basis must be orthonormal")
-    # local +X = outward normal, local +Y = lateral, local +Z = source up.
-    # cross(+X,+Y) must equal +Z so the receiving transform does not reflect the module.
     handed = _cross(normal, lateral)
     if max(abs(handed[i] - up[i]) for i in range(3)) > 1e-9:
         raise AssertionError("source socket basis is not right handed")
@@ -82,8 +80,14 @@ def bind_source_frame_to_compiled_socket(source_socket: dict[str, Any], compiled
     source_descriptor = source_socket["uc_descriptor"]
     if payload.get("name") != source_descriptor.get("name"):
         raise AssertionError("compiled socket name drift")
-    if _vec3(payload.get("position"), "compiled socket position") != _vec3(source_descriptor.get("transform", {}).get("position"), "source socket position"):
+    compiled_transform = payload.get("transform")
+    source_transform = source_descriptor.get("transform")
+    if not isinstance(compiled_transform, dict) or not isinstance(source_transform, dict):
+        raise AssertionError("socket transform missing")
+    if _vec3(compiled_transform.get("position"), "compiled socket position") != _vec3(source_transform.get("position"), "source socket position"):
         raise AssertionError("compiled socket position drift")
+    if _vec3(compiled_transform.get("scale"), "compiled socket scale") != _vec3(source_transform.get("scale"), "source socket scale"):
+        raise AssertionError("compiled socket scale drift")
     if payload.get("accepts") != source_descriptor.get("accepts"):
         raise AssertionError("compiled socket accepts drift")
     if bool(payload.get("required")) != bool(source_descriptor.get("required")):
@@ -91,11 +95,11 @@ def bind_source_frame_to_compiled_socket(source_socket: dict[str, Any], compiled
     normal, lateral, up = _source_basis(source_socket)
     return {
         "socket_name": payload["name"],
-        "compiled_position": [float(x) for x in payload["position"]],
+        "compiled_position": [float(x) for x in compiled_transform["position"]],
         "source_normal": normal,
         "source_lateral": lateral,
         "source_up": up,
-        "compiled_rotation_euler_retained_not_interpreted": copy.deepcopy(payload.get("rotation_euler")),
+        "compiled_rotation_euler_retained_not_interpreted": copy.deepcopy(compiled_transform.get("rotation_euler")),
     }
 
 
@@ -118,7 +122,6 @@ def transform_module_to_source_world(
 
 
 def _source_to_uc(point: list[float]) -> list[float]:
-    # Object source is Z-up. UC/glTF is Y-up +Z-forward. This permutation changes handedness.
     x_right, y_forward, z_up = _vec3(point, "source point")
     return [x_right, z_up, y_forward]
 
@@ -151,7 +154,6 @@ def make_uc_surface_group(
         a, b, c = [int(i) for i in face]
         if any(i < 0 or i >= len(source_vertices) for i in (a, b, c)):
             raise AssertionError("source face index out of range")
-        # [x,y,z] -> [x,z,y] reflects handedness. Reverse b/c so authored front faces remain front-facing.
         tri = [_source_to_uc(source_vertices[i]) for i in (a, c, b)]
         normal = _face_normal(*tri)
         start = len(positions)
