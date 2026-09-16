@@ -1,0 +1,82 @@
+name: Object animation lid motion evidence
+
+on:
+  pull_request:
+    paths:
+      - 'assets/modular-equipment-case-001/source.json'
+      - 'assets/modular-equipment-case-001/lid-motion-clip.json'
+      - 'tools/build_lid_motion_evidence.py'
+      - 'tests/test_lid_motion_clip.py'
+      - '.github/workflows/object-animation-lid-motion.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.11', '3.13']
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Compile Python
+        run: python -m compileall -q tools tests
+      - name: Run full repository tests
+        run: python -m unittest discover -s tests -v
+
+  retained-evidence:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Bind exact checked-out head
+        run: echo "EXACT_HEAD_SHA=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
+      - name: Materialize exact source-owned rig dependency
+        run: |
+          mkdir -p /tmp/axm-animation-donor
+          curl -fsSL \
+            https://raw.githubusercontent.com/mike-axiom-mir/axm-object-design/4b72c9918c5fc1e89bd18a0be24fb4afac6e7775/assets/modular-equipment-case-001/articulation.json \
+            -o /tmp/axm-animation-donor/articulation.json
+      - name: Build exact motion evidence
+        run: |
+          python tools/build_lid_motion_evidence.py \
+            --source assets/modular-equipment-case-001/source.json \
+            --rig /tmp/axm-animation-donor/articulation.json \
+            --clip assets/modular-equipment-case-001/lid-motion-clip.json \
+            --out evidence/lid-motion-001 \
+            --exact-head "$EXACT_HEAD_SHA"
+      - name: Verify retained truth boundary
+        run: |
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          e = json.loads(Path('evidence/lid-motion-001/lid-motion-evidence.json').read_text())
+          assert e['result'] == 'PASS_BOUNDED_LID_MOTION_CLIP'
+          assert e['exact_receiving_head'] == os.environ['EXACT_HEAD_SHA']
+          assert e['observed_rig_plan_digest'] == '0ad6dc2ca22676cf301579932e599a441eb7c4bccce31991d1b727aeb22ac422'
+          assert e['source_sha256'] == '49b1f9ed9865893d6de6f1ec8f069576732df694853fde4e3fcff366de32644a'
+          assert e['endpoint_inclusive_sample_count'] == 81
+          assert e['repeated_visible_sample_count'] == 80
+          assert e['peak_open_angle_deg'] == 100.0
+          assert e['hard_limit_guard_deg'] == 10.0
+          assert e['loop_endpoint_closure_max_vertex_m'] == 0.0
+          assert e['repeat_wrap_matches_authored_final_step'] is True
+          assert Path('evidence/lid-motion-001/exact-head.txt').read_text().strip() == os.environ['EXACT_HEAD_SHA']
+          PY
+      - name: Retain evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: modular-equipment-case-001-lid-motion-${{ github.event.pull_request.head.sha || github.sha }}
+          path: evidence/lid-motion-001
+          if-no-files-found: error
