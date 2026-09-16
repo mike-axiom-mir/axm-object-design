@@ -20,15 +20,16 @@
   ],
   "camera_contexts": [
     "three_quarter",
-    "rear_hinge"
+    "front_interior"
   ],
-  "purpose": "test one explicit inner-lid review slot only after the lid is open enough to expose its inward face, reusing the already-proven service_dark family member instead of inventing a new coating; exterior shell material, source geometry, articulation, keeper ownership, cameras and lighting remain held",
+  "purpose": "test one explicit inner-lid review slot only after the lid is open enough to expose its inward face, reusing the already-proven service_dark family member instead of inventing a new coating; exterior shell material, source geometry, articulation, keeper ownership and lighting remain held while one additional front-interior proof camera makes the candidate face directly observable",
   "truth_boundary": {
     "materials_review_candidate_only": true,
     "source_geometry_changed": false,
     "source_material_slot_authored": false,
     "review_representation_face_split_only": true,
     "existing_material_scalars_only": true,
+    "proof_camera_added_for_inner_face_observation": true,
     "uvs": false,
     "textures": false,
     "decals": false,
