@@ -1,0 +1,32 @@
+{
+  "schema": "axm.object-service-module-fastener-clearance/v0.1",
+  "asset_id": "utility-module-fastener-clearance-001",
+  "host_asset_id": "modular-equipment-case-001",
+  "module_asset_id": "utility-module-001",
+  "registration_asset_id": "utility-module-registration-key-001",
+  "units": "meters",
+  "intent": "bounded Object-owned serviceability contract proving that the existing asymmetric registration datum does not consume the existing four fastener-axis clearance reservations on either bilateral service socket",
+  "source_identity": {
+    "host_source_sha256": "49b1f9ed9865893d6de6f1ec8f069576732df694853fde4e3fcff366de32644a",
+    "module_source_sha256": "ffd7b42294d3af71e02aa172157beccefa08c6af2c1198f88836862d2a50fc2e",
+    "registration_source_sha256": "bb01fef7bfb22a0f9b290c376c1451a2524e068b618f684f605d746257a0e989",
+    "registration_prerequisite_head": "3f091bda68b33482bdefe1cf4adf97caf9c0c87e"
+  },
+  "clearance_contract": {
+    "reserved_radius_source": "module.interface.bolt_axis_clearance_radius_m",
+    "section": "local lateral/up interface plane normal to each source-owned socket axis",
+    "requirements": [
+      "every reserved fastener-axis circle remains strictly inside both host and module interface footprints",
+      "reserved fastener-axis circles remain mutually non-overlapping",
+      "the host registration pin and module registration recess remain strictly outside every reserved fastener-axis circle",
+      "the same local clearance relations reproduce on both exact bilateral source frames"
+    ],
+    "fallback": "fail closed; do not move a fastener, registration datum, socket frame or footprint to manufacture a pass"
+  },
+  "provenance": {
+    "method": "AXM self-authored deterministic hard-surface serviceability proof over existing exact Object sources",
+    "external_assets": [],
+    "external_geometry": false
+  },
+  "truth_boundary": "This contract proves only source-space planar separation between the existing reserved fastener-axis clearance circles, interface footprint edges, and the exact registration pin/recess datum. It does not prove an actual fastener head, driver/tool envelope, threaded retention, hole fabrication, blind-recess manufacturability, tolerance stack, load, wear, sealing, full-mesh collision, runtime attachment, physics, gameplay, final topology/materials, visual acceptance, CANON or production readiness."
+}
