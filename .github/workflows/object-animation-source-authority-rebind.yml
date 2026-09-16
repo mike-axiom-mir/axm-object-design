@@ -151,14 +151,15 @@ jobs:
           cp .source-rig/assets/modular-equipment-case-001/front-latch-pivot-interface-001.json /tmp/axm-negative/interface.json
           cp assets/modular-equipment-case-001/source-authority-motion-rebind-002.json /tmp/axm-negative/contract.json
           cp /tmp/axm-prior-sequence/lid-latch-motion-evidence.json /tmp/axm-negative/prior.json
+          cp /tmp/axm-source-rig/front-latch-source-rig-binding-evidence.json /tmp/axm-negative/source-rig.json
           python - <<'PY'
           import json
           from pathlib import Path
-          p=Path('/tmp/axm-negative/interface.json'); d=json.loads(p.read_text()); d['stations'][0]['pivot_origin_m'][0]+=0.001; p.write_text(json.dumps(d,indent=2)+'\n')
+          p=Path('/tmp/axm-negative/source-rig.json'); d=json.loads(p.read_text()); d['station_results'][0]['pivot_origin_m'][0]+=0.001; p.write_text(json.dumps(d,indent=2)+'\n')
           p=Path('/tmp/axm-negative/contract.json'); d=json.loads(p.read_text()); d['source_rig_binding']['head']='0'*40; p.write_text(json.dumps(d,indent=2)+'\n')
           p=Path('/tmp/axm-negative/prior.json'); d=json.loads(p.read_text()); d['samples'][5]['latch_lever_angle_deg']+=1.0; p.write_text(json.dumps(d,indent=2)+'\n')
           PY
-          if python tools/verify_animation_source_authority_rebind.py --host assets/modular-equipment-case-001/source.json --contract assets/modular-equipment-case-001/source-authority-motion-rebind-002.json --prior-sequence-evidence /tmp/axm-prior-sequence/lid-latch-motion-evidence.json --source-interface /tmp/axm-negative/interface.json --source-rig-receipt /tmp/axm-source-rig/front-latch-source-rig-binding-evidence.json --exact-head "$EXACT_HEAD_SHA" --out /tmp/neg1; then exit 1; fi
+          if python tools/verify_animation_source_authority_rebind.py --host assets/modular-equipment-case-001/source.json --contract assets/modular-equipment-case-001/source-authority-motion-rebind-002.json --prior-sequence-evidence /tmp/axm-prior-sequence/lid-latch-motion-evidence.json --source-interface .source-rig/assets/modular-equipment-case-001/front-latch-pivot-interface-001.json --source-rig-receipt /tmp/axm-negative/source-rig.json --exact-head "$EXACT_HEAD_SHA" --out /tmp/neg1; then exit 1; fi
           if python tools/verify_animation_source_authority_rebind.py --host assets/modular-equipment-case-001/source.json --contract /tmp/axm-negative/contract.json --prior-sequence-evidence /tmp/axm-prior-sequence/lid-latch-motion-evidence.json --source-interface .source-rig/assets/modular-equipment-case-001/front-latch-pivot-interface-001.json --source-rig-receipt /tmp/axm-source-rig/front-latch-source-rig-binding-evidence.json --exact-head "$EXACT_HEAD_SHA" --out /tmp/neg2; then exit 1; fi
           if python tools/verify_animation_source_authority_rebind.py --host assets/modular-equipment-case-001/source.json --contract assets/modular-equipment-case-001/source-authority-motion-rebind-002.json --prior-sequence-evidence /tmp/axm-negative/prior.json --source-interface .source-rig/assets/modular-equipment-case-001/front-latch-pivot-interface-001.json --source-rig-receipt /tmp/axm-source-rig/front-latch-source-rig-binding-evidence.json --exact-head "$EXACT_HEAD_SHA" --out /tmp/neg3; then exit 1; fi
           echo "all source-authority rebind negative controls rejected as expected"
@@ -186,10 +187,32 @@ jobs:
           cp /tmp/axm-animation-source-rebind/animation-source-authority-rebind-evidence.json animation-proof/generated/
           printf '%s\n' "$EXACT_HEAD_SHA" > animation-proof/generated/exact-animation-head.txt
           python - <<'PY'
+          import json
           from pathlib import Path
+
+          prior=json.loads(Path('/tmp/axm-prior-sequence/lid-latch-motion-evidence.json').read_text())
+          rig=json.loads(Path('/tmp/axm-source-rig/front-latch-source-rig-binding-evidence.json').read_text())
+          mapping=json.loads(Path('/tmp/axm-animation-source-rebind/animation-source-authority-rebind-evidence.json').read_text())['station_identity_map']
+          current_to_historical={row['current_source_station_id']:row['historical_animation_station_id'] for row in mapping}
+          expected_components={(row['lever_component'],row['keeper_component']) for row in mapping}
+          observed_components={(row['lever_component'],row['keeper_component']) for row in rig['station_results']}
+          if observed_components != expected_components:
+            raise SystemExit('proof-local label adapter component identity mismatch')
+          adapter=json.loads(json.dumps(rig))
+          adapter['proof_local_adapter_schema']='axm.object-animation-station-label-adapter/v0.1'
+          adapter['proof_local_adapter_result']='PASS_EXACT_COMPONENT_PAIR_STATION_LABEL_ADAPTER'
+          adapter['proof_local_adapter_truth_boundary']='This proof-local view changes only station labels so the historical Animation observer can consume the newer source-authority receipt. It preserves exact lever/keeper component pairs, pivots, source heads, result metrics and numeric evidence. It is not a source contract, not a Rigging rewrite, and not a claim that historical and current station labels are identical.'
+          for row in adapter['station_results']:
+            current=str(row['station_id'])
+            if current not in current_to_historical:
+              raise SystemExit(f'unmapped current source station: {current}')
+            row['current_source_station_id']=current
+            row['station_id']=current_to_historical[current]
+          Path('animation-proof/generated/front-latch-source-rig-binding-animation-label-adapter.json').write_text(json.dumps(adapter,indent=2,sort_keys=True)+'\n')
+
           source=Path('.prior-animation/animation-proof/observe_interpolation_v3.gd').read_text()
           replacements={
-            'res://generated/front-latch-articulation.receipt.json':'res://generated/front-latch-source-rig-binding-evidence.json',
+            'res://generated/front-latch-articulation.receipt.json':'res://generated/front-latch-source-rig-binding-animation-label-adapter.json',
             'res://animationplayer-interpolation-v3-receipt.json':'res://animationplayer-source-authority-rebind-v4-receipt.json',
             'axm.object-animationplayer-interpolation-proof/v0.3':'axm.object-animationplayer-source-authority-rebind-proof/v0.4',
             'FAIL_TARGET_HOST_LINEAR_INTERPOLATION_PROOF':'FAIL_TARGET_HOST_SOURCE_AUTHORITY_REBIND',
@@ -243,14 +266,19 @@ jobs:
           r=json.loads((root/'animationplayer-source-authority-rebind-v4-receipt.json').read_text())
           a=json.loads((root/'generated/animation-source-authority-rebind-evidence.json').read_text())
           s=json.loads((root/'generated/front-latch-source-rig-binding-evidence.json').read_text())
+          sa=json.loads((root/'generated/front-latch-source-rig-binding-animation-label-adapter.json').read_text())
           assert a['result']=='PASS_ANIMATION_SOURCE_AUTHORITY_REBIND_MOTION_EQUIVALENCE',a
           assert a['exact_receiving_head']==os.environ['EXACT_HEAD_SHA'],a
           assert a['source_owned_lever_geometry_comparison_count']==202 and a['source_owned_lever_geometry_mismatch_count']==0,a
           assert a['release_threshold_delta_deg']==0.0 and a['terminal_keeper_z_separation_delta_m']==0.0,a
           assert a['motion_change'] is False and a['retimed'] is False and a['retargeted'] is False and a['key_count_changed'] is False,a
+          assert a['station_label_equality_required'] is False and a['station_component_identity_equality_required'] is True,a
           assert s['result']=='PASS_SOURCE_OWNED_FRONT_LATCH_RIG_REBIND',s
           assert s['source_interface_head']==os.environ['SOURCE_INTERFACE_HEAD'],s
           assert s['binding_sha256']==os.environ['SOURCE_RIG_BINDING_SHA256'],s
+          assert sa['proof_local_adapter_result']=='PASS_EXACT_COMPONENT_PAIR_STATION_LABEL_ADAPTER',sa
+          assert sorted(row['current_source_station_id'] for row in sa['station_results'])==['left','right'],sa
+          assert sorted(row['station_id'] for row in sa['station_results'])==['front-latch-left','front-latch-right'],sa
           assert r['state']=='PASS_TARGET_HOST_SOURCE_AUTHORITY_REBIND_LINEAR_INTERPOLATION',r
           assert r['animation_sequence_head']==os.environ['PRIOR_ANIMATION_HEAD'],r
           assert r['sample_rate_hz']==40 and r['duration_s']==2.5 and r['endpoint_inclusive_sample_count']==101,r
@@ -280,6 +308,7 @@ jobs:
             animation-proof/generated/uc-rigid-scene-handoff-receipt.json
             animation-proof/generated/lid-latch-motion-evidence.json
             animation-proof/generated/front-latch-source-rig-binding-evidence.json
+            animation-proof/generated/front-latch-source-rig-binding-animation-label-adapter.json
             animation-proof/generated/animation-source-authority-rebind-evidence.json
             animation-proof/generated/observe_source_rebind_v4.gd
             animation-proof/generated/exact-animation-head.txt
