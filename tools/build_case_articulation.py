@@ -27,15 +27,15 @@ def _write_side_proof(path: Path, report: dict) -> None:
     panel_width = 240
     panel_gap = 15
     left = 25
-    scale = 390.0
-    y_min, y_max = -0.35, 0.55
-    z_min, z_max = -0.02, 0.70
+    scale = 210.0
+    y_min = -0.35
+    z_min = -0.02
 
     def map_point(panel_index: int, point: list[float] | tuple[float, float]) -> tuple[float, float]:
         y, z = point
         panel_x = left + panel_index * (panel_width + panel_gap)
         px = panel_x + (y - y_min) * scale
-        pz = 360 - (z - z_min) * scale
+        pz = 330 - (z - z_min) * scale
         return px, pz
 
     body = [(-0.24, 0.0), (0.24, 0.0), (0.24, 0.30), (-0.24, 0.30)]
@@ -56,7 +56,7 @@ def _write_side_proof(path: Path, report: dict) -> None:
         rows.append(f'<polygon points="{lid_points}" fill="#dce8f5" stroke="#1f4f7a" stroke-width="2"/>')
         rows.append(f'<circle cx="{hinge[0]:.2f}" cy="{hinge[1]:.2f}" r="4" fill="#a00000"/>')
         rows.append(
-            f'<text x="{left + index * (panel_width + panel_gap)}" y="390" font-family="monospace" font-size="12">'
+            f'<text x="{left + index * (panel_width + panel_gap)}" y="385" font-family="monospace" font-size="12">'
             f'{pose["open_angle_deg"]:.0f} deg / gap {pose["body_shell_separating_margin_m"]:.6f} m</text>'
         )
     rows.append('</svg>')
