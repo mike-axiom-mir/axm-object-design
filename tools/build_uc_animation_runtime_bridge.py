@@ -19,6 +19,7 @@ SCHEMA = "axm.uc-animation-runtime-target-clock-binding/v0.1"
 RESULT = "PASS_UC_RUNTIME_OBJECT_TARGET_CLOCK_BINDING"
 CHECKPOINTS_S = [0.1125, 0.5125, 1.2375, 1.7625, 2.3875]
 EPS = 1e-10
+MODULE_RELATIVE_PATH = "src/axm_uc/game_animation_runtime.py"
 
 
 def sha256_bytes(data: bytes) -> str:
@@ -41,6 +42,12 @@ def git_head(root: Path) -> str:
     return subprocess.check_output(["git", "-C", str(root), "rev-parse", "HEAD"], text=True).strip()
 
 
+def git_blob_sha(root: Path, relative_path: str) -> str:
+    return subprocess.check_output(
+        ["git", "-C", str(root), "hash-object", relative_path], text=True
+    ).strip()
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--uc-root", required=True, type=Path)
@@ -55,10 +62,11 @@ def main() -> int:
     if observed_uc_commit != args.expected_uc_commit:
         raise AssertionError(f"UC runtime donor drift: {observed_uc_commit} != {args.expected_uc_commit}")
 
-    module_path = uc_root / "src" / "axm_uc" / "game_animation_runtime.py"
+    module_path = uc_root / MODULE_RELATIVE_PATH
     if not module_path.is_file():
         raise FileNotFoundError(module_path)
     uc_module_sha256 = sha256_bytes(module_path.read_bytes())
+    uc_module_git_blob_sha = git_blob_sha(uc_root, MODULE_RELATIVE_PATH)
 
     sys.path.insert(0, str(uc_root / "src"))
     from axm_uc.game_animation_runtime import replay_game_animation_runtime  # type: ignore
@@ -170,7 +178,8 @@ def main() -> int:
         "result": RESULT,
         "exact_object_head": args.exact_object_head,
         "uc_runtime_commit": observed_uc_commit,
-        "uc_runtime_module_path": "src/axm_uc/game_animation_runtime.py",
+        "uc_runtime_module_path": MODULE_RELATIVE_PATH,
+        "uc_runtime_module_git_blob_sha": uc_module_git_blob_sha,
         "uc_runtime_module_sha256": uc_module_sha256,
         "uc_runtime_source_sha256": replay["compiled"]["source_sha256"],
         "uc_runtime_commands_sha256": replay["commands_sha256"],
@@ -195,6 +204,7 @@ def main() -> int:
         "truth_boundary": {
             "uc_runtime_clock_executed": True,
             "uc_runtime_source_identity_preserved": True,
+            "uc_runtime_git_blob_and_byte_sha256_distinguished": True,
             "object_sequence_identity_preserved": True,
             "runtime_clip_time_retimed": False,
             "target_engine_playback_observed_here": False,
