@@ -1,0 +1,49 @@
+{
+  "schema": "axm.object-hard-surface-surface-identity/v0.1",
+  "asset_id": "modular-equipment-case-001",
+  "host_source_sha256": "49b1f9ed9865893d6de6f1ec8f069576732df694853fde4e3fcff366de32644a",
+  "surface_id": "lid_inner_service_surface",
+  "component_name": "lid_shell",
+  "required_role": "lid_shell",
+  "required_kind": "box",
+  "surface_semantics": "interior_service_surface",
+  "selector": {
+    "policy": "source_local_min_z_face",
+    "expected_triangle_count": 2,
+    "expected_unique_vertex_count": 4
+  },
+  "review_provenance": {
+    "repository": "mike-axiom-mir/axm-object-design",
+    "pull_request": 6,
+    "head": "8e92324648d837a92b7c3e0b1107df1f58f9aa61",
+    "path": "lookdev/inner_lid_surface_review_001.json",
+    "git_blob_sha": "cc90cd2c4c0f8eaf6b93d190436bc278c0fa1c83",
+    "review_schema": "axm.object-inner-lid-material-review/v0.1",
+    "review_selector": "source_local_min_z_face",
+    "relationship": "surface identity only; no material preference or Materials acceptance inherited"
+  },
+  "material_authority": {
+    "hard_surface_assigns_material": false,
+    "source_material_assignment": "UNASSIGNED",
+    "review_material_candidate_adopted": false
+  },
+  "purpose": "make the already-observed inward lid face an explicit Object-owned manufactured surface identity so downstream Materials, Technical Art and runtime evidence can bind to a stable source semantic instead of inferring a box face; preserve host geometry and leave final material choice outside Hard-Surface authority",
+  "truth_boundary": {
+    "host_source_geometry_changed": false,
+    "surface_identity_source_owned": true,
+    "material_slot_identity_only": true,
+    "material_assignment": false,
+    "materials_candidate_adopted": false,
+    "uvs": false,
+    "textures": false,
+    "decals": false,
+    "wear": false,
+    "bevel_or_normal_change": false,
+    "engine_import_acceptance": false,
+    "runtime_performance_acceptance": false,
+    "art_direction_acceptance": false,
+    "visual_qa_acceptance": false,
+    "canon": false,
+    "production_readiness": false
+  }
+}
