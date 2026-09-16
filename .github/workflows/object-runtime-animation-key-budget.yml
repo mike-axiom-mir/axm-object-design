@@ -1,0 +1,234 @@
+name: Object Runtime AnimationPlayer key budget evidence
+
+on:
+  pull_request:
+    paths:
+      - 'animation-proof/observe_runtime_key_budget.gd'
+      - '.github/workflows/object-runtime-animation-key-budget.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  ANIMATION_HEAD: 5cb073f9fcf825014556ed165ee081e1eca71cdc
+  TECHNICAL_ART_HEAD: 965fb2f24dbd0b0cbb748d9f8b8712d62966315f
+  UC_HEAD: 6dc465987e01362264f88b7cef4213609ae50763
+  LID_RIG_HEAD: 4b72c9918c5fc1e89bd18a0be24fb4afac6e7775
+  LATCH_RIG_HEAD: 3b667ff5d30c46ec2fe7da7679518970f8610018
+  LATCH_OWNERSHIP_HEAD: d3fa10a270faae7925811f44f03381fe5c5d0215
+  LATCH_RIG_PLAN_SHA256: 81c27ab7b73ed9a43cb3f554b56c3f4294b893712075e33d13f5b02e008455db
+  LATCH_OWNERSHIP_SHA256: 0702e4180f858d29c42ff8c38a61eaa16278d6848c8ce6f3ecfae172969ca8ae
+
+jobs:
+  exact-animation-key-budget:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout exact Runtime PR head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Bind exact Runtime head
+        run: echo "EXACT_RUNTIME_HEAD=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
+      - name: Checkout exact Animation donor
+        uses: actions/checkout@v4
+        with:
+          repository: mike-axiom-mir/axm-object-design
+          ref: ${{ env.ANIMATION_HEAD }}
+          path: .animation
+      - name: Checkout exact Technical Art rigid-scene donor
+        uses: actions/checkout@v4
+        with:
+          repository: mike-axiom-mir/axm-object-design
+          ref: ${{ env.TECHNICAL_ART_HEAD }}
+          path: .technical-art
+      - name: Checkout exact UC rigid-scene donor
+        uses: actions/checkout@v4
+        with:
+          repository: mike-axiom-mir/axm-universal-creation
+          ref: ${{ env.UC_HEAD }}
+          path: .uc
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Run exact Object structural suite
+        run: |
+          python -m compileall -q tools tests
+          python -m unittest discover -s tests -v
+      - name: Rebuild exact Technical Art UC rigid-scene donor output
+        run: |
+          set -euo pipefail
+          rm -rf .technical-art/rigid-proof/generated
+          mkdir -p .technical-art/rigid-proof/generated
+          (
+            cd .technical-art
+            PYTHONPATH=../.uc/src python tools/build_object_uc_rigid_scene_handoff.py \
+              --uc-root ../.uc \
+              --expected-uc-commit "$UC_HEAD" \
+              --out rigid-proof/generated
+          )
+          test "$(git -C .technical-art rev-parse HEAD)" = "$TECHNICAL_ART_HEAD"
+          test "$(git -C .uc rev-parse HEAD)" = "$UC_HEAD"
+          test "$(git -C .animation rev-parse HEAD)" = "$ANIMATION_HEAD"
+      - name: Materialize exact lid/latch rig donors
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/axm-runtime-key-budget-donors /tmp/axm-runtime-latch-rig /tmp/axm-runtime-lid-motion /tmp/axm-runtime-lid-latch
+          mkdir -p /tmp/axm-runtime-key-budget-donors/tools /tmp/axm-runtime-key-budget-donors/assets/modular-equipment-case-001
+          curl -fsSL "https://raw.githubusercontent.com/mike-axiom-mir/axm-object-design/${LID_RIG_HEAD}/assets/modular-equipment-case-001/articulation.json" -o /tmp/axm-runtime-key-budget-donors/assets/modular-equipment-case-001/articulation.json
+          ownership_base="https://raw.githubusercontent.com/mike-axiom-mir/axm-object-design/${LATCH_OWNERSHIP_HEAD}"
+          rig_base="https://raw.githubusercontent.com/mike-axiom-mir/axm-object-design/${LATCH_RIG_HEAD}"
+          curl -fsSL "$ownership_base/assets/modular-equipment-case-001/front-latch-ownership-001.json" -o /tmp/axm-runtime-key-budget-donors/assets/modular-equipment-case-001/front-latch-ownership-001.json
+          curl -fsSL "$ownership_base/tools/verify_front_latch_ownership.py" -o /tmp/axm-runtime-key-budget-donors/tools/verify_front_latch_ownership.py
+          curl -fsSL "$rig_base/assets/modular-equipment-case-001/front-latch-articulation-001.json" -o /tmp/axm-runtime-key-budget-donors/assets/modular-equipment-case-001/front-latch-articulation-001.json
+          curl -fsSL "$rig_base/tools/verify_front_latch_articulation.py" -o /tmp/axm-runtime-key-budget-donors/tools/verify_front_latch_articulation.py
+          echo "$LATCH_OWNERSHIP_SHA256  /tmp/axm-runtime-key-budget-donors/assets/modular-equipment-case-001/front-latch-ownership-001.json" | sha256sum -c -
+          echo "$LATCH_RIG_PLAN_SHA256  /tmp/axm-runtime-key-budget-donors/assets/modular-equipment-case-001/front-latch-articulation-001.json" | sha256sum -c -
+      - name: Rebuild exact Animation donor sequence
+        run: |
+          set -euo pipefail
+          (
+            cd .animation
+            python tools/build_lid_motion_evidence.py \
+              --source assets/modular-equipment-case-001/source.json \
+              --rig /tmp/axm-runtime-key-budget-donors/assets/modular-equipment-case-001/articulation.json \
+              --clip assets/modular-equipment-case-001/lid-motion-clip.json \
+              --out /tmp/axm-runtime-lid-motion \
+              --exact-head "$ANIMATION_HEAD"
+          )
+          PYTHONPATH="$PWD/.animation/tools" python /tmp/axm-runtime-key-budget-donors/tools/verify_front_latch_articulation.py \
+            --host .animation/assets/modular-equipment-case-001/source.json \
+            --ownership /tmp/axm-runtime-key-budget-donors/assets/modular-equipment-case-001/front-latch-ownership-001.json \
+            --plan /tmp/axm-runtime-key-budget-donors/assets/modular-equipment-case-001/front-latch-articulation-001.json \
+            --out /tmp/axm-runtime-latch-rig
+          (
+            cd .animation
+            python tools/build_lid_latch_motion_evidence.py \
+              --source assets/modular-equipment-case-001/source.json \
+              --sequence assets/modular-equipment-case-001/lid-latch-motion-sequence-001.json \
+              --motion-evidence /tmp/axm-runtime-lid-motion/lid-motion-evidence.json \
+              --ownership /tmp/axm-runtime-key-budget-donors/assets/modular-equipment-case-001/front-latch-ownership-001.json \
+              --rig-receipt /tmp/axm-runtime-latch-rig/front-latch-articulation.receipt.json \
+              --rig-head "$LATCH_RIG_HEAD" \
+              --rig-plan-sha256 "$LATCH_RIG_PLAN_SHA256" \
+              --out /tmp/axm-runtime-lid-latch \
+              --exact-head "$ANIMATION_HEAD"
+          )
+      - name: Assemble exact Runtime target-host inputs
+        run: |
+          set -euo pipefail
+          rm -rf animation-proof/generated
+          mkdir -p animation-proof/generated
+          cp .technical-art/rigid-proof/generated/object-rigid-components-rebound.glb animation-proof/generated/
+          cp .technical-art/rigid-proof/generated/uc-rigid-scene-handoff-receipt.json animation-proof/generated/
+          cp /tmp/axm-runtime-lid-latch/lid-latch-motion-evidence.json animation-proof/generated/
+          cp /tmp/axm-runtime-latch-rig/front-latch-articulation.receipt.json animation-proof/generated/
+          printf '%s\n' "$ANIMATION_HEAD" > animation-proof/generated/exact-animation-donor-head.txt
+          printf '%s\n' "$EXACT_RUNTIME_HEAD" > animation-proof/generated/exact-runtime-head.txt
+      - name: Validate exact dependency identity before target host
+        run: |
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          root=Path('animation-proof/generated')
+          t=json.loads((root/'uc-rigid-scene-handoff-receipt.json').read_text())
+          s=json.loads((root/'lid-latch-motion-evidence.json').read_text())
+          r=json.loads((root/'front-latch-articulation.receipt.json').read_text())
+          assert t['result']=='PASS_OBJECT_SOURCE_OWNED_RIGID_PARTS_THROUGH_UC_SCENE_GRAPH',t
+          assert t['source_repository_head']==os.environ['TECHNICAL_ART_HEAD'],t
+          assert t['observed_uc_commit']==os.environ['UC_HEAD'],t
+          assert s['result']=='PASS_ORDERED_LATCH_RELEASE_LID_CLIP_REENGAGE_SEQUENCE',s
+          assert s['exact_receiving_head']==os.environ['ANIMATION_HEAD'],s
+          assert s['host_source_sha256']==t['source_sha256'],(s,t)
+          assert s['latch_rig_dependency_head']==os.environ['LATCH_RIG_HEAD'],s
+          assert r['result']=='PASS_BOUNDED_FRONT_LATCH_LEVER_ARTICULATION',r
+          assert r['host_source_sha256']==s['host_source_sha256'],(r,s)
+          assert s['endpoint_inclusive_sample_count']==101 and s['sample_rate_hz']==40 and s['duration_s']==2.5,s
+          print('exact Runtime dependency gate PASS')
+          PY
+      - name: Download pinned Godot 4.7.2
+        env:
+          GODOT_URL: https://github.com/godotengine/godot-builds/releases/download/4.7.2-stable/Godot_v4.7.2-stable_linux.x86_64.zip
+          GODOT_SHA256: cadd3204e728a35d3f13adb7fd0d7902636b79f6b95c40c265eb73b6c35329e4
+        run: |
+          set -euo pipefail
+          mkdir -p .godot-bin
+          curl --fail --location --retry 3 --retry-delay 2 "$GODOT_URL" --output .godot-bin/godot.zip
+          echo "$GODOT_SHA256  .godot-bin/godot.zip" | sha256sum --check --strict
+          unzip -q .godot-bin/godot.zip -d .godot-bin
+          chmod +x .godot-bin/Godot_v4.7.2-stable_linux.x86_64
+          .godot-bin/Godot_v4.7.2-stable_linux.x86_64 --version
+      - name: Install virtual display when needed
+        run: |
+          if ! command -v xvfb-run >/dev/null 2>&1; then
+            sudo apt-get update
+            sudo apt-get install -y xvfb
+          fi
+      - name: Measure dense versus lossless constant-span Animation key budget
+        run: |
+          set -euo pipefail
+          rm -f animation-proof/runtime-animation-key-budget-receipt.json \
+                animation-proof/runtime-animation-dense-control.tres \
+                animation-proof/runtime-animation-constant-span-compact.tres \
+                animation-proof/runtime-key-budget-*.png
+          xvfb-run --auto-servernum --server-args="-screen 0 1000x760x24" \
+            .godot-bin/Godot_v4.7.2-stable_linux.x86_64 \
+            --display-driver x11 \
+            --rendering-method gl_compatibility \
+            --path animation-proof \
+            --script observe_runtime_key_budget.gd
+      - name: Validate exact Runtime key-budget receipt
+        run: |
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          root=Path('animation-proof')
+          r=json.loads((root/'runtime-animation-key-budget-receipt.json').read_text())
+          assert r['state']=='PASS_LOSSLESS_CONSTANT_SPAN_ANIMATION_KEY_COMPACTION',r
+          assert r['technical_art_object_head']==os.environ['TECHNICAL_ART_HEAD'],r
+          assert r['uc_commit']==os.environ['UC_HEAD'],r
+          assert r['animation_sequence_head']==os.environ['ANIMATION_HEAD'],r
+          assert r['sample_rate_hz']==40 and r['duration_s']==2.5 and r['endpoint_inclusive_sample_count']==101,r
+          assert r['dense_key_counts']==[101,101,101],r
+          assert r['compact_key_counts']==[64,22,22],r
+          assert r['dense_total_keys']==303 and r['compact_total_keys']==108 and r['keys_removed']==195,r
+          assert r['key_reduction_percent'] > 64.0,r
+          assert r['dense_serialized_resource_bytes'] > r['compact_serialized_resource_bytes'] > 0,r
+          assert r['serialized_resource_bytes_removed'] > 0,r
+          assert r['comparison_time_count']==201,r
+          assert r['max_rotation_delta_deg']<=1e-4,r
+          assert r['max_world_mesh_center_delta_m']<=1e-6,r
+          assert r['neutral_pivot_wrapper_max_drift_m']<=1e-6,r
+          assert r['matched_capture_count']==5,r
+          assert all(row['byte_identical_png'] for row in r['captures']),r
+          assert r['visual_tradeoff']=='NONE_OBSERVED_FIVE_MATCHED_PNG_PAIRS_BYTE_IDENTICAL',r
+          assert r['truth_boundary']['runtime_heap_or_vram_memory_measured'] is False,r
+          assert r['truth_boundary']['wall_clock_playback_or_scheduler_profiled'] is False,r
+          assert r['truth_boundary']['target_device_fps_or_gpu_time_measured'] is False,r
+          for i in range(5):
+              a=root/f'runtime-key-budget-dense-{i:02d}.png'
+              b=root/f'runtime-key-budget-compact-{i:02d}.png'
+              assert a.stat().st_size>3000 and b.stat().st_size>3000,(a,b)
+              assert a.read_bytes()==b.read_bytes(),(a,b)
+          print(json.dumps(r,indent=2))
+          PY
+      - name: Retain exact Runtime Animation key-budget evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: object-runtime-animation-key-budget-${{ github.event.pull_request.head.sha || github.sha }}
+          path: |
+            animation-proof/generated/object-rigid-components-rebound.glb
+            animation-proof/generated/uc-rigid-scene-handoff-receipt.json
+            animation-proof/generated/lid-latch-motion-evidence.json
+            animation-proof/generated/front-latch-articulation.receipt.json
+            animation-proof/generated/exact-animation-donor-head.txt
+            animation-proof/generated/exact-runtime-head.txt
+            animation-proof/runtime-animation-key-budget-receipt.json
+            animation-proof/runtime-animation-dense-control.tres
+            animation-proof/runtime-animation-constant-span-compact.tres
+            animation-proof/runtime-key-budget-*.png
+          if-no-files-found: warn
+          retention-days: 30
