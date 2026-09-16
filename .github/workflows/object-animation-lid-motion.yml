@@ -6,10 +6,13 @@ on:
       - 'assets/modular-equipment-case-001/source.json'
       - 'assets/modular-equipment-case-001/lid-motion-clip.json'
       - 'assets/modular-equipment-case-001/lid-motion-configuration-matrix.json'
+      - 'assets/modular-equipment-case-001/lid-latch-motion-sequence-001.json'
       - 'tools/build_lid_motion_evidence.py'
       - 'tools/build_lid_motion_configuration_matrix.py'
+      - 'tools/build_lid_latch_motion_evidence.py'
       - 'tests/test_lid_motion_clip.py'
       - 'tests/test_lid_motion_configuration_matrix.py'
+      - 'tests/test_lid_latch_motion_sequence.py'
       - '.github/workflows/object-animation-lid-motion.yml'
   workflow_dispatch:
 
@@ -18,6 +21,10 @@ permissions:
 
 env:
   PROCEDURAL_HEAD: 4fd7546d520b515533678464307d7a49d13479e0
+  LATCH_RIG_HEAD: 3b667ff5d30c46ec2fe7da7679518970f8610018
+  LATCH_OWNERSHIP_HEAD: d3fa10a270faae7925811f44f03381fe5c5d0215
+  LATCH_RIG_PLAN_SHA256: 81c27ab7b73ed9a43cb3f554b56c3f4294b893712075e33d13f5b02e008455db
+  LATCH_OWNERSHIP_SHA256: 0702e4180f858d29c42ff8c38a61eaa16278d6848c8ce6f3ecfae172969ca8ae
 
 jobs:
   tests:
@@ -62,6 +69,42 @@ jobs:
             --clip assets/modular-equipment-case-001/lid-motion-clip.json \
             --out evidence/lid-motion-001 \
             --exact-head "$EXACT_HEAD_SHA"
+      - name: Materialize exact front-latch ownership and Rigging donors
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/axm-latch-donor/tools /tmp/axm-latch-donor/assets/modular-equipment-case-001
+          ownership_base="https://raw.githubusercontent.com/mike-axiom-mir/axm-object-design/${LATCH_OWNERSHIP_HEAD}"
+          rig_base="https://raw.githubusercontent.com/mike-axiom-mir/axm-object-design/${LATCH_RIG_HEAD}"
+          curl -fsSL "$ownership_base/assets/modular-equipment-case-001/front-latch-ownership-001.json" -o /tmp/axm-latch-donor/assets/modular-equipment-case-001/front-latch-ownership-001.json
+          curl -fsSL "$ownership_base/tools/verify_front_latch_ownership.py" -o /tmp/axm-latch-donor/tools/verify_front_latch_ownership.py
+          curl -fsSL "$rig_base/assets/modular-equipment-case-001/front-latch-articulation-001.json" -o /tmp/axm-latch-donor/assets/modular-equipment-case-001/front-latch-articulation-001.json
+          curl -fsSL "$rig_base/tools/verify_front_latch_articulation.py" -o /tmp/axm-latch-donor/tools/verify_front_latch_articulation.py
+          echo "$LATCH_OWNERSHIP_SHA256  /tmp/axm-latch-donor/assets/modular-equipment-case-001/front-latch-ownership-001.json" | sha256sum -c -
+          echo "$LATCH_RIG_PLAN_SHA256  /tmp/axm-latch-donor/assets/modular-equipment-case-001/front-latch-articulation-001.json" | sha256sum -c -
+      - name: Rebuild exact front-latch Rigging prerequisite
+        run: |
+          PYTHONPATH="$PWD/tools" python /tmp/axm-latch-donor/tools/verify_front_latch_articulation.py \
+            --host assets/modular-equipment-case-001/source.json \
+            --ownership /tmp/axm-latch-donor/assets/modular-equipment-case-001/front-latch-ownership-001.json \
+            --plan /tmp/axm-latch-donor/assets/modular-equipment-case-001/front-latch-articulation-001.json \
+            --out /tmp/axm-latch-rig-evidence
+      - name: Compose exact lid clip with bounded latch release and reengage
+        run: |
+          python tools/build_lid_latch_motion_evidence.py \
+            --source assets/modular-equipment-case-001/source.json \
+            --sequence assets/modular-equipment-case-001/lid-latch-motion-sequence-001.json \
+            --motion-evidence evidence/lid-motion-001/lid-motion-evidence.json \
+            --ownership /tmp/axm-latch-donor/assets/modular-equipment-case-001/front-latch-ownership-001.json \
+            --rig-receipt /tmp/axm-latch-rig-evidence/front-latch-articulation.receipt.json \
+            --rig-head "$LATCH_RIG_HEAD" \
+            --rig-plan-sha256 "$LATCH_RIG_PLAN_SHA256" \
+            --out evidence/lid-latch-motion-001 \
+            --exact-head "$EXACT_HEAD_SHA"
+          mkdir -p evidence/lid-latch-motion-001/donors
+          cp /tmp/axm-latch-donor/assets/modular-equipment-case-001/front-latch-ownership-001.json evidence/lid-latch-motion-001/donors/
+          cp /tmp/axm-latch-donor/assets/modular-equipment-case-001/front-latch-articulation-001.json evidence/lid-latch-motion-001/donors/
+          cp /tmp/axm-latch-rig-evidence/front-latch-articulation.receipt.json evidence/lid-latch-motion-001/donors/
+          printf '%s\n' "$LATCH_OWNERSHIP_HEAD" > evidence/lid-latch-motion-001/ownership-donor-head.txt
       - name: Materialize exact Procedural configuration-family donor
         run: |
           set -euo pipefail
@@ -115,6 +158,31 @@ jobs:
           assert e['repeat_wrap_matches_authored_final_step'] is True
           assert Path('evidence/lid-motion-001/exact-head.txt').read_text().strip() == os.environ['EXACT_HEAD_SHA']
 
+          c = json.loads(Path('evidence/lid-latch-motion-001/lid-latch-motion-evidence.json').read_text())
+          assert c['result'] == 'PASS_ORDERED_LATCH_RELEASE_LID_CLIP_REENGAGE_SEQUENCE'
+          assert c['exact_receiving_head'] == os.environ['EXACT_HEAD_SHA']
+          assert c['latch_rig_dependency_head'] == os.environ['LATCH_RIG_HEAD']
+          assert c['ownership_dependency_head'] == os.environ['LATCH_OWNERSHIP_HEAD']
+          assert c['latch_rig_plan_sha256'] == os.environ['LATCH_RIG_PLAN_SHA256']
+          assert c['ownership_contract_sha256'] == os.environ['LATCH_OWNERSHIP_SHA256']
+          assert c['endpoint_inclusive_sample_count'] == 101
+          assert c['repeated_visible_sample_count'] == 100
+          assert c['base_lid_clip_exact_sample_count'] == 81
+          assert c['base_lid_clip_retimed_sample_count'] == 0
+          assert c['base_lid_clip_retargeted_sample_count'] == 0
+          assert c['observations']['exact_base_lid_samples_copied_unretimed'] == 81
+          assert c['observations']['nonzero_lid_samples_without_terminal_latch'] == 0
+          assert c['observations']['below_rig_separation_threshold_samples_with_nonzero_lid'] == 0
+          assert c['rig_continuous_keeper_z_separation_threshold_deg'] < 50.0
+          assert c['rig_terminal_keeper_z_separation_m'] >= 0.001
+          assert c['observations']['endpoint_closure_max_vertex_m'] <= 1e-9
+          assert c['observations']['maximum_lever_rigidity_drift_m'] <= 1e-9
+          assert c['observations']['maximum_lid_keeper_rigidity_drift_m'] <= 1e-9
+          assert c['observations']['repeat_wrap_matches_authored_final_step'] is True
+          assert Path('evidence/lid-latch-motion-001/exact-head.txt').read_text().strip() == os.environ['EXACT_HEAD_SHA']
+          assert Path('evidence/lid-latch-motion-001/latch-rig-donor-head.txt').read_text().strip() == os.environ['LATCH_RIG_HEAD']
+          assert Path('evidence/lid-latch-motion-001/ownership-donor-head.txt').read_text().strip() == os.environ['LATCH_OWNERSHIP_HEAD']
+
           m = json.loads(Path('evidence/lid-motion-configuration-matrix-001/lid-motion-configuration-matrix-evidence.json').read_text())
           assert m['result'] == 'PASS_CONFIGURATION_INVARIANT_LID_MOTION_FAMILY'
           assert m['exact_receiving_head'] == os.environ['EXACT_HEAD_SHA']
@@ -137,6 +205,12 @@ jobs:
         with:
           name: modular-equipment-case-001-lid-motion-${{ github.event.pull_request.head.sha || github.sha }}
           path: evidence/lid-motion-001
+          if-no-files-found: error
+      - name: Retain latch choreography evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: modular-equipment-case-001-lid-latch-motion-${{ github.event.pull_request.head.sha || github.sha }}
+          path: evidence/lid-latch-motion-001
           if-no-files-found: error
       - name: Retain configuration-invariant motion evidence
         uses: actions/upload-artifact@v4
