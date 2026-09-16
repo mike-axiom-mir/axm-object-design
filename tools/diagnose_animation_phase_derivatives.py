@@ -186,8 +186,7 @@ def diagnose(
 
     lid = _track_diagnosis(lid_values, dt)
     latch = _track_diagnosis(latch_values, dt)
-    phases = _phase_rows(sequence.get("phase_landmarks", {}), lid_values, latch_values, dt)
-    phase_names = [row["name"] for row in phases]
+    raw_phases = _phase_rows(sequence.get("phase_landmarks", {}), lid_values, latch_values, dt)
     expected_phase_names = [
         "closed_start",
         "release_complete",
@@ -197,8 +196,10 @@ def diagnose(
         "lid_closed_before_reengage",
         "closed_end",
     ]
-    if phase_names != expected_phase_names:
-        raise ValueError("phase-landmark identity/order drift")
+    phase_by_name = {row["name"]: row for row in raw_phases}
+    if len(phase_by_name) != len(raw_phases) or set(phase_by_name) != set(expected_phase_names):
+        raise ValueError("phase-landmark identity drift")
+    phases = [phase_by_name[name] for name in expected_phase_names]
 
     phase_map = {row["name"]: row for row in phases}
     if abs(float(phase_map["lid_peak_mid"]["lid_incoming_velocity_deg_per_s"])) > EPS:
