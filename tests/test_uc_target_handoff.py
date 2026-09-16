@@ -28,21 +28,12 @@ def compiled_atom_from_source(socket: dict) -> dict:
         key: [float(v) for v in values]
         for key, values in descriptor["transform"].items()
     }
-    payload = {
-        "owner": descriptor["owner"],
-        "name": descriptor["name"],
-        "transform": descriptor["transform"],
-        "accepts": descriptor["accepts"],
-        "required": descriptor["required"],
-    }
-    # UC's socket normalizer flattens transform fields into payload.
-    payload.update(payload.pop("transform"))
     return {
         "id": socket["id"],
         "kind": "socket",
         "purpose": "test fixture",
         "uses": ["case-part"],
-        "payload": payload,
+        "payload": descriptor,
     }
 
 
@@ -71,7 +62,7 @@ class ObjectUCTargetHandoffTests(unittest.TestCase):
     def test_compiled_socket_position_drift_fails_closed(self):
         socket = next(s for s in HOST["sockets"] if s["uc_descriptor"]["name"] == "right_service")
         atom = compiled_atom_from_source(socket)
-        atom["payload"]["position"][0] += 0.001
+        atom["payload"]["transform"]["position"][0] += 0.001
         with self.assertRaisesRegex(AssertionError, "compiled socket position drift"):
             bind_source_frame_to_compiled_socket(socket, atom)
 
