@@ -5,13 +5,19 @@ on:
     paths:
       - 'assets/modular-equipment-case-001/source.json'
       - 'assets/modular-equipment-case-001/lid-motion-clip.json'
+      - 'assets/modular-equipment-case-001/lid-motion-configuration-matrix.json'
       - 'tools/build_lid_motion_evidence.py'
+      - 'tools/build_lid_motion_configuration_matrix.py'
       - 'tests/test_lid_motion_clip.py'
+      - 'tests/test_lid_motion_configuration_matrix.py'
       - '.github/workflows/object-animation-lid-motion.yml'
   workflow_dispatch:
 
 permissions:
   contents: read
+
+env:
+  PROCEDURAL_HEAD: 4fd7546d520b515533678464307d7a49d13479e0
 
 jobs:
   tests:
@@ -56,6 +62,41 @@ jobs:
             --clip assets/modular-equipment-case-001/lid-motion-clip.json \
             --out evidence/lid-motion-001 \
             --exact-head "$EXACT_HEAD_SHA"
+      - name: Materialize exact Procedural configuration-family donor
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/axm-procedural-donor/tools /tmp/axm-procedural-donor/assets/modular-equipment-case-001
+          base="https://raw.githubusercontent.com/mike-axiom-mir/axm-object-design/${PROCEDURAL_HEAD}"
+          curl -fsSL "$base/tools/build_service_module_configuration_family.py" -o /tmp/axm-procedural-donor/tools/build_service_module_configuration_family.py
+          curl -fsSL "$base/tools/verify_service_module_fit.py" -o /tmp/axm-procedural-donor/tools/verify_service_module_fit.py
+          curl -fsSL "$base/tools/verify_service_module_registration_key.py" -o /tmp/axm-procedural-donor/tools/verify_service_module_registration_key.py
+          curl -fsSL "$base/assets/modular-equipment-case-001/source.json" -o /tmp/axm-procedural-donor/assets/modular-equipment-case-001/source.json
+          curl -fsSL "$base/assets/modular-equipment-case-001/utility-module-001.json" -o /tmp/axm-procedural-donor/assets/modular-equipment-case-001/utility-module-001.json
+          curl -fsSL "$base/assets/modular-equipment-case-001/utility-module-registration-key-001.json" -o /tmp/axm-procedural-donor/assets/modular-equipment-case-001/utility-module-registration-key-001.json
+          curl -fsSL "$base/assets/modular-equipment-case-001/service-module-configuration-family-001.json" -o /tmp/axm-procedural-donor/assets/modular-equipment-case-001/service-module-configuration-family-001.json
+      - name: Rebuild exact Procedural configurations
+        run: |
+          python /tmp/axm-procedural-donor/tools/build_service_module_configuration_family.py \
+            --host /tmp/axm-procedural-donor/assets/modular-equipment-case-001/source.json \
+            --module /tmp/axm-procedural-donor/assets/modular-equipment-case-001/utility-module-001.json \
+            --registration /tmp/axm-procedural-donor/assets/modular-equipment-case-001/utility-module-registration-key-001.json \
+            --profile /tmp/axm-procedural-donor/assets/modular-equipment-case-001/service-module-configuration-family-001.json \
+            --out /tmp/axm-procedural-evidence
+      - name: Compose one exact lid clip across all retained configurations
+        run: |
+          python tools/build_lid_motion_configuration_matrix.py \
+            --matrix assets/modular-equipment-case-001/lid-motion-configuration-matrix.json \
+            --motion-evidence evidence/lid-motion-001/lid-motion-evidence.json \
+            --procedural-evidence-dir /tmp/axm-procedural-evidence \
+            --procedural-head "$PROCEDURAL_HEAD" \
+            --source assets/modular-equipment-case-001/source.json \
+            --out evidence/lid-motion-configuration-matrix-001 \
+            --exact-head "$EXACT_HEAD_SHA"
+          mkdir -p evidence/lid-motion-configuration-matrix-001/procedural-donor
+          cp /tmp/axm-procedural-evidence/summary.json evidence/lid-motion-configuration-matrix-001/procedural-donor/
+          cp /tmp/axm-procedural-evidence/configuration-*.json evidence/lid-motion-configuration-matrix-001/procedural-donor/
+          cp evidence/lid-motion-001/lid-motion-evidence.json evidence/lid-motion-configuration-matrix-001/
+          cp assets/modular-equipment-case-001/lid-motion-configuration-matrix.json evidence/lid-motion-configuration-matrix-001/
       - name: Verify retained truth boundary
         run: |
           python - <<'PY'
@@ -73,10 +114,33 @@ jobs:
           assert e['loop_endpoint_closure_max_vertex_m'] == 0.0
           assert e['repeat_wrap_matches_authored_final_step'] is True
           assert Path('evidence/lid-motion-001/exact-head.txt').read_text().strip() == os.environ['EXACT_HEAD_SHA']
+
+          m = json.loads(Path('evidence/lid-motion-configuration-matrix-001/lid-motion-configuration-matrix-evidence.json').read_text())
+          assert m['result'] == 'PASS_CONFIGURATION_INVARIANT_LID_MOTION_FAMILY'
+          assert m['exact_receiving_head'] == os.environ['EXACT_HEAD_SHA']
+          assert m['procedural_dependency']['exact_head'] == os.environ['PROCEDURAL_HEAD']
+          assert m['configuration_count'] == 4
+          assert m['distinct_initial_geometric_pose_count'] == 4
+          assert m['distinct_composed_sequence_count'] == 4
+          assert m['observations']['same_exact_authored_motion_signature_all_configurations'] is True
+          assert m['observations']['all_geometric_loops_close'] is True
+          assert m['observations']['all_static_module_geometry_unchanged_during_clip'] is True
+          assert m['observations']['retimed_sample_count'] == 0
+          assert m['observations']['retargeted_sample_count'] == 0
+          assert len({row['motion_signature_digest'] for row in m['configuration_results']}) == 1
+          assert [row['module_instance_count'] for row in m['configuration_results']] == [0, 1, 1, 2]
+          assert Path('evidence/lid-motion-configuration-matrix-001/exact-head.txt').read_text().strip() == os.environ['EXACT_HEAD_SHA']
+          assert Path('evidence/lid-motion-configuration-matrix-001/procedural-donor-head.txt').read_text().strip() == os.environ['PROCEDURAL_HEAD']
           PY
-      - name: Retain evidence
+      - name: Retain base motion evidence
         uses: actions/upload-artifact@v4
         with:
           name: modular-equipment-case-001-lid-motion-${{ github.event.pull_request.head.sha || github.sha }}
           path: evidence/lid-motion-001
+          if-no-files-found: error
+      - name: Retain configuration-invariant motion evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: modular-equipment-case-001-lid-motion-config-matrix-${{ github.event.pull_request.head.sha || github.sha }}
+          path: evidence/lid-motion-configuration-matrix-001
           if-no-files-found: error
