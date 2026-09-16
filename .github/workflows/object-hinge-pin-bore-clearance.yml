@@ -1,0 +1,46 @@
+name: Object hinge-pin bore-clearance evidence
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  structural:
+    strategy:
+      matrix:
+        python-version: ['3.11', '3.13']
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Compile
+        run: python -m compileall tools tests
+      - name: Test full repository suite
+        run: python -m unittest discover -s tests -v
+      - name: Build exact hinge-pin bore-clearance evidence
+        if: matrix.python-version == '3.11'
+        run: |
+          mkdir -p evidence/hinge-pin-bore-clearance
+          python tools/verify_hinge_pin_bore_clearance.py \
+            --host assets/modular-equipment-case-001/source.json \
+            --contract assets/modular-equipment-case-001/hinge-pin-bore-clearance-001.json \
+            --out evidence/hinge-pin-bore-clearance
+          cp assets/modular-equipment-case-001/source.json evidence/hinge-pin-bore-clearance/host-source.json
+          cp assets/modular-equipment-case-001/hinge-pin-bore-clearance-001.json evidence/hinge-pin-bore-clearance/bore-clearance-contract.json
+          git rev-parse HEAD > evidence/hinge-pin-bore-clearance/exact-head.txt
+      - name: Upload retained evidence
+        if: matrix.python-version == '3.11'
+        uses: actions/upload-artifact@v4
+        with:
+          name: modular-equipment-case-001-hinge-pin-bore-clearance-evidence
+          path: evidence/hinge-pin-bore-clearance
+          if-no-files-found: error
+          retention-days: 30
