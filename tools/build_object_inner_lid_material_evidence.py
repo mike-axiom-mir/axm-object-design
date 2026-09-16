@@ -77,9 +77,11 @@ def build_payload(base_path: Path, review_path: Path) -> tuple[dict[str, Any], d
     if [item["id"] for item in selected_poses] != ["mid_open", "peak_open"]:
         raise AssertionError("v0.1 inner-lid review requires exact mid_open + peak_open poses")
 
-    base_contexts = list(base.get("camera_contexts", []))
+    base_contexts = set(base.get("camera_contexts", []))
     review_contexts = list(review.get("camera_contexts", []))
-    if set(review_contexts) != {"three_quarter", "rear_hinge"} or set(review_contexts) != set(base_contexts):
+    if "three_quarter" not in base_contexts:
+        raise AssertionError("base articulation proof lost the shared three_quarter camera")
+    if set(review_contexts) != {"three_quarter", "front_interior"}:
         raise AssertionError("inner-lid camera context drift")
 
     truth = review.get("truth_boundary", {})
@@ -88,6 +90,7 @@ def build_payload(base_path: Path, review_path: Path) -> tuple[dict[str, Any], d
         "source_material_slot_authored": False,
         "review_representation_face_split_only": True,
         "existing_material_scalars_only": True,
+        "proof_camera_added_for_inner_face_observation": True,
         "uvs": False,
         "textures": False,
         "art_direction_acceptance": False,
