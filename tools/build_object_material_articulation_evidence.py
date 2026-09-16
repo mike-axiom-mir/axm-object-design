@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import argparse
-import hashlib
 import json
 from pathlib import Path
 from typing import Any
@@ -56,9 +55,10 @@ def validate_dependencies(
         raise AssertionError("animation clip schema mismatch")
     if rig.get("schema") != RIG_SCHEMA:
         raise AssertionError("rig schema mismatch")
+    host = load_json(host_path)
     host_sha = sha256(host_path)
     asset_id = review.get("asset_id")
-    if clip.get("asset_id") != asset_id or rig.get("asset_id") != asset_id:
+    if clip.get("asset_id") != asset_id or rig.get("asset_id") != asset_id or host.get("asset_id") != asset_id:
         raise AssertionError("asset identity drift")
     if clip.get("source_sha256") != host_sha or rig.get("source_sha256") != host_sha:
         raise AssertionError("source digest drift")
@@ -82,10 +82,20 @@ def validate_dependencies(
         raise AssertionError("unexpected rig component identity")
     if joint.get("opening_rotation_sign") != -1:
         raise AssertionError("unexpected opening rotation sign")
+    if joint.get("axis_source") != "hinge.axis" or host.get("hinge", {}).get("axis") != [1, 0, 0]:
+        raise AssertionError("unexpected hinge axis identity")
+    dimensions = host["dimensions_m"]
+    hinge = host["hinge"]
+    hinge_origin = [
+        0.0,
+        float(dimensions["depth"]) / 2.0 + float(hinge["offset_y"]),
+        float(dimensions["body_height"]) + float(hinge["offset_z"]),
+    ]
     return {
         "host_source_sha256": host_sha,
         "clip_digest": canonical_digest(clip),
         "rig_plan_digest": observed_rig_digest,
+        "hinge_origin_m": hinge_origin,
     }
 
 
@@ -103,7 +113,6 @@ def build_articulation_payload(
     rig = load_json(rig_path)
     dependency_receipt = validate_dependencies(host_path, review, clip, rig)
 
-    hinge_origin = rig["joint"]["origin_m"]
     sign = int(rig["joint"]["opening_rotation_sign"])
     poses = []
     for spec in review.get("pose_samples", []):
@@ -140,7 +149,7 @@ def build_articulation_payload(
         "rig_dependency": review["rig_dependency"],
         "animation_clip_digest": dependency_receipt["clip_digest"],
         "observed_rig_plan_digest": dependency_receipt["rig_plan_digest"],
-        "hinge_origin_m": hinge_origin,
+        "hinge_origin_m": dependency_receipt["hinge_origin_m"],
         "moving_component_roles": moving_roles,
         "poses": poses,
         "camera_contexts": list(review.get("camera_contexts", [])),
@@ -160,6 +169,7 @@ def build_articulation_payload(
         "animation_clip_digest": dependency_receipt["clip_digest"],
         "rig_file_sha256": sha256(rig_path),
         "rig_plan_digest": dependency_receipt["rig_plan_digest"],
+        "hinge_origin_m": dependency_receipt["hinge_origin_m"],
         "base_material_payload_result": base_receipt["result"],
         "base_geometry_contract_sha256": base_receipt["geometry_contract_sha256"],
         "pose_count": len(poses),
