@@ -3,7 +3,9 @@ from __future__ import annotations
 import argparse
 import copy
 import hashlib
+import importlib.util
 import json
+import subprocess
 from pathlib import Path
 
 import verify_service_module_fit as base_fit
@@ -11,7 +13,11 @@ import verify_service_module_registration_key as registration_fit
 
 FAMILY_SCHEMA = "axm.object-service-module-configuration-family/v0.1"
 CONFIG_SCHEMA = "axm.object-service-module-configuration/v0.1"
-SUMMARY_SCHEMA = "axm.object-service-module-configuration-family-evidence/v0.1"
+SUMMARY_SCHEMA = "axm.object-service-module-configuration-family-evidence/v0.2"
+PINNED_STICKER_HEAD = "3aa93b0132eea9becefb20c716c6ec1a023ad28b"
+PINNED_STICKER_MODULE_SHA256 = "1344884f14cbe2fa25617664521291b96c4bde067ba0cba31e043045ca3f1436"
+STICKER_PLACEMENT_PATH = Path("src/axm_stickers/placement.py")
+SOCKET_KIND = "axm-object-service-module-configuration-rigid-frame"
 
 
 def sha256_file(path: str | Path) -> str:
@@ -25,6 +31,49 @@ def digest_json(value) -> str:
 
 def load_json(path: str | Path):
     return json.loads(Path(path).read_text(encoding="utf-8"))
+
+
+def git_head(repo_root: str | Path) -> str:
+    proc = subprocess.run(
+        ["git", "-C", str(repo_root), "rev-parse", "HEAD"],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    return proc.stdout.strip()
+
+
+def load_module(path: str | Path, name: str):
+    spec = importlib.util.spec_from_file_location(name, path)
+    if spec is None or spec.loader is None:
+        raise AssertionError(f"unable to load shared placement module: {path}")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def load_shared_placement(sticker_root: str | Path):
+    sticker_root = Path(sticker_root).resolve()
+    observed_head = git_head(sticker_root)
+    if observed_head != PINNED_STICKER_HEAD:
+        raise AssertionError(
+            f"Sticker Fabric dependency head drift: {observed_head} != {PINNED_STICKER_HEAD}"
+        )
+    module_path = sticker_root / STICKER_PLACEMENT_PATH
+    if not module_path.is_file():
+        raise AssertionError(f"Sticker Fabric placement module missing: {module_path}")
+    observed_sha = sha256_file(module_path)
+    if observed_sha != PINNED_STICKER_MODULE_SHA256:
+        raise AssertionError(
+            "Sticker Fabric placement module identity drift: "
+            f"{observed_sha} != {PINNED_STICKER_MODULE_SHA256}"
+        )
+    return load_module(module_path, "axm_object_configuration_sticker_placement"), {
+        "repo": "mike-axiom-mir/axm-sticker-fabric",
+        "head": observed_head,
+        "module": str(STICKER_PLACEMENT_PATH),
+        "module_sha256": observed_sha,
+    }
 
 
 def validate_family(profile, host, module, registration, *, host_sha: str, module_sha: str, registration_sha: str):
@@ -80,12 +129,40 @@ def socket_basis(socket):
     return origin, [float(x) for x in normal], [float(x) for x in lateral], [float(x) for x in up]
 
 
-def transform_point(socket, local_point):
+def target_frame(socket):
     origin, normal, lateral, up = socket_basis(socket)
-    outward, local_lateral, local_up = map(float, local_point)
     return [
-        origin[i] + normal[i] * outward + lateral[i] * local_lateral + up[i] * local_up
-        for i in range(3)
+        float(normal[0]), float(lateral[0]), float(up[0]), float(origin[0]),
+        float(normal[1]), float(lateral[1]), float(up[1]), float(origin[1]),
+        float(normal[2]), float(lateral[2]), float(up[2]), float(origin[2]),
+        0.0, 0.0, 0.0, 1.0,
+    ]
+
+
+def exact_shared_matrix(shared_placement, socket):
+    frame = target_frame(socket)
+    identity = shared_placement.identity()
+    definition = {
+        "attachment": {
+            "space": "3d",
+            "socket": SOCKET_KIND,
+            "anchor": identity,
+        }
+    }
+    placed = {"placement": {"offset": identity, "scale": 1.0}}
+    target = {"space": "3d", "socket": SOCKET_KIND, "frame": frame}
+    matrix = shared_placement.attachment_matrix(definition, placed, target)
+    if matrix != frame:
+        raise AssertionError("Sticker Fabric neutral placement changed exact Object target frame")
+    return matrix
+
+
+def apply_matrix(matrix, local_point):
+    x, y, z = [float(value) for value in local_point]
+    return [
+        matrix[0] * x + matrix[1] * y + matrix[2] * z + matrix[3],
+        matrix[4] * x + matrix[5] * y + matrix[6] * z + matrix[7],
+        matrix[8] * x + matrix[9] * y + matrix[10] * z + matrix[11],
     ]
 
 
@@ -107,7 +184,16 @@ def canonical_slots(profile, occupied_socket_names):
     return [name for name in allowed if name in occupied_socket_names]
 
 
-def build_configuration(host, module, registration, profile, occupied_socket_names, *, source_hashes):
+def build_configuration(
+    host,
+    module,
+    registration,
+    profile,
+    occupied_socket_names,
+    *,
+    source_hashes,
+    shared_placement,
+):
     ordered_slots = canonical_slots(profile, occupied_socket_names)
     sockets = {socket["uc_descriptor"]["name"]: socket for socket in host["sockets"]}
     local_mesh = base_fit.build_local_mesh(module)
@@ -118,7 +204,8 @@ def build_configuration(host, module, registration, profile, occupied_socket_nam
     for slot_name in ordered_slots:
         socket = sockets[slot_name]
         start = len(vertices)
-        world_vertices = [transform_point(socket, vertex) for vertex in local_mesh["vertices"]]
+        matrix = exact_shared_matrix(shared_placement, socket)
+        world_vertices = [apply_matrix(matrix, vertex) for vertex in local_mesh["vertices"]]
         vertices.extend(world_vertices)
         faces.extend([[start + int(index) for index in face] for face in local_mesh["faces"]])
         mins = [min(vertex[i] for vertex in world_vertices) for i in range(3)]
@@ -132,6 +219,7 @@ def build_configuration(host, module, registration, profile, occupied_socket_nam
                 "source_frame_basis": {"normal": normal, "lateral": lateral, "up": up},
                 "receiving_scale": [1.0, 1.0, 1.0],
                 "extra_rotation_degrees": 0.0,
+                "placement_capability": "mike-axiom-mir/axm-sticker-fabric:src/axm_stickers/placement.py",
                 "world_aabb_m": {"min": mins, "max": maxs},
                 "vertex_count": len(world_vertices),
                 "triangle_count": len(local_mesh["faces"]),
@@ -156,6 +244,7 @@ def build_configuration(host, module, registration, profile, occupied_socket_nam
             "deterministic_source_space_assembly": True,
             "exact_existing_fit_prerequisite": True,
             "exact_existing_registration_prerequisite": True,
+            "shared_rigid_frame_placement_dependency": "axm-sticker-fabric",
             "receiving_scale_or_extra_rotation": False,
             "runtime_attach_detach": False,
             "physics_constraint": False,
@@ -184,7 +273,7 @@ def write_obj(path: str | Path, receipt):
     Path(path).write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
-def retained_negative_controls(host, module, registration, profile, source_hashes):
+def retained_negative_controls(host, module, registration, profile, source_hashes, shared_placement):
     controls = []
 
     def hold(control_id, call, expected_fragment):
@@ -200,12 +289,28 @@ def retained_negative_controls(host, module, registration, profile, source_hashe
 
     hold(
         "unknown-socket",
-        lambda: build_configuration(host, module, registration, profile, ["roof_service"], source_hashes=source_hashes),
+        lambda: build_configuration(
+            host,
+            module,
+            registration,
+            profile,
+            ["roof_service"],
+            source_hashes=source_hashes,
+            shared_placement=shared_placement,
+        ),
         "unknown socket occupancy",
     )
     hold(
         "duplicate-socket",
-        lambda: build_configuration(host, module, registration, profile, ["left_service", "left_service"], source_hashes=source_hashes),
+        lambda: build_configuration(
+            host,
+            module,
+            registration,
+            profile,
+            ["left_service", "left_service"],
+            source_hashes=source_hashes,
+            shared_placement=shared_placement,
+        ),
         "duplicate socket occupancy",
     )
 
@@ -227,7 +332,8 @@ def retained_negative_controls(host, module, registration, profile, source_hashe
     return controls
 
 
-def build_evidence(host_path, module_path, registration_path, profile_path, out_dir):
+def build_evidence(host_path, module_path, registration_path, profile_path, out_dir, sticker_root):
+    shared_placement, shared_identity = load_shared_placement(sticker_root)
     host = load_json(host_path)
     module = load_json(module_path)
     registration = load_json(registration_path)
@@ -264,6 +370,7 @@ def build_evidence(host_path, module_path, registration_path, profile_path, out_
             profile,
             entry["occupied_socket_names"],
             source_hashes=source_hashes,
+            shared_placement=shared_placement,
         )
         receipt["configuration_id"] = configuration_id
         json_path = out / f"configuration-{configuration_id}.json"
@@ -283,12 +390,21 @@ def build_evidence(host_path, module_path, registration_path, profile_path, out_
     if [receipt["module_instance_count"] for receipt in receipts] != [0, 1, 1, 2]:
         raise AssertionError("retained configuration occupancy pressure drift")
 
-    controls = retained_negative_controls(host, module, registration, profile, source_hashes)
+    controls = retained_negative_controls(
+        host,
+        module,
+        registration,
+        profile,
+        source_hashes,
+        shared_placement,
+    )
     summary = {
         "schema": SUMMARY_SCHEMA,
         "result": "PASS_BOUNDED_SERVICE_MODULE_CONFIGURATION_FAMILY",
+        "placement_result": "PASS_CONFIGURATION_FAMILY_DIRECT_STICKER_FABRIC_PLACEMENT",
         "family_id": profile["family_id"],
         "source_identity": source_hashes,
+        "shared_placement_identity": shared_identity,
         "base_fit_result": base_receipt["result"],
         "registration_result": registration_receipt["result"],
         "retained_configuration_count": len(receipts),
@@ -297,11 +413,13 @@ def build_evidence(host_path, module_path, registration_path, profile_path, out_
         "distinct_configuration_digests": len(set(configuration_digests)),
         "distinct_mesh_digests": len(set(mesh_digests)),
         "negative_controls": controls,
-        "failure_policy": "FAIL_CLOSED_NO_FALLBACK_SOCKET_NO_BOUND_WIDENING",
+        "failure_policy": "FAIL_CLOSED_NO_FALLBACK_SOCKET_NO_BOUND_WIDENING_NO_PLACEMENT_COPY",
         "truth_boundary": {
             "object_local_parametric_assembly": True,
             "multiple_materially_different_outputs": True,
             "bounded_fail_closed_controls_retained": True,
+            "direct_shared_rigid_frame_dependency": True,
+            "local_rigid_transform_math_removed": True,
             "universal_attachment_fitter": False,
             "runtime_swap_system": False,
             "physics_attachment": False,
@@ -319,9 +437,17 @@ def main():
     parser.add_argument("--module", required=True)
     parser.add_argument("--registration", required=True)
     parser.add_argument("--profile", required=True)
+    parser.add_argument("--sticker-root", required=True)
     parser.add_argument("--out", required=True)
     args = parser.parse_args()
-    summary = build_evidence(args.host, args.module, args.registration, args.profile, args.out)
+    summary = build_evidence(
+        args.host,
+        args.module,
+        args.registration,
+        args.profile,
+        args.out,
+        args.sticker_root,
+    )
     print(json.dumps(summary, sort_keys=True))
 
 
