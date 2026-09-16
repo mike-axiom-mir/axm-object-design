@@ -1,0 +1,44 @@
+{
+  "schema": "axm.object-service-module/v0.1",
+  "asset_id": "utility-module-001",
+  "host_asset_id": "modular-equipment-case-001",
+  "units": "meters",
+  "intent": "bounded hard-surface receiving module proving bilateral source-frame and bolt-pattern fit against the existing service sockets; no load, tolerance, fastener, collision-engine, material, runtime or gameplay acceptance",
+  "accepted_socket_tag": "utility-module",
+  "interface": {
+    "footprint_m": [
+      0.108,
+      0.078
+    ],
+    "bolt_offsets_m": [
+      [
+        -0.038,
+        -0.025
+      ],
+      [
+        -0.038,
+        0.025
+      ],
+      [
+        0.038,
+        -0.025
+      ],
+      [
+        0.038,
+        0.025
+      ]
+    ],
+    "bolt_axis_clearance_radius_m": 0.01,
+    "standoff_from_socket_origin_m": 0.03,
+    "min_body_clearance_from_host_plate_outer_face_m": 0.006
+  },
+  "body": {
+    "depth_m": 0.095,
+    "edge_margin_m": 0.006
+  },
+  "provenance": {
+    "method": "self-authored deterministic primitive construction",
+    "external_assets": [],
+    "external_geometry": false
+  }
+}
