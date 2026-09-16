@@ -33,8 +33,14 @@ jobs:
             --host assets/modular-equipment-case-001/source.json \
             --contract assets/modular-equipment-case-001/hinge-pin-bore-clearance-001.json \
             --out evidence/hinge-pin-bore-clearance
+          python tools/build_hinge_pin_annular_mesh.py \
+            --host assets/modular-equipment-case-001/source.json \
+            --bore-contract assets/modular-equipment-case-001/hinge-pin-bore-clearance-001.json \
+            --mesh-contract assets/modular-equipment-case-001/hinge-pin-annular-mesh-001.json \
+            --out evidence/hinge-pin-bore-clearance
           cp assets/modular-equipment-case-001/source.json evidence/hinge-pin-bore-clearance/host-source.json
           cp assets/modular-equipment-case-001/hinge-pin-bore-clearance-001.json evidence/hinge-pin-bore-clearance/bore-clearance-contract.json
+          cp assets/modular-equipment-case-001/hinge-pin-annular-mesh-001.json evidence/hinge-pin-bore-clearance/annular-mesh-contract.json
           git rev-parse HEAD > evidence/hinge-pin-bore-clearance/exact-head.txt
       - name: Upload retained evidence
         if: matrix.python-version == '3.11'
