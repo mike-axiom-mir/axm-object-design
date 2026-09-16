@@ -64,6 +64,22 @@ def by_station(rows: list[dict[str, Any]], key: str = "station_id") -> dict[str,
     return out
 
 
+def component_pair(row: dict[str, Any]) -> tuple[str, str]:
+    return (str(row.get("lever_component", "")), str(row.get("keeper_component", "")))
+
+
+def by_component_pair(rows: list[dict[str, Any]]) -> dict[tuple[str, str], dict[str, Any]]:
+    out: dict[tuple[str, str], dict[str, Any]] = {}
+    for row in rows:
+        pair = component_pair(row)
+        if not all(pair):
+            raise AssertionError("latch component identity missing")
+        if pair in out:
+            raise AssertionError(f"duplicate latch component pair: {pair}")
+        out[pair] = row
+    return out
+
+
 def verify(
     host: dict[str, Any],
     contract: dict[str, Any],
@@ -164,6 +180,7 @@ def verify(
 
     components = component_map(host)
     interface_by_station = {str(row["id"]): row for row in stations}
+    interface_by_pair = by_component_pair(stations)
     source_rig_by_station = by_station(source_rig.get("station_results", []))
     if set(interface_by_station) != set(source_rig_by_station):
         raise AssertionError("source interface / source Rigging station identity mismatch")
@@ -178,21 +195,39 @@ def verify(
     if maximum_pivot_residual_m > EPS:
         raise AssertionError("source interface / source Rigging pivot residual exceeded tolerance")
 
+    first_prior_by_pair = by_component_pair(samples[0].get("stations", []))
+    if set(first_prior_by_pair) != set(interface_by_pair):
+        raise AssertionError("Animation/source-authority component identity mismatch")
+    station_identity_map = []
+    historical_station_id_by_pair: dict[tuple[str, str], str] = {}
+    for pair, station in interface_by_pair.items():
+        old_row = first_prior_by_pair[pair]
+        historical_id = str(old_row.get("station_id", ""))
+        if not historical_id:
+            raise AssertionError("historical Animation station label missing")
+        historical_station_id_by_pair[pair] = historical_id
+        station_identity_map.append({
+            "historical_animation_station_id": historical_id,
+            "current_source_station_id": str(station["id"]),
+            "lever_component": pair[0],
+            "keeper_component": pair[1],
+            "mapping_basis": "EXACT_UNCHANGED_SOURCE_COMPONENT_PAIR_NOT_LABEL_EQUALITY",
+        })
+
     geometry_comparisons = 0
     geometry_mismatches = 0
     max_angle_outside_interface_deg = 0.0
     for sample in samples:
         latch_angle = float(sample["latch_lever_angle_deg"])
         max_angle_outside_interface_deg = max(max_angle_outside_interface_deg, max(0.0, latch_angle - 50.0, -latch_angle))
-        old_station_rows = by_station(sample.get("stations", []))
-        if set(old_station_rows) != set(interface_by_station):
-            raise AssertionError("Animation sample station identity drift")
-        for station_id, station in interface_by_station.items():
-            old_row = old_station_rows[station_id]
-            lever_name = str(station["lever_component"])
-            keeper_name = str(station["keeper_component"])
-            if old_row.get("lever_component") != lever_name or old_row.get("keeper_component") != keeper_name:
-                raise AssertionError("Animation sample component ownership drift")
+        old_by_pair = by_component_pair(sample.get("stations", []))
+        if set(old_by_pair) != set(interface_by_pair):
+            raise AssertionError("Animation/source-authority component identity drift")
+        for pair, station in interface_by_pair.items():
+            old_row = old_by_pair[pair]
+            if str(old_row.get("station_id", "")) != historical_station_id_by_pair[pair]:
+                raise AssertionError("historical Animation station label changed within the retained sequence")
+            lever_name, keeper_name = pair
             if lever_name not in components or keeper_name not in components:
                 raise AssertionError("source-owned latch component missing from current host")
             pivot = tuple(float(v) for v in station["pivot_origin_m"])
@@ -232,6 +267,9 @@ def verify(
         "source_authority_role": "CURRENT_SOURCE_MECHANICAL_AUTHORITY",
         "rigging_authority_role": "CURRENT_RIGGING_ACCEPTANCE_OF_SOURCE_AUTHORITY",
         "historical_rigging_role": source_rig["historical_rigging_role"],
+        "station_identity_map": station_identity_map,
+        "station_label_equality_required": False,
+        "station_component_identity_equality_required": True,
         "sample_rate_hz": 40,
         "duration_s": 2.5,
         "endpoint_inclusive_sample_count": 101,
@@ -253,6 +291,7 @@ def verify(
         "truth_boundary": contract.get("truth_boundary"),
         "non_claims": [
             "no claim that the source-owned interface is merged or CANON",
+            "no claim that historical and current station labels are the same identity; the exact component-pair lineage is retained explicitly",
             "no physical latch hook, catch, retention, force or collision acceptance",
             "no runtime controller, state-machine, input or wall-clock pacing acceptance",
             "no gameplay timing or gameplay acceptance",
