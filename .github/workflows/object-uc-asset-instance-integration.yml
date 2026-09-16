@@ -1,0 +1,55 @@
+name: Object UC asset-instance integration evidence
+
+on:
+  pull_request:
+  push:
+    branches:
+      - studio/technical-art-object-uc-instance-001
+
+jobs:
+  uc-asset-instance:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.11', '3.13']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: mike-axiom-mir/axm-universal-creation
+          ref: 8dd55d7186aa99911ca8d28af303f31d2c05fad4
+          path: uc
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Compile integration tooling
+        run: python -m compileall -q tools tests
+      - name: Run full object repository tests
+        run: python -m unittest discover -s tests -v
+      - name: Generate exact object package
+        run: |
+          rm -rf evidence-out
+          python tools/build_modular_case.py \
+            --source assets/modular-equipment-case-001/source.json \
+            --out-dir evidence-out
+      - name: Compile and materialize through exact UC
+        run: |
+          python tools/verify_uc_asset_instance.py \
+            --package evidence-out/uc-socket-package.json \
+            --uc-root uc \
+            --expected-uc-commit 8dd55d7186aa99911ca8d28af303f31d2c05fad4 \
+            --out-dir evidence-out/uc-instance
+      - name: Upload exact integration evidence
+        if: matrix.python-version == '3.11'
+        uses: actions/upload-artifact@v4
+        with:
+          name: modular-equipment-case-001-uc-instance-integration
+          path: |
+            assets/modular-equipment-case-001/source.json
+            evidence-out/modular-equipment-case-001.obj
+            evidence-out/uc-socket-package.json
+            evidence-out/structural-receipt.json
+            evidence-out/uc-instance/uc-asset-instance-integration.json
+            evidence-out/uc-instance/materialized-descriptor/asset.package.json
+            evidence-out/uc-instance/materialized-descriptor/asset.instance.json
+          if-no-files-found: error
