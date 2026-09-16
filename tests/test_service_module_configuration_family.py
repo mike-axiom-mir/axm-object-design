@@ -21,7 +21,6 @@ HOST = json.loads(HOST_PATH.read_text(encoding="utf-8"))
 MODULE = json.loads(MODULE_PATH.read_text(encoding="utf-8"))
 REG = json.loads(REG_PATH.read_text(encoding="utf-8"))
 PROFILE = json.loads(PROFILE_PATH.read_text(encoding="utf-8"))
-SHARED, SHARED_IDENTITY = family.load_shared_placement(STICKER_ROOT)
 HASHES = {
     "host_source_sha256": family.sha256_file(HOST_PATH),
     "module_source_sha256": family.sha256_file(MODULE_PATH),
@@ -36,23 +35,31 @@ EXPECTED_MESH_DIGESTS = [
 ]
 
 
-def build(names):
-    return family.build_configuration(
-        HOST,
-        MODULE,
-        REG,
-        PROFILE,
-        names,
-        source_hashes=HASHES,
-        shared_placement=SHARED,
-    )
-
-
 class ServiceModuleConfigurationFamilyTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        # The shared implementation is intentionally not vendored into Object. Unrelated Object
+        # workflows do not fetch cross-repo dependencies, so they skip this dedicated integration
+        # class. The Procedural workflow checks out the exact donor and therefore runs every test.
+        if not STICKER_ROOT.is_dir():
+            raise unittest.SkipTest("exact axm-sticker-fabric donor is not present in this workflow")
+        cls.shared, cls.shared_identity = family.load_shared_placement(STICKER_ROOT)
+
+    def build(self, names):
+        return family.build_configuration(
+            HOST,
+            MODULE,
+            REG,
+            PROFILE,
+            names,
+            source_hashes=HASHES,
+            shared_placement=self.shared,
+        )
+
     def test_exact_shared_placement_dependency_is_pinned(self):
-        self.assertEqual(SHARED_IDENTITY["repo"], "mike-axiom-mir/axm-sticker-fabric")
-        self.assertEqual(SHARED_IDENTITY["head"], family.PINNED_STICKER_HEAD)
-        self.assertEqual(SHARED_IDENTITY["module_sha256"], family.PINNED_STICKER_MODULE_SHA256)
+        self.assertEqual(self.shared_identity["repo"], "mike-axiom-mir/axm-sticker-fabric")
+        self.assertEqual(self.shared_identity["head"], family.PINNED_STICKER_HEAD)
+        self.assertEqual(self.shared_identity["module_sha256"], family.PINNED_STICKER_MODULE_SHA256)
 
     def test_exact_family_sources_and_prerequisites_pass(self):
         base_receipt, registration_receipt = family.validate_family(
@@ -68,7 +75,7 @@ class ServiceModuleConfigurationFamilyTests(unittest.TestCase):
         self.assertEqual(registration_receipt["result"], "PASS_ASYMMETRIC_REGISTRATION_KEY_PROOF")
 
     def test_four_retained_configurations_are_materially_distinct_and_regression_exact(self):
-        outputs = [build(entry["occupied_socket_names"]) for entry in PROFILE["retained_configurations"]]
+        outputs = [self.build(entry["occupied_socket_names"]) for entry in PROFILE["retained_configurations"]]
         self.assertEqual([out["module_instance_count"] for out in outputs], [0, 1, 1, 2])
         self.assertEqual([len(out["mesh"]["vertices"]) for out in outputs], [0, 8, 8, 16])
         self.assertEqual([len(out["mesh"]["faces"]) for out in outputs], [0, 12, 12, 24])
@@ -89,8 +96,8 @@ class ServiceModuleConfigurationFamilyTests(unittest.TestCase):
                 )
 
     def test_bilateral_parameter_order_is_canonical_and_deterministic(self):
-        a = build(["right_service", "left_service"])
-        b = build(["left_service", "right_service"])
+        a = self.build(["right_service", "left_service"])
+        b = self.build(["left_service", "right_service"])
         self.assertEqual(a["occupied_socket_names"], ["left_service", "right_service"])
         self.assertEqual(a["configuration_digest"], b["configuration_digest"])
         self.assertEqual(a["mesh_digest"], b["mesh_digest"])
@@ -98,11 +105,11 @@ class ServiceModuleConfigurationFamilyTests(unittest.TestCase):
 
     def test_unknown_socket_fails_closed(self):
         with self.assertRaisesRegex(AssertionError, "unknown socket occupancy"):
-            build(["roof_service"])
+            self.build(["roof_service"])
 
     def test_duplicate_socket_fails_closed(self):
         with self.assertRaisesRegex(AssertionError, "duplicate socket occupancy"):
-            build(["left_service", "left_service"])
+            self.build(["left_service", "left_service"])
 
 
 if __name__ == "__main__":
