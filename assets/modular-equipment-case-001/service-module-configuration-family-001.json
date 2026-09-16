@@ -1,0 +1,65 @@
+{
+  "schema": "axm.object-service-module-configuration-family/v0.1",
+  "family_id": "service-module-configuration-family-001",
+  "intent": "Object-local deterministic assembler for the already-proven utility-module-001 across the exact bilateral service sockets; automate repeated source-frame placement without inventing runtime attachment, physics, gameplay, or a universal attachment schema",
+  "source_identity": {
+    "repository": "mike-axiom-mir/axm-object-design",
+    "prerequisite_head": "3f091bda68b33482bdefe1cf4adf97caf9c0c87e",
+    "host_asset_id": "modular-equipment-case-001",
+    "host_source_path": "assets/modular-equipment-case-001/source.json",
+    "host_source_sha256": "49b1f9ed9865893d6de6f1ec8f069576732df694853fde4e3fcff366de32644a",
+    "module_asset_id": "utility-module-001",
+    "module_source_path": "assets/modular-equipment-case-001/utility-module-001.json",
+    "module_source_sha256": "ffd7b42294d3af71e02aa172157beccefa08c6af2c1198f88836862d2a50fc2e",
+    "registration_asset_id": "utility-module-registration-key-001",
+    "registration_source_path": "assets/modular-equipment-case-001/utility-module-registration-key-001.json",
+    "registration_source_sha256": "bb01fef7bfb22a0f9b290c376c1451a2524e068b618f684f605d746257a0e989"
+  },
+  "parameter_contract": {
+    "parameter": "occupied_socket_names",
+    "allowed_socket_names": [
+      "left_service",
+      "right_service"
+    ],
+    "maximum_instances": 2,
+    "duplicates": "REJECT",
+    "unknown_socket_names": "REJECT",
+    "receiving_scale": "FORBIDDEN",
+    "extra_rotation": "FORBIDDEN",
+    "placement": "EXACT_SOURCE_FRAME_ONLY",
+    "registration": "REQUIRE_EXACT_ASYMMETRIC_REGISTRATION_PREREQUISITE"
+  },
+  "retained_configurations": [
+    {
+      "configuration_id": "empty",
+      "occupied_socket_names": []
+    },
+    {
+      "configuration_id": "left-only",
+      "occupied_socket_names": [
+        "left_service"
+      ]
+    },
+    {
+      "configuration_id": "right-only",
+      "occupied_socket_names": [
+        "right_service"
+      ]
+    },
+    {
+      "configuration_id": "bilateral",
+      "occupied_socket_names": [
+        "left_service",
+        "right_service"
+      ]
+    }
+  ],
+  "provenance": {
+    "method": "AXM self-authored deterministic source-space configuration assembler",
+    "external_assets": [],
+    "external_geometry": false,
+    "reuses_existing_fit_verifier": "tools/verify_service_module_fit.py",
+    "reuses_existing_registration_verifier": "tools/verify_service_module_registration_key.py"
+  },
+  "truth_boundary": "A family PASS proves only deterministic source-frame placement of the exact existing utility module into the exact existing zero/left/right/bilateral socket occupancy states while the inherited fit and asymmetric-registration prerequisites remain green. It does not prove runtime attach/detach, controller behavior, physics constraints, full-mesh collision, engineering retention/load, gameplay, final materials, Art Direction acceptance, CANON, production readiness, UC extraction, or Procedural Design mastery."
+}
