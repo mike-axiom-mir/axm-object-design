@@ -21,6 +21,13 @@ jobs:
         run: python -m compileall tools tests
       - name: Test full repository suite
         run: python -m unittest discover -s tests -v
+      - name: Checkout exact shared rigid-frame donor
+        if: matrix.python-version == '3.11'
+        uses: actions/checkout@v4
+        with:
+          repository: mike-axiom-mir/axm-universal-creation
+          ref: bd51542bc68534a6e6f3a11d421dc70216b2abf9
+          path: _donor/axm-universal-creation
       - name: Build exact configuration-family evidence
         if: matrix.python-version == '3.11'
         run: |
@@ -35,6 +42,14 @@ jobs:
           cp assets/modular-equipment-case-001/utility-module-registration-key-001.json evidence/service-module-configuration-family/registration-source.json
           cp assets/modular-equipment-case-001/service-module-configuration-family-001.json evidence/service-module-configuration-family/family-profile.json
           git rev-parse HEAD > evidence/service-module-configuration-family/exact-head.txt
+      - name: Verify exact shared rigid-frame equivalence
+        if: matrix.python-version == '3.11'
+        run: |
+          python tools/verify_service_module_shared_frame_equivalence.py \
+            --uc-root _donor/axm-universal-creation \
+            --output-dir evidence/service-module-configuration-family/shared-frame-equivalence
+          git -C _donor/axm-universal-creation rev-parse HEAD > evidence/service-module-configuration-family/shared-frame-equivalence/shared-donor-head.txt
+          sha256sum _donor/axm-universal-creation/src/axm_stickers/placement.py > evidence/service-module-configuration-family/shared-frame-equivalence/shared-donor-module.sha256
       - name: Upload retained evidence
         if: matrix.python-version == '3.11'
         uses: actions/upload-artifact@v4
