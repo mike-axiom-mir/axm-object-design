@@ -236,6 +236,13 @@ func _initialize() -> void:
         fail("imported lid pivot does not match exact bound target pivot")
         return
 
+    # World-space evidence is meaningful only after the imported target is inside
+    # a live scene tree. The previous proof sampled global_transform first, which
+    # Godot correctly rejected and which produced a false neutral-return failure.
+    var viewport := make_viewport(imported)
+    for _tree_frame in range(2):
+        await process_frame
+
     var moving_nodes: Array[Node3D] = [lid]
     moving_nodes.append_array(lid_children)
     var neutral_centers := {}
@@ -250,7 +257,6 @@ func _initialize() -> void:
     for node in fixed_nodes:
         fixed_neutral_centers[String(node.name)] = world_mesh_center(node)
 
-    var viewport := make_viewport(imported)
     for _i in range(12):
         await process_frame
     var neutral_image := viewport.get_texture().get_image()
