@@ -1,0 +1,55 @@
+{
+  "schema": "axm.object-front-latch-pivot-interface/v0.1",
+  "interface_id": "front-latch-pivot-interface-001",
+  "asset_id": "modular-equipment-case-001",
+  "units": "meters",
+  "host_source_sha256": "49b1f9ed9865893d6de6f1ec8f069576732df694853fde4e3fcff366de32644a",
+  "ownership_contract": {
+    "id": "front-latch-ownership-001",
+    "donor_head": "d3fa10a270faae7925811f44f03381fe5c5d0215",
+    "sha256": "0702e4180f858d29c42ff8c38a61eaa16278d6848c8ce6f3ecfae172969ca8ae"
+  },
+  "review_observation_donor": {
+    "repository": "mike-axiom-mir/axm-object-design",
+    "pr": 15,
+    "head": "3b667ff5d30c46ec2fe7da7679518970f8610018",
+    "plan_path": "assets/modular-equipment-case-001/front-latch-articulation-001.json",
+    "plan_sha256": "81c27ab7b73ed9a43cb3f554b56c3f4294b893712075e33d13f5b02e008455db",
+    "role": "evidence donor only; Hard Surface now owns this exact bounded kinematic interface candidate, while Rigging retains deformation/articulation acceptance"
+  },
+  "joint_axis": [1.0, 0.0, 0.0],
+  "pivot_rule": "source_x__panel_negative_y_face__lever_min_z",
+  "travel_envelope_deg": {
+    "closed": 0.0,
+    "review_release": 50.0,
+    "minimum_release_separation_m": 0.001
+  },
+  "stations": [
+    {
+      "id": "left",
+      "source_x_m": -0.22,
+      "lever_component": "latch_0_lever",
+      "keeper_component": "latch_0_keeper",
+      "lever_owner_component": "front_service_panel",
+      "keeper_owner_component": "lid_shell",
+      "pivot_origin_m": [-0.22, -0.258, 0.2105]
+    },
+    {
+      "id": "right",
+      "source_x_m": 0.22,
+      "lever_component": "latch_1_lever",
+      "keeper_component": "latch_1_keeper",
+      "lever_owner_component": "front_service_panel",
+      "keeper_owner_component": "lid_shell",
+      "pivot_origin_m": [0.22, -0.258, 0.2105]
+    }
+  ],
+  "mechanical_scope": "SOURCE_OWNED_KINEMATIC_INTERFACE_CANDIDATE_NOT_PHYSICAL_LATCH_HARDWARE",
+  "failure_policy": "FAIL_CLOSED_ON_SOURCE_OR_OWNERSHIP_DRIFT_PIVOT_RULE_DRIFT_BILATERAL_DRIFT_DONOR_MISMATCH_OR_RELEASE_ENVELOPE_FAILURE",
+  "truth_boundary": "PASS means only that the exact existing Object latch components now have a source-owned bilateral +X pivot-interface candidate whose origins are reproducibly derived from unchanged source geometry, match the exact reviewed Rigging donor, preserve closed keeper/lever overlap, and reach at least 1 mm keeper-Z proof-volume separation by the bounded 50 degree review endpoint. It does not prove a physical pin, bore, hook, catch, spring, retention force, manufacturing feasibility, full collision clearance, ergonomics, animation timing, runtime/controller behavior, gameplay or final visual acceptance.",
+  "provenance": {
+    "method": "Hard-Surface source-owned promotion of an already-tested downstream review interface without changing host geometry; exact Rigging donor retained as evidence provenance",
+    "external_assets": [],
+    "external_geometry": false
+  }
+}
