@@ -1,0 +1,158 @@
+name: Object UC rigid scene handoff evidence
+
+on:
+  pull_request:
+    paths:
+      - "assets/modular-equipment-case-001/**"
+      - "tools/build_modular_case.py"
+      - "tools/build_object_uc_rigid_scene_handoff.py"
+      - "rigid-proof/**"
+      - ".github/workflows/object-uc-rigid-scene-handoff.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  exact-rigid-scene-handoff:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      matrix:
+        python-version: ['3.11', '3.13']
+    steps:
+      - name: Checkout exact Object PR head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Checkout exact Universal Creation rigid-scene candidate
+        uses: actions/checkout@v4
+        with:
+          repository: mike-axiom-mir/axm-universal-creation
+          ref: 6dc465987e01362264f88b7cef4213609ae50763
+          path: .uc
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Compile and run complete Object tests
+        run: |
+          python -m compileall -q tools tests
+          python -m unittest discover -s tests -v
+
+      - name: Build exact Object parts through UC rigid scene graph
+        run: |
+          rm -rf rigid-proof/generated
+          mkdir -p rigid-proof/generated
+          PYTHONPATH=.uc/src python tools/build_object_uc_rigid_scene_handoff.py \
+            --uc-root .uc \
+            --expected-uc-commit 6dc465987e01362264f88b7cef4213609ae50763 \
+            --out rigid-proof/generated
+          git rev-parse HEAD > rigid-proof/generated/exact-object-head.txt
+          git -C .uc rev-parse HEAD > rigid-proof/generated/exact-uc-head.txt
+
+      - name: Validate cross-repo rigid scene receipt
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          root=Path('rigid-proof/generated')
+          r=json.loads((root/'uc-rigid-scene-handoff-receipt.json').read_text())
+          object_head=(root/'exact-object-head.txt').read_text().strip()
+          uc_head=(root/'exact-uc-head.txt').read_text().strip()
+          assert r['result']=='PASS_OBJECT_SOURCE_OWNED_RIGID_PARTS_THROUGH_UC_SCENE_GRAPH',r
+          assert r['source_repository_head']==object_head,r
+          assert r['observed_uc_commit']==uc_head=='6dc465987e01362264f88b7cef4213609ae50763',r
+          assert r['binary_geometry_payload_identical'] is True,r
+          assert r['closed_static_localization_max_error_m']<=1e-12,r
+          assert r['triangles']==r['flat_uc_verification']['triangles']==r['rebound_uc_verification']['triangles'],r
+          assert r['source_owned_keeper_children']==['latch_0_keeper','latch_1_keeper'],r
+          assert r['source_owned_fixed_levers']==['latch_0_lever','latch_1_lever'],r
+          for keeper in r['source_owned_keeper_children']:
+              assert r['graph_verification']['parent_by_child'][keeper]=='lid_shell',r
+          for lever in r['source_owned_fixed_levers']:
+              assert lever not in r['graph_verification']['parent_by_child'],r
+          assert r['truth_boundary']['uc_inferred_object_domain_semantics'] is False,r
+          assert r['truth_boundary']['target_host_import_observed'] is False,r
+          print(json.dumps(r,indent=2))
+          PY
+
+      - name: Download pinned Godot 4.7.2
+        if: matrix.python-version == '3.11'
+        env:
+          GODOT_URL: https://github.com/godotengine/godot-builds/releases/download/4.7.2-stable/Godot_v4.7.2-stable_linux.x86_64.zip
+          GODOT_SHA256: cadd3204e728a35d3f13adb7fd0d7902636b79f6b95c40c265eb73b6c35329e4
+        run: |
+          set -euo pipefail
+          mkdir -p .godot-bin
+          curl --fail --location --retry 3 --retry-delay 2 "$GODOT_URL" --output .godot-bin/godot.zip
+          echo "$GODOT_SHA256  .godot-bin/godot.zip" | sha256sum --check --strict
+          unzip -q .godot-bin/godot.zip -d .godot-bin
+          chmod +x .godot-bin/Godot_v4.7.2-stable_linux.x86_64
+          .godot-bin/Godot_v4.7.2-stable_linux.x86_64 --version
+
+      - name: Install virtual display when needed
+        if: matrix.python-version == '3.11'
+        run: |
+          if ! command -v xvfb-run >/dev/null 2>&1; then
+            sudo apt-get update
+            sudo apt-get install -y xvfb
+          fi
+
+      - name: Import exact rebound GLB in Godot and transform lid node
+        if: matrix.python-version == '3.11'
+        run: |
+          rm -f rigid-proof/rigid-scene-target-receipt.json rigid-proof/rigid-scene-closed.png rigid-proof/rigid-scene-50deg.png
+          xvfb-run --auto-servernum --server-args="-screen 0 1000x760x24" \
+            .godot-bin/Godot_v4.7.2-stable_linux.x86_64 \
+            --display-driver x11 \
+            --rendering-method gl_compatibility \
+            --path rigid-proof \
+            --script observe.gd
+
+      - name: Validate target-host rigid scene receipt
+        if: matrix.python-version == '3.11'
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          root=Path('rigid-proof')
+          source=json.loads((root/'generated/uc-rigid-scene-handoff-receipt.json').read_text())
+          target=json.loads((root/'rigid-scene-target-receipt.json').read_text())
+          assert target['state']=='PASS_UC_RIGID_SCENE_GODOT_IMPORT_AND_LID_CHILD_TRANSFORM',target
+          assert target['glb_sha256']==source['rebound_glb_sha256'],(source,target)
+          assert target['uc_commit']==source['observed_uc_commit'],(source,target)
+          assert target['keeper_parents']=={'latch_0_keeper':'lid_shell','latch_1_keeper':'lid_shell'},target
+          assert min(target['keeper_mesh_center_movement_m'])>=0.03,target
+          assert max(target['lever_mesh_center_drift_m'])<=1e-6,target
+          assert target['render_changed_pixels']>=1500,target
+          assert target['truth_boundary']['animation_clip_or_animation_player'] is False,target
+          assert target['truth_boundary']['runtime_controller_or_state_machine'] is False,target
+          assert (root/'rigid-scene-closed.png').stat().st_size>3000
+          assert (root/'rigid-scene-50deg.png').stat().st_size>3000
+          print(json.dumps(target,indent=2))
+          PY
+
+      - name: Retain exact Technical Art rigid-scene evidence
+        if: matrix.python-version == '3.11' && always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: object-uc-rigid-scene-${{ github.event.pull_request.head.sha || github.sha }}
+          path: |
+            assets/modular-equipment-case-001/source.json
+            assets/modular-equipment-case-001/front-latch-ownership-001.json
+            rigid-proof/generated/object-rigid-components.surface.json
+            rigid-proof/generated/object-rigid-scene-graph.json
+            rigid-proof/generated/object-rigid-components-flat.glb
+            rigid-proof/generated/object-rigid-components-rebound.glb
+            rigid-proof/generated/uc-rigid-scene-handoff-receipt.json
+            rigid-proof/generated/exact-object-head.txt
+            rigid-proof/generated/exact-uc-head.txt
+            rigid-proof/rigid-scene-target-receipt.json
+            rigid-proof/rigid-scene-closed.png
+            rigid-proof/rigid-scene-50deg.png
+          if-no-files-found: warn
+          retention-days: 30
