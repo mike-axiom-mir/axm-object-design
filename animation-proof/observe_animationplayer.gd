@@ -207,6 +207,15 @@ func _initialize() -> void:
         fail("front-panel-owned lever imported under lid")
         return
 
+    var viewport := make_viewport(imported)
+    for _i in range(10):
+        await process_frame
+
+    var neutral_lever_before_wrappers := {
+        "latch_0_lever": world_mesh_center(lever0),
+        "latch_1_lever": world_mesh_center(lever1)
+    }
+
     var rig_by_station := station_lookup(rig.get("station_results", []))
     var sample0_stations := station_lookup(sequence["samples"][0]["stations"])
     if rig_by_station.size() != 2 or sample0_stations.size() != 2:
@@ -232,6 +241,16 @@ func _initialize() -> void:
         pivot_by_station[station_id] = pivot
         lever_node_by_station[station_id] = lever
 
+    for _i in range(3):
+        await process_frame
+    var neutral_pivot_wrapper_max_drift := maxf(
+        neutral_lever_before_wrappers["latch_0_lever"].distance_to(world_mesh_center(lever0)),
+        neutral_lever_before_wrappers["latch_1_lever"].distance_to(world_mesh_center(lever1))
+    )
+    if neutral_pivot_wrapper_max_drift > EPS_M:
+        fail("proof-local latch pivot insertion changed neutral target geometry")
+        return
+
     var animation := Animation.new()
     animation.length = 2.5
     animation.loop_mode = Animation.LOOP_NONE
@@ -254,10 +273,6 @@ func _initialize() -> void:
     var library := AnimationLibrary.new()
     library.add_animation(MOTION_NAME, animation)
     player.add_animation_library("", library)
-
-    var viewport := make_viewport(imported)
-    for _i in range(10):
-        await process_frame
 
     var start_keeper := {"latch_0_keeper": world_mesh_center(keeper0), "latch_1_keeper": world_mesh_center(keeper1)}
     var start_lever := {"latch_0_lever": world_mesh_center(lever0), "latch_1_lever": world_mesh_center(lever1)}
@@ -358,6 +373,7 @@ func _initialize() -> void:
     receipt["animation_update_mode"] = "DISCRETE_AUTHORED_SAMPLES"
     receipt["animation_interpolation"] = "NEAREST"
     receipt["coordinate_conversion"] = "source [x,y,z] -> UC/glTF [x,z,y]; handedness flip requires target +X rotation = negative source mathematical +X rotation"
+    receipt["neutral_pivot_wrapper_max_drift_m"] = neutral_pivot_wrapper_max_drift
     receipt["max_lid_sample_seek_error_deg"] = max_lid_error
     receipt["max_latch_sample_seek_error_deg"] = max_latch_error
     receipt["release_keeper_drift_m"] = release_keeper_drift
@@ -374,6 +390,7 @@ func _initialize() -> void:
         "exact_uc_rebound_glb_imported": true,
         "exact_animation_sequence_consumed": true,
         "animationplayer_resource_authored_in_proof_host": true,
+        "proof_local_pivot_wrapper_preserves_neutral_target_geometry": true,
         "discrete_exact_authored_sample_seek_equivalence_observed": true,
         "source_owned_keeper_parentage_preserved": true,
         "latch_proof_pivots_bound_to_exact_rig_receipt": true,
