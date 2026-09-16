@@ -1,0 +1,59 @@
+name: Object front-latch source-rig rebind evidence
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  structural:
+    strategy:
+      matrix:
+        python-version: ['3.11', '3.13']
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Compile
+        run: python -m compileall tools tests
+      - name: Test full repository suite
+        run: python -m unittest discover -s tests -v
+      - name: Materialize historical Rigging observation donor
+        if: matrix.python-version == '3.11'
+        run: |
+          mkdir -p evidence/front-latch-source-rig-rebind
+          git cat-file -e 3b667ff5d30c46ec2fe7da7679518970f8610018^{commit}
+          git show 3b667ff5d30c46ec2fe7da7679518970f8610018:assets/modular-equipment-case-001/front-latch-articulation-001.json > /tmp/front-latch-articulation-001.json
+          printf '%s\n' 3b667ff5d30c46ec2fe7da7679518970f8610018 > evidence/front-latch-source-rig-rebind/historical-rigging-observation-head.txt
+          printf '%s\n' 6086f39a3da344c57a68653f90d040e03e04cec2 > evidence/front-latch-source-rig-rebind/source-interface-donor-head.txt
+      - name: Build exact source-owned latch Rigging rebind evidence
+        if: matrix.python-version == '3.11'
+        run: |
+          python tools/verify_front_latch_source_rig_binding.py \
+            --host assets/modular-equipment-case-001/source.json \
+            --ownership assets/modular-equipment-case-001/front-latch-ownership-001.json \
+            --interface assets/modular-equipment-case-001/front-latch-pivot-interface-001.json \
+            --historical-plan /tmp/front-latch-articulation-001.json \
+            --binding assets/modular-equipment-case-001/front-latch-source-rig-binding-002.json \
+            --out evidence/front-latch-source-rig-rebind
+          cp assets/modular-equipment-case-001/source.json evidence/front-latch-source-rig-rebind/host-source.json
+          cp assets/modular-equipment-case-001/front-latch-ownership-001.json evidence/front-latch-source-rig-rebind/latch-ownership-contract.json
+          cp assets/modular-equipment-case-001/front-latch-pivot-interface-001.json evidence/front-latch-source-rig-rebind/source-pivot-interface.json
+          cp assets/modular-equipment-case-001/front-latch-source-rig-binding-002.json evidence/front-latch-source-rig-rebind/rig-binding.json
+          cp /tmp/front-latch-articulation-001.json evidence/front-latch-source-rig-rebind/historical-rigging-observation-plan.json
+          git rev-parse HEAD > evidence/front-latch-source-rig-rebind/exact-head.txt
+      - name: Upload retained evidence
+        if: matrix.python-version == '3.11'
+        uses: actions/upload-artifact@v4
+        with:
+          name: modular-equipment-case-001-front-latch-source-rig-rebind-evidence
+          path: evidence/front-latch-source-rig-rebind
+          if-no-files-found: error
+          retention-days: 30
