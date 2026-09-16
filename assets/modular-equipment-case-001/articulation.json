@@ -1,0 +1,22 @@
+{
+  "schema": "axm.object-articulation-plan/v0.1",
+  "asset_id": "modular-equipment-case-001",
+  "source_sha256": "49b1f9ed9865893d6de6f1ec8f069576732df694853fde4e3fcff366de32644a",
+  "joint": {
+    "id": "rear-lid-hinge-001",
+    "axis_source": "hinge.axis",
+    "moving_component": "lid_shell",
+    "fixed_component": "body_shell",
+    "coaxial_moving_knuckles": ["l0", "l1"],
+    "opening_rotation_sign": -1,
+    "angle_limit_deg": [0, 110],
+    "representative_angles_deg": [0, 30, 60, 90, 110],
+    "sweep_step_deg": 1
+  },
+  "assumptions": [
+    "latches_disengaged_not_articulated",
+    "rigid_body_and_lid_shells",
+    "body_shell_separation_only_not_full_component_collision"
+  ],
+  "claim_scope": "bounded source-owned rigid lid articulation around the exact rear hinge; no animation performance, controller, runtime, gameplay or engineering acceptance"
+}
