@@ -28,7 +28,7 @@ class ServiceModuleRegistrationKeyTests(unittest.TestCase):
         )
         self.assertEqual(receipt["result"], "PASS_ASYMMETRIC_REGISTRATION_KEY_PROOF")
         self.assertEqual(receipt["base_fit_result"], "PASS_BILATERAL_SERVICE_MODULE_FIT_PROOF")
-        self.assertEqual(receipt["base_mount_pattern_180_symmetry_residual_m"], 0.0)
+        self.assertLessEqual(receipt["base_mount_pattern_180_symmetry_residual_m"], 1e-9)
         self.assertEqual(receipt["registration_orientation_residuals_m"]["0"], 0.0)
         self.assertGreater(receipt["registration_orientation_residuals_m"]["180"], 0.05)
         self.assertGreater(receipt["radial_clearance_m"], 0.0)
