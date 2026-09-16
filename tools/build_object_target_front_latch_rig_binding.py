@@ -1,0 +1,217 @@
+from __future__ import annotations
+
+import argparse
+import hashlib
+import json
+from pathlib import Path
+from typing import Any
+
+
+SCHEMA = "axm.object-target-front-latch-rig-binding/v0.1"
+RESULT = "PASS_EXACT_SOURCE_OWNED_FRONT_LATCH_RIG_TO_UC_TARGET_BINDING_READY"
+SOURCE_RIG_HEAD = "a1acd2bcb2074f41e536562f2673508e2cb0a4d5"
+SOURCE_INTERFACE_HEAD = "6086f39a3da344c57a68653f90d040e03e04cec2"
+TECH_ART_HEAD = "965fb2f24dbd0b0cbb748d9f8b8712d62966315f"
+UC_HEAD = "6dc465987e01362264f88b7cef4213609ae50763"
+SOURCE_SHA256 = "49b1f9ed9865893d6de6f1ec8f069576732df694853fde4e3fcff366de32644a"
+
+
+def sha256_file(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def source_to_target(point: list[float] | tuple[float, float, float]) -> list[float]:
+    x, y, z = [float(value) for value in point]
+    return [x, z, y]
+
+
+def _float_list(values: Any) -> list[float]:
+    return [float(value) for value in values]
+
+
+def build_binding(
+    source_rig_binding_path: Path,
+    source_interface_path: Path,
+    tech_receipt_path: Path,
+    rebound_glb_path: Path,
+    out_path: Path,
+    *,
+    observed_source_rig_head: str,
+    observed_tech_art_head: str,
+    observed_uc_head: str,
+) -> dict[str, Any]:
+    if observed_source_rig_head != SOURCE_RIG_HEAD:
+        raise AssertionError(f"source Rigging donor head drift: {observed_source_rig_head}")
+    if observed_tech_art_head != TECH_ART_HEAD:
+        raise AssertionError(f"Technical Art donor head drift: {observed_tech_art_head}")
+    if observed_uc_head != UC_HEAD:
+        raise AssertionError(f"UC donor head drift: {observed_uc_head}")
+
+    source_binding = json.loads(source_rig_binding_path.read_text(encoding="utf-8"))
+    interface = json.loads(source_interface_path.read_text(encoding="utf-8"))
+    tech = json.loads(tech_receipt_path.read_text(encoding="utf-8"))
+
+    if source_binding.get("schema") != "axm.object-front-latch-source-rig-binding/v0.1":
+        raise AssertionError("unexpected source Rigging binding schema")
+    if source_binding.get("asset_id") != "modular-equipment-case-001":
+        raise AssertionError("source Rigging asset identity drift")
+    if source_binding.get("host_source_sha256") != SOURCE_SHA256:
+        raise AssertionError("source Rigging host source identity drift")
+    source_ref = source_binding.get("source_interface", {})
+    if source_ref.get("head") != SOURCE_INTERFACE_HEAD:
+        raise AssertionError("source interface authority head drift")
+    observed_interface_sha = sha256_file(source_interface_path)
+    if source_ref.get("sha256") != observed_interface_sha:
+        raise AssertionError("source interface byte identity drift")
+    if source_ref.get("role") != "CURRENT_SOURCE_INTERFACE_AUTHORITY":
+        raise AssertionError("source interface is not current authority")
+    if source_binding.get("historical_rigging_observation", {}).get("role") != "PROVENANCE_ONLY_NOT_CURRENT_INTERFACE_AUTHORITY":
+        raise AssertionError("historical Rigging observation was re-promoted")
+    if _float_list(source_binding.get("joint_axis", [])) != [1.0, 0.0, 0.0]:
+        raise AssertionError("source Rigging joint axis drift")
+    source_angles = _float_list(source_binding.get("pose_samples_deg", []))
+    if source_angles != [0.0, 25.0, 50.0]:
+        raise AssertionError("source Rigging representative pose schedule drift")
+
+    if interface.get("schema") != "axm.object-front-latch-pivot-interface/v0.1":
+        raise AssertionError("unexpected source interface schema")
+    if interface.get("host_source_sha256") != SOURCE_SHA256:
+        raise AssertionError("source interface host identity drift")
+    if _float_list(interface.get("joint_axis", [])) != [1.0, 0.0, 0.0]:
+        raise AssertionError("source interface joint axis drift")
+    travel = interface.get("travel_envelope_deg", {})
+    if float(travel.get("closed", -1.0)) != 0.0 or float(travel.get("review_release", -1.0)) != 50.0:
+        raise AssertionError("source interface review envelope drift")
+
+    if tech.get("schema") != "axm.object-uc-rigid-scene-handoff/v0.1":
+        raise AssertionError("unexpected Technical Art receipt schema")
+    if tech.get("result") != "PASS_OBJECT_SOURCE_OWNED_RIGID_PARTS_THROUGH_UC_SCENE_GRAPH":
+        raise AssertionError("Technical Art rigid-scene prerequisite is not green")
+    if tech.get("source_repository_head") != TECH_ART_HEAD:
+        raise AssertionError("Technical Art receipt head drift")
+    if tech.get("source_sha256") != SOURCE_SHA256:
+        raise AssertionError("Technical Art source identity drift")
+    if tech.get("observed_uc_commit") != UC_HEAD:
+        raise AssertionError("Technical Art UC identity drift")
+    observed_glb_sha = sha256_file(rebound_glb_path)
+    if tech.get("rebound_glb_sha256") != observed_glb_sha:
+        raise AssertionError("rebound GLB byte identity drift")
+    if tech.get("binary_geometry_payload_identical") is not True:
+        raise AssertionError("Technical Art donor did not preserve binary geometry payload")
+
+    target_levers = sorted(str(value) for value in tech.get("source_owned_fixed_levers", []))
+    target_keepers = sorted(str(value) for value in tech.get("source_owned_keeper_children", []))
+    if target_levers != ["latch_0_lever", "latch_1_lever"]:
+        raise AssertionError("target lever identity drift")
+    if target_keepers != ["latch_0_keeper", "latch_1_keeper"]:
+        raise AssertionError("target keeper identity drift")
+    parent_by_child = tech.get("graph_verification", {}).get("parent_by_child", {})
+    for keeper in target_keepers:
+        if parent_by_child.get(keeper) != "lid_shell":
+            raise AssertionError(f"target keeper hierarchy drift: {keeper}")
+    for lever in target_levers:
+        if lever in parent_by_child:
+            raise AssertionError(f"target lever unexpectedly parented: {lever}")
+
+    stations = interface.get("stations", [])
+    if len(stations) != 2:
+        raise AssertionError("bounded target proof expects exactly two latch stations")
+
+    # Object source -> UC/glTF is [x,y,z] -> [x,z,y], an orientation-reversing map.
+    # The source Rigging proof uses positive +X rotations. Under this mapping that exact
+    # axial rotation becomes a negative +X target rotation; this is coordinate conversion,
+    # not retiming or reauthoring.
+    target_angles = [-angle for angle in source_angles]
+    target_stations: list[dict[str, Any]] = []
+    for station in stations:
+        lever = str(station.get("lever_component", ""))
+        keeper = str(station.get("keeper_component", ""))
+        if lever not in target_levers or keeper not in target_keepers:
+            raise AssertionError("source station component is absent from exact target hierarchy")
+        if station.get("lever_owner_component") != "front_service_panel":
+            raise AssertionError("source lever ownership drift")
+        if station.get("keeper_owner_component") != "lid_shell":
+            raise AssertionError("source keeper ownership drift")
+        pivot_source = _float_list(station.get("pivot_origin_m", []))
+        if len(pivot_source) != 3:
+            raise AssertionError("source station pivot malformed")
+        target_stations.append(
+            {
+                "station_id": str(station.get("id", "")),
+                "lever_component": lever,
+                "keeper_component": keeper,
+                "pivot_source_m": pivot_source,
+                "pivot_target_m": source_to_target(pivot_source),
+            }
+        )
+
+    if sorted(row["station_id"] for row in target_stations) != ["left", "right"]:
+        raise AssertionError("bilateral station identity drift")
+
+    result = {
+        "schema": SCHEMA,
+        "result": RESULT,
+        "asset_id": "modular-equipment-case-001",
+        "source_sha256": SOURCE_SHA256,
+        "source_rig_donor_head": SOURCE_RIG_HEAD,
+        "source_rig_binding_sha256": sha256_file(source_rig_binding_path),
+        "source_interface_head": SOURCE_INTERFACE_HEAD,
+        "source_interface_sha256": observed_interface_sha,
+        "technical_art_donor_head": TECH_ART_HEAD,
+        "technical_art_receipt_sha256": sha256_file(tech_receipt_path),
+        "technical_art_rebound_glb_sha256": observed_glb_sha,
+        "uc_donor_head": UC_HEAD,
+        "source_axis": [1.0, 0.0, 0.0],
+        "source_to_target_coordinate_map": "[x,y,z] -> [x,z,y] / determinant -1",
+        "target_axis": [1.0, 0.0, 0.0],
+        "source_rotation_sign": 1,
+        "target_x_rotation_sign": -1,
+        "representative_source_angles_deg": source_angles,
+        "representative_target_angles_deg": target_angles,
+        "stations": target_stations,
+        "fixed_target_components": ["body_shell", "lid_shell", *target_keepers],
+        "failure_policy": "FAIL_CLOSED_ON_SOURCE_RIG_INTERFACE_TECH_ART_UC_GLB_HIERARCHY_COORDINATE_OR_REPRESENTATIVE_TARGET_POSE_DRIFT",
+        "truth_boundary": {
+            "exact_source_rig_identity_pinned": True,
+            "exact_source_owned_interface_identity_pinned": True,
+            "exact_technical_art_target_identity_pinned": True,
+            "coordinate_handedness_conversion_explicit": True,
+            "animation_timing_or_clip_acceptance": False,
+            "animationplayer_acceptance": False,
+            "runtime_controller_or_state_machine_acceptance": False,
+            "collision_physics_or_gameplay_acceptance": False,
+            "physical_latch_engineering_acceptance": False,
+            "final_visual_acceptance": False,
+        },
+    }
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    out_path.write_text(json.dumps(result, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    return result
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--source-rig-binding", required=True)
+    parser.add_argument("--interface", required=True)
+    parser.add_argument("--tech-receipt", required=True)
+    parser.add_argument("--rebound-glb", required=True)
+    parser.add_argument("--observed-source-rig-head", required=True)
+    parser.add_argument("--observed-tech-art-head", required=True)
+    parser.add_argument("--observed-uc-head", required=True)
+    parser.add_argument("--out", default="latch-rig-target-proof/generated/target-front-latch-rig-binding.json")
+    args = parser.parse_args()
+    result = build_binding(
+        Path(args.source_rig_binding).resolve(),
+        Path(args.interface).resolve(),
+        Path(args.tech_receipt).resolve(),
+        Path(args.rebound_glb).resolve(),
+        Path(args.out).resolve(),
+        observed_source_rig_head=args.observed_source_rig_head,
+        observed_tech_art_head=args.observed_tech_art_head,
+        observed_uc_head=args.observed_uc_head,
+    )
+    print(json.dumps(result, sort_keys=True))
+
+
+if __name__ == "__main__":
+    main()
