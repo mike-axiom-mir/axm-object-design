@@ -10,32 +10,26 @@ jobs:
       matrix:
         python-version: ['3.11', '3.13']
     runs-on: ubuntu-latest
+    env:
+      AXM_STICKER_FABRIC_ROOT: _donor/axm-sticker-fabric
     steps:
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
-      - uses: actions/setup-python@v5
-        with:
-          python-version: ${{ matrix.python-version }}
-      - name: Compile
-        run: python -m compileall tools tests
-      - name: Test full repository suite
-        run: python -m unittest discover -s tests -v
-      - name: Checkout exact shared rigid-frame donor
-        if: matrix.python-version == '3.11'
-        uses: actions/checkout@v4
-        with:
-          repository: mike-axiom-mir/axm-universal-creation
-          ref: bd51542bc68534a6e6f3a11d421dc70216b2abf9
-          path: _donor/axm-universal-creation
-      - name: Checkout exact Sticker Fabric shared home
-        if: matrix.python-version == '3.11'
+      - name: Checkout exact Sticker Fabric shared placement home
         uses: actions/checkout@v4
         with:
           repository: mike-axiom-mir/axm-sticker-fabric
           ref: 3aa93b0132eea9becefb20c716c6ec1a023ad28b
           path: _donor/axm-sticker-fabric
-      - name: Build exact configuration-family evidence
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Compile
+        run: python -m compileall tools tests
+      - name: Test full repository suite against shared placement dependency
+        run: python -m unittest discover -s tests -v
+      - name: Build exact direct-shared configuration-family evidence
         if: matrix.python-version == '3.11'
         run: |
           python tools/build_service_module_configuration_family.py \
@@ -43,29 +37,41 @@ jobs:
             --module assets/modular-equipment-case-001/utility-module-001.json \
             --registration assets/modular-equipment-case-001/utility-module-registration-key-001.json \
             --profile assets/modular-equipment-case-001/service-module-configuration-family-001.json \
+            --sticker-root _donor/axm-sticker-fabric \
             --out evidence/service-module-configuration-family
           cp assets/modular-equipment-case-001/source.json evidence/service-module-configuration-family/host-source.json
           cp assets/modular-equipment-case-001/utility-module-001.json evidence/service-module-configuration-family/module-source.json
           cp assets/modular-equipment-case-001/utility-module-registration-key-001.json evidence/service-module-configuration-family/registration-source.json
           cp assets/modular-equipment-case-001/service-module-configuration-family-001.json evidence/service-module-configuration-family/family-profile.json
+          cp _donor/axm-sticker-fabric/UPSTREAM.json evidence/service-module-configuration-family/sticker-fabric-upstream.json
           git rev-parse HEAD > evidence/service-module-configuration-family/exact-head.txt
-      - name: Verify exact historical UC shared rigid-frame equivalence
+          git -C _donor/axm-sticker-fabric rev-parse HEAD > evidence/service-module-configuration-family/shared-home-head.txt
+          sha256sum _donor/axm-sticker-fabric/src/axm_stickers/placement.py > evidence/service-module-configuration-family/shared-home-module.sha256
+      - name: Assert retained exact mesh identities after helper consolidation
         if: matrix.python-version == '3.11'
         run: |
-          python tools/verify_service_module_shared_frame_equivalence.py \
-            --uc-root _donor/axm-universal-creation \
-            --output-dir evidence/service-module-configuration-family/shared-frame-equivalence
-          git -C _donor/axm-universal-creation rev-parse HEAD > evidence/service-module-configuration-family/shared-frame-equivalence/shared-donor-head.txt
-          sha256sum _donor/axm-universal-creation/src/axm_stickers/placement.py > evidence/service-module-configuration-family/shared-frame-equivalence/shared-donor-module.sha256
-      - name: Verify exact Sticker Fabric successor rebind
-        if: matrix.python-version == '3.11'
-        run: |
-          python tools/verify_service_module_sticker_fabric_rebind.py \
-            --sticker-root _donor/axm-sticker-fabric \
-            --output-dir evidence/service-module-configuration-family/sticker-fabric-rebind
-          git -C _donor/axm-sticker-fabric rev-parse HEAD > evidence/service-module-configuration-family/sticker-fabric-rebind/shared-home-head.txt
-          sha256sum _donor/axm-sticker-fabric/src/axm_stickers/placement.py > evidence/service-module-configuration-family/sticker-fabric-rebind/shared-home-module.sha256
-          cp _donor/axm-sticker-fabric/UPSTREAM.json evidence/service-module-configuration-family/sticker-fabric-rebind/sticker-fabric-upstream.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          root = Path('evidence/service-module-configuration-family')
+          expected = {
+              'empty': 'd485a11fd819e6f90c2d1842b0534178093270d8cc4de18744ebcd10bd377351',
+              'left-only': '7f2472dccd1947e907caf22f9cd749cf0e123a5d9f152b21687d3c4d16cd7628',
+              'right-only': '7d07222483966ebd4281881f7552f499b3e0342a7f245c593532a9ed63987940',
+              'bilateral': '23d985839dede2b51a588276e1431bb1f01ad36f87c81bfadfb6ba0946f890cc',
+          }
+          for config_id, digest in expected.items():
+              row = json.loads((root / f'configuration-{config_id}.json').read_text())
+              assert row['mesh_digest'] == digest, (config_id, row['mesh_digest'], digest)
+              for instance in row['instances']:
+                  assert instance['placement_capability'] == 'mike-axiom-mir/axm-sticker-fabric:src/axm_stickers/placement.py'
+          summary = json.loads((root / 'summary.json').read_text())
+          assert summary['placement_result'] == 'PASS_CONFIGURATION_FAMILY_DIRECT_STICKER_FABRIC_PLACEMENT'
+          assert summary['truth_boundary']['local_rigid_transform_math_removed'] is True
+          assert summary['shared_placement_identity']['head'] == '3aa93b0132eea9becefb20c716c6ec1a023ad28b'
+          print('PASS_OBJECT_DIRECT_STICKER_FABRIC_CONSUMER_HELPER_CONSOLIDATION')
+          PY
       - name: Upload retained evidence
         if: matrix.python-version == '3.11'
         uses: actions/upload-artifact@v4
