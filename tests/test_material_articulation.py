@@ -70,21 +70,81 @@ class ObjectArticulatedMaterialLookdevTests(unittest.TestCase):
             "repeat_policy": "OMIT_DUPLICATE_ENDPOINT_ON_REPEAT",
             "motion_truth_label": "STYLIZED_MECHANICAL_OPEN_HOLD_CLOSE_NOT_CONTROLLER",
         }
+        self.ownership = {
+            "schema": "axm.object-front-latch-ownership/v0.1",
+            "contract_id": "front-latch-ownership-001",
+            "asset_id": "modular-equipment-case-001",
+            "host_source_sha256": source_sha,
+            "purpose": "test fixture matching exact Hard-Surface ownership semantics",
+            "stations": [
+                {
+                    "id": "front-latch-left",
+                    "source_index": 0,
+                    "source_x_m": -0.22,
+                    "keeper_component": "latch_0_keeper",
+                    "keeper_role": "latch_keeper",
+                    "keeper_owner_component": "lid_shell",
+                    "lever_component": "latch_0_lever",
+                    "lever_role": "latch_lever",
+                    "lever_owner_component": "front_service_panel",
+                },
+                {
+                    "id": "front-latch-right",
+                    "source_index": 1,
+                    "source_x_m": 0.22,
+                    "keeper_component": "latch_1_keeper",
+                    "keeper_role": "latch_keeper",
+                    "keeper_owner_component": "lid_shell",
+                    "lever_component": "latch_1_lever",
+                    "lever_role": "latch_lever",
+                    "lever_owner_component": "front_service_panel",
+                },
+            ],
+            "closed_relation": {
+                "require_positive_keeper_lever_aabb_overlap": True,
+                "keeper_lid_front_face_max_gap_m": 1e-09,
+                "require_positive_lever_panel_aabb_overlap": True,
+                "semantics": "static_source_proof_volume_relationship_only_not_retention_or_motion",
+            },
+            "failure_policy": "FAIL_CLOSED_NO_OWNER_INFERENCE_NO_GEOMETRY_REWRITE_NO_RUNTIME_PROMOTION",
+            "truth_boundary": "test fixture",
+            "provenance": {
+                "method": "test fixture",
+                "external_assets": [],
+                "external_geometry": False,
+            },
+        }
+        self.review["ownership_dependency"]["canonical_digest"] = canonical_digest(self.ownership)
 
     def write_fixture(self, folder: Path, name: str, value: dict) -> Path:
         path = folder / name
         path.write_text(json.dumps(value, indent=2, sort_keys=True) + "\n", encoding="utf-8")
         return path
 
-    def build(self, review: dict | None = None, clip: dict | None = None, rig: dict | None = None):
+    def build(
+        self,
+        review: dict | None = None,
+        clip: dict | None = None,
+        rig: dict | None = None,
+        ownership: dict | None = None,
+    ):
         with tempfile.TemporaryDirectory() as tmp:
             folder = Path(tmp)
             review_path = self.write_fixture(folder, "review.json", review or self.review)
             clip_path = self.write_fixture(folder, "clip.json", clip or self.clip)
             rig_path = self.write_fixture(folder, "rig.json", rig or self.rig)
-            return build_articulation_payload(self.host, self.module, self.profile, review_path, clip_path, rig_path)
+            ownership_path = self.write_fixture(folder, "ownership.json", ownership or self.ownership)
+            return build_articulation_payload(
+                self.host,
+                self.module,
+                self.profile,
+                review_path,
+                clip_path,
+                rig_path,
+                ownership_path,
+            )
 
-    def test_three_distinct_animation_sampled_poses_are_retained(self):
+    def test_three_distinct_animation_sampled_poses_and_exact_lid_owned_keepers_are_retained(self):
         payload, receipt = self.build()
         self.assertEqual(receipt["result"], "PASS_SOURCE_BOUND_ARTICULATED_MATERIAL_REVIEW_PAYLOAD")
         self.assertEqual(receipt["pose_angles_deg"], [0.0, 50.0, 100.0])
@@ -92,6 +152,15 @@ class ObjectArticulatedMaterialLookdevTests(unittest.TestCase):
         self.assertEqual(payload["poses"][2]["mathematical_rotation_deg"], -100.0)
         self.assertEqual(set(payload["camera_contexts"]), {"three_quarter", "rear_hinge"})
         self.assertEqual(payload["hinge_origin_m"], [0.0, 0.252, 0.306])
+        self.assertEqual(payload["rigid_owner_component"], "lid_shell")
+        self.assertEqual(
+            payload["rigid_owner_follow_component_names"],
+            ["latch_0_keeper", "latch_1_keeper"],
+        )
+        self.assertNotIn("latch_0_lever", payload["rigid_owner_follow_component_names"])
+        self.assertNotIn("latch_1_lever", payload["rigid_owner_follow_component_names"])
+        self.assertTrue(payload["truth_boundary"]["source_owned_latch_ownership_consumed"])
+        self.assertFalse(payload["truth_boundary"]["latch_mechanism_articulation"])
         self.assertFalse(payload["truth_boundary"]["target_engine_animation_playback"])
 
     def test_smoothstep_midpoint_is_exact_half_open(self):
@@ -109,6 +178,21 @@ class ObjectArticulatedMaterialLookdevTests(unittest.TestCase):
         broken["pose_samples"][1]["expected_open_angle_deg"] = 49.0
         with self.assertRaisesRegex(AssertionError, "expected 49.0 deg"):
             self.build(review=broken)
+
+    def test_ownership_digest_drift_fails_closed(self):
+        broken = copy.deepcopy(self.ownership)
+        broken["stations"][0]["keeper_owner_component"] = "front_service_panel"
+        with self.assertRaisesRegex(AssertionError, "ownership contract digest drift"):
+            self.build(ownership=broken)
+
+    def test_owner_inheritance_does_not_promote_levers(self):
+        broken = copy.deepcopy(self.ownership)
+        broken["stations"][0]["keeper_component"] = "latch_0_lever"
+        broken["stations"][0]["keeper_role"] = "latch_lever"
+        broken_review = copy.deepcopy(self.review)
+        broken_review["ownership_dependency"]["canonical_digest"] = canonical_digest(broken)
+        with self.assertRaisesRegex(AssertionError, "ownership role drift"):
+            self.build(review=broken_review, ownership=broken)
 
 
 if __name__ == "__main__":
