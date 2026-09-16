@@ -98,6 +98,7 @@ jobs:
           ownership_base="https://raw.githubusercontent.com/mike-axiom-mir/axm-object-design/${LATCH_OWNERSHIP_HEAD}"
           rig_base="https://raw.githubusercontent.com/mike-axiom-mir/axm-object-design/${LATCH_RIG_HEAD}"
           curl -fsSL "$ownership_base/assets/modular-equipment-case-001/front-latch-ownership-001.json" -o /tmp/axm-animation-target-donors/assets/modular-equipment-case-001/front-latch-ownership-001.json
+          curl -fsSL "$ownership_base/tools/verify_front_latch_ownership.py" -o /tmp/axm-animation-target-donors/tools/verify_front_latch_ownership.py
           curl -fsSL "$rig_base/assets/modular-equipment-case-001/front-latch-articulation-001.json" -o /tmp/axm-animation-target-donors/assets/modular-equipment-case-001/front-latch-articulation-001.json
           curl -fsSL "$rig_base/tools/verify_front_latch_articulation.py" -o /tmp/axm-animation-target-donors/tools/verify_front_latch_articulation.py
           echo "$LATCH_OWNERSHIP_SHA256  /tmp/axm-animation-target-donors/assets/modular-equipment-case-001/front-latch-ownership-001.json" | sha256sum -c -
