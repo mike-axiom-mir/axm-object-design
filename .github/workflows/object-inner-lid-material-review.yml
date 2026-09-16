@@ -83,10 +83,27 @@ jobs:
       - name: Rebuild exact owner-bound articulation payload
         run: python tools/build_object_material_articulation_evidence.py
 
-      - name: Build bounded inner-lid existing-family payload
-        run: python tools/build_object_inner_lid_material_evidence.py
+      - name: Materialize exact source-owned inner-lid surface identity
+        env:
+          SOURCE_SURFACE_COMMIT: e67353416209604aa50ad3ba57f71336f4384349
+          SOURCE_SURFACE_PATH: assets/modular-equipment-case-001/lid-inner-surface-identity-001.json
+          SOURCE_SURFACE_BLOB: 873c03a73042213255c65df63cdff49edcf10a6c
+        run: |
+          set -euo pipefail
+          git fetch --no-tags origin "$SOURCE_SURFACE_COMMIT" --depth=1
+          git cat-file -e "$SOURCE_SURFACE_COMMIT^{commit}"
+          observed_blob="$(git rev-parse "$SOURCE_SURFACE_COMMIT:$SOURCE_SURFACE_PATH")"
+          test "$observed_blob" = "$SOURCE_SURFACE_BLOB"
+          git show "$SOURCE_SURFACE_COMMIT:$SOURCE_SURFACE_PATH" > lookdev-proof/generated/lid-inner-surface-identity-001.json
+          printf '%s\n' "$SOURCE_SURFACE_COMMIT" > lookdev-proof/generated/lid-inner-surface-identity-head.txt
+          printf '%s\n' "$observed_blob" > lookdev-proof/generated/lid-inner-surface-identity-blob.txt
 
-      - name: Validate inner-lid payload
+      - name: Build source-owned inner-lid existing-family payload
+        run: |
+          python tools/build_object_inner_lid_material_evidence.py \
+            --source-surface-identity lookdev-proof/generated/lid-inner-surface-identity-001.json
+
+      - name: Validate source-owned inner-lid payload
         run: |
           python - <<'PY'
           import json
@@ -94,7 +111,10 @@ jobs:
           root=Path('lookdev-proof/generated')
           r=json.loads((root/'inner_lid_build_receipt.json').read_text())
           p=json.loads((root/'object_inner_lid_material_payload.json').read_text())
-          assert r['result']=='PASS_SOURCE_BOUND_INNER_LID_EXISTING_FAMILY_SLOT_PAYLOAD',r
+          assert r['result']=='PASS_SOURCE_OWNED_INNER_LID_EXISTING_FAMILY_SLOT_REBIND',r
+          assert r['source_surface_id']=='lid_inner_service_surface',r
+          assert r['source_surface_head']=='e67353416209604aa50ad3ba57f71336f4384349',r
+          assert r['source_surface_git_blob_sha']=='873c03a73042213255c65df63cdff49edcf10a6c',r
           assert r['component_name']=='lid_shell',r
           assert r['surface_selector']=='source_local_min_z_face',r
           assert r['control_material_id']=='shell_coating',r
@@ -104,7 +124,11 @@ jobs:
           assert set(r['camera_contexts'])=={'three_quarter','front_interior'},r
           assert r['new_material_scalars_authored'] is False,r
           assert r['source_geometry_changed'] is False,r
-          assert p['truth_boundary']['source_material_slot_authored'] is False,p
+          assert r['source_surface_identity_owned'] is True,r
+          assert r['source_material_assignment_authored'] is False,r
+          assert r['materials_candidate_adopted_as_source_material'] is False,r
+          assert p['source_surface_identity']['material_assignment']=='UNASSIGNED',p
+          assert p['source_surface_identity']['materials_candidate_adopted_by_source'] is False,p
           assert p['truth_boundary']['review_representation_face_split_only'] is True,p
           assert p['truth_boundary']['existing_material_scalars_only'] is True,p
           print(json.dumps(r,indent=2))
@@ -132,7 +156,7 @@ jobs:
             sudo apt-get install -y xvfb
           fi
 
-      - name: Render exact inner-lid control and candidate
+      - name: Render exact source-owned inner-lid control and candidate
         if: matrix.python-version == '3.11'
         run: |
           set -euo pipefail
@@ -144,7 +168,7 @@ jobs:
             --path lookdev-proof \
             --script inner_lid_observe_v2.gd
 
-      - name: Validate real target-host inner-lid A-B
+      - name: Validate real target-host source-owned inner-lid A-B
         if: matrix.python-version == '3.11'
         run: |
           python - <<'PY'
@@ -168,16 +192,18 @@ jobs:
                 path=root/f'inner-lid-{pose}-{context}-{mode}.png'
                 assert path.stat().st_size>2000,path
           assert r['candidate_changed_pixels_total']>0,r
-          assert r['truth_boundary']['source_material_slot_authored'] is False,r
+          assert r['truth_boundary']['source_surface_identity_owned'] is True,r
+          assert r['truth_boundary']['source_material_assignment_authored'] is False,r
+          assert r['truth_boundary']['materials_candidate_adopted_as_source_material'] is False,r
           assert r['truth_boundary']['runtime_performance_acceptance'] is False,r
           print(json.dumps(r,indent=2))
           PY
 
-      - name: Retain exact inner-lid material evidence
+      - name: Retain exact source-owned inner-lid material evidence
         if: matrix.python-version == '3.11' && always()
         uses: actions/upload-artifact@v4
         with:
-          name: object-inner-lid-material-review-001-${{ github.event.pull_request.head.sha || github.sha }}
+          name: object-inner-lid-material-source-rebind-001-${{ github.event.pull_request.head.sha || github.sha }}
           path: |
             lookdev/object_material_profile_001.json
             lookdev/articulated_material_review_001.json
@@ -185,6 +211,9 @@ jobs:
             lookdev-proof/inner_lid_observe.gd
             lookdev-proof/inner_lid_observe_v2.gd
             lookdev-proof/generated/inner-lid-exact-head.txt
+            lookdev-proof/generated/lid-inner-surface-identity-001.json
+            lookdev-proof/generated/lid-inner-surface-identity-head.txt
+            lookdev-proof/generated/lid-inner-surface-identity-blob.txt
             lookdev-proof/generated/object_material_articulation_payload.json
             lookdev-proof/generated/object_inner_lid_material_payload.json
             lookdev-proof/generated/inner_lid_build_receipt.json

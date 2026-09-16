@@ -43,11 +43,26 @@ class ObjectInnerLidMaterialTests(unittest.TestCase):
             ],
             "materials": {
                 "baseline": {
-                    "neutral_proof": {"albedo": [0.46, 0.48, 0.49, 1.0], "albedo_hex": "#767A7DFF", "metallic": 0.08, "roughness": 0.78}
+                    "neutral_proof": {
+                        "albedo": [0.46, 0.48, 0.49, 1.0],
+                        "albedo_hex": "#767A7DFF",
+                        "metallic": 0.08,
+                        "roughness": 0.78,
+                    }
                 },
                 "candidate": {
-                    "shell_coating": {"albedo": [0.247, 0.282, 0.306, 1.0], "albedo_hex": "#3F484EFF", "metallic": 0.42, "roughness": 0.54},
-                    "service_dark": {"albedo": [0.145, 0.169, 0.184, 1.0], "albedo_hex": "#252B2FFF", "metallic": 0.18, "roughness": 0.66},
+                    "shell_coating": {
+                        "albedo": [0.247, 0.282, 0.306, 1.0],
+                        "albedo_hex": "#3F484EFF",
+                        "metallic": 0.42,
+                        "roughness": 0.54,
+                    },
+                    "service_dark": {
+                        "albedo": [0.145, 0.169, 0.184, 1.0],
+                        "albedo_hex": "#252B2FFF",
+                        "metallic": 0.18,
+                        "roughness": 0.66,
+                    },
                 },
             },
             "hinge_origin_m": [0.0, 0.252, 0.306],
@@ -60,22 +75,79 @@ class ObjectInnerLidMaterialTests(unittest.TestCase):
             ],
             "camera_contexts": ["three_quarter", "rear_hinge"],
         }
+        self.source_identity = {
+            "schema": "axm.object-hard-surface-surface-identity/v0.1",
+            "asset_id": "modular-equipment-case-001",
+            "host_source_sha256": "49b1f9ed9865893d6de6f1ec8f069576732df694853fde4e3fcff366de32644a",
+            "surface_id": "lid_inner_service_surface",
+            "component_name": "lid_shell",
+            "required_role": "lid_shell",
+            "required_kind": "box",
+            "surface_semantics": "interior_service_surface",
+            "selector": {
+                "policy": "source_local_min_z_face",
+                "expected_triangle_count": 2,
+                "expected_unique_vertex_count": 4,
+            },
+            "review_provenance": {
+                "repository": "mike-axiom-mir/axm-object-design",
+                "pull_request": 6,
+                "head": self.review["source_surface_identity"]["review_parent_head"],
+                "path": "lookdev/inner_lid_surface_review_001.json",
+                "git_blob_sha": self.review["source_surface_identity"]["review_parent_git_blob_sha"],
+                "review_schema": "axm.object-inner-lid-material-review/v0.1",
+                "review_selector": "source_local_min_z_face",
+                "relationship": "surface identity only; no material preference or Materials acceptance inherited",
+            },
+            "material_authority": {
+                "hard_surface_assigns_material": False,
+                "source_material_assignment": "UNASSIGNED",
+                "review_material_candidate_adopted": False,
+            },
+            "truth_boundary": {
+                "host_source_geometry_changed": False,
+                "surface_identity_source_owned": True,
+                "material_slot_identity_only": True,
+                "material_assignment": False,
+                "materials_candidate_adopted": False,
+                "uvs": False,
+                "textures": False,
+                "decals": False,
+                "wear": False,
+                "bevel_or_normal_change": False,
+                "engine_import_acceptance": False,
+                "runtime_performance_acceptance": False,
+                "art_direction_acceptance": False,
+                "visual_qa_acceptance": False,
+                "canon": False,
+                "production_readiness": False,
+            },
+        }
 
     def write(self, folder: Path, name: str, value: dict) -> Path:
         path = folder / name
         path.write_text(json.dumps(value, indent=2, sort_keys=True) + "\n", encoding="utf-8")
         return path
 
-    def build(self, base: dict | None = None, review: dict | None = None):
+    def build(
+        self,
+        base: dict | None = None,
+        review: dict | None = None,
+        source_identity: dict | None = None,
+    ):
         with tempfile.TemporaryDirectory() as tmp:
             folder = Path(tmp)
             base_path = self.write(folder, "base.json", base or self.base)
             review_path = self.write(folder, "review.json", review or self.review)
-            return build_payload(base_path, review_path)
+            source_path = self.write(folder, "source-identity.json", source_identity or self.source_identity)
+            return build_payload(base_path, review_path, source_path)
 
-    def test_existing_family_inner_lid_slot_is_bounded(self):
+    def test_source_owned_existing_family_inner_lid_rebind_is_bounded(self):
         payload, receipt = self.build()
-        self.assertEqual(receipt["result"], "PASS_SOURCE_BOUND_INNER_LID_EXISTING_FAMILY_SLOT_PAYLOAD")
+        self.assertEqual(receipt["result"], "PASS_SOURCE_OWNED_INNER_LID_EXISTING_FAMILY_SLOT_REBIND")
+        self.assertEqual(receipt["source_surface_id"], "lid_inner_service_surface")
+        self.assertEqual(receipt["source_surface_head"], self.review["source_surface_identity"]["head"])
+        self.assertEqual(receipt["source_surface_git_blob_sha"], self.review["source_surface_identity"]["git_blob_sha"])
         self.assertEqual(receipt["component_name"], "lid_shell")
         self.assertEqual(receipt["surface_selector"], "source_local_min_z_face")
         self.assertEqual(receipt["control_material_id"], "shell_coating")
@@ -84,8 +156,12 @@ class ObjectInnerLidMaterialTests(unittest.TestCase):
         self.assertEqual(receipt["pose_angles_deg"], [50.0, 100.0])
         self.assertFalse(receipt["new_material_scalars_authored"])
         self.assertFalse(receipt["source_geometry_changed"])
+        self.assertTrue(receipt["source_surface_identity_owned"])
+        self.assertFalse(receipt["source_material_assignment_authored"])
+        self.assertFalse(receipt["materials_candidate_adopted_as_source_material"])
+        self.assertEqual(payload["source_surface_identity"]["material_assignment"], "UNASSIGNED")
+        self.assertFalse(payload["source_surface_identity"]["materials_candidate_adopted_by_source"])
         self.assertTrue(payload["truth_boundary"]["review_representation_face_split_only"])
-        self.assertFalse(payload["truth_boundary"]["source_material_slot_authored"])
 
     def test_material_profile_drift_fails_closed(self):
         broken = copy.deepcopy(self.base)
@@ -116,6 +192,37 @@ class ObjectInnerLidMaterialTests(unittest.TestCase):
         broken["surface_review"]["new_material_scalars_authored"] = True
         with self.assertRaisesRegex(AssertionError, "forbids new material scalars"):
             self.build(review=broken)
+
+    def test_source_surface_id_drift_fails_closed(self):
+        broken = copy.deepcopy(self.source_identity)
+        broken["surface_id"] = "lid_outer_surface"
+        with self.assertRaisesRegex(AssertionError, "source surface id drift"):
+            self.build(source_identity=broken)
+
+    def test_source_surface_selector_drift_fails_closed(self):
+        broken = copy.deepcopy(self.source_identity)
+        broken["selector"]["policy"] = "source_local_max_z_face"
+        with self.assertRaisesRegex(AssertionError, "source surface selector drift"):
+            self.build(source_identity=broken)
+
+    def test_source_material_assignment_fails_closed(self):
+        broken = copy.deepcopy(self.source_identity)
+        broken["material_authority"]["hard_surface_assigns_material"] = True
+        broken["material_authority"]["source_material_assignment"] = "service_dark"
+        with self.assertRaisesRegex(AssertionError, "must not assign final material"):
+            self.build(source_identity=broken)
+
+    def test_source_candidate_adoption_fails_closed(self):
+        broken = copy.deepcopy(self.source_identity)
+        broken["material_authority"]["review_material_candidate_adopted"] = True
+        with self.assertRaisesRegex(AssertionError, "must remain unadopted"):
+            self.build(source_identity=broken)
+
+    def test_source_review_parent_lineage_drift_fails_closed(self):
+        broken = copy.deepcopy(self.source_identity)
+        broken["review_provenance"]["head"] = "0" * 40
+        with self.assertRaisesRegex(AssertionError, "source surface review parent head drift"):
+            self.build(source_identity=broken)
 
 
 if __name__ == "__main__":

@@ -1,9 +1,24 @@
 {
-  "schema": "axm.object-inner-lid-material-review/v0.1",
+  "schema": "axm.object-inner-lid-material-review/v0.2",
   "asset_id": "modular-equipment-case-001",
   "base_articulation_payload_schema": "axm.object-articulated-material-lookdev-payload/v0.2",
   "base_material_profile_sha256": "dc200229d6c25fa84063aa51f66103abc022efa54b2167e4432a5b47fc40360c",
   "base_geometry_contract_sha256": "bc1f724744fa4d4f5bcd6469c7cc886a46632f1f160e0042252e2c9cec87b678",
+  "source_surface_identity": {
+    "repository": "mike-axiom-mir/axm-object-design",
+    "pull_request": 26,
+    "head": "e67353416209604aa50ad3ba57f71336f4384349",
+    "path": "assets/modular-equipment-case-001/lid-inner-surface-identity-001.json",
+    "git_blob_sha": "873c03a73042213255c65df63cdff49edcf10a6c",
+    "schema": "axm.object-hard-surface-surface-identity/v0.1",
+    "surface_id": "lid_inner_service_surface",
+    "review_parent_head": "8e92324648d837a92b7c3e0b1107df1f58f9aa61",
+    "review_parent_git_blob_sha": "cc90cd2c4c0f8eaf6b93d190436bc278c0fa1c83",
+    "evidence_run_id": 35145723350,
+    "evidence_artifact_id": 10467695682,
+    "evidence_artifact_sha256": "bdf9184668de15cf035edccb8168cee35233e11be52b442bc058bf7937a45002",
+    "relationship": "bind the existing Materials review candidate to the exact Hard-Surface-owned inward-lid surface identity; inherit no material preference, Art/QA acceptance, runtime acceptance, or production material assignment"
+  },
   "surface_review": {
     "component_name": "lid_shell",
     "required_role": "lid_shell",
@@ -22,11 +37,13 @@
     "three_quarter",
     "front_interior"
   ],
-  "purpose": "test one explicit inner-lid review slot only after the lid is open enough to expose its inward face, reusing the already-proven service_dark family member instead of inventing a new coating; exterior shell material, source geometry, articulation, keeper ownership and lighting remain held while one additional front-interior proof camera makes the candidate face directly observable",
+  "purpose": "rebind the already-rendered inward-lid service_dark review candidate to the exact source-owned lid_inner_service_surface identity without changing source geometry, material scalars, articulation, cameras or lighting; preserve the prior face-inferred review as historical evidence and rerun the same real Godot contexts so any visual change remains attributable",
   "truth_boundary": {
     "materials_review_candidate_only": true,
     "source_geometry_changed": false,
-    "source_material_slot_authored": false,
+    "source_surface_identity_owned": true,
+    "source_material_assignment_authored": false,
+    "materials_candidate_adopted_as_source_material": false,
     "review_representation_face_split_only": true,
     "existing_material_scalars_only": true,
     "proof_camera_added_for_inner_face_observation": true,
