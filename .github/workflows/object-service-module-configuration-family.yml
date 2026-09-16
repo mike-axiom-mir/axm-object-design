@@ -1,0 +1,45 @@
+name: Object service-module configuration family evidence
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  procedural:
+    strategy:
+      matrix:
+        python-version: ['3.11', '3.13']
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Compile
+        run: python -m compileall tools tests
+      - name: Test full repository suite
+        run: python -m unittest discover -s tests -v
+      - name: Build exact configuration-family evidence
+        if: matrix.python-version == '3.11'
+        run: |
+          python tools/build_service_module_configuration_family.py \
+            --host assets/modular-equipment-case-001/source.json \
+            --module assets/modular-equipment-case-001/utility-module-001.json \
+            --registration assets/modular-equipment-case-001/utility-module-registration-key-001.json \
+            --profile assets/modular-equipment-case-001/service-module-configuration-family-001.json \
+            --out evidence/service-module-configuration-family
+          cp assets/modular-equipment-case-001/source.json evidence/service-module-configuration-family/host-source.json
+          cp assets/modular-equipment-case-001/utility-module-001.json evidence/service-module-configuration-family/module-source.json
+          cp assets/modular-equipment-case-001/utility-module-registration-key-001.json evidence/service-module-configuration-family/registration-source.json
+          cp assets/modular-equipment-case-001/service-module-configuration-family-001.json evidence/service-module-configuration-family/family-profile.json
+          git rev-parse HEAD > evidence/service-module-configuration-family/exact-head.txt
+      - name: Upload retained evidence
+        if: matrix.python-version == '3.11'
+        uses: actions/upload-artifact@v4
+        with:
+          name: utility-module-configuration-family-001-evidence
+          path: evidence/service-module-configuration-family
+          if-no-files-found: error
+          retention-days: 30
