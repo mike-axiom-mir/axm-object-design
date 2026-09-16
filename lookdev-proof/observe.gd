@@ -182,14 +182,14 @@ func compare_images(a: Image, b: Image) -> Dictionary:
         for x in range(a.get_width()):
             var ca := a.get_pixel(x, y)
             var cb := b.get_pixel(x, y)
-            var delta := max(abs(ca.r - cb.r), max(abs(ca.g - cb.g), abs(ca.b - cb.b)))
+            var delta: float = maxf(absf(ca.r - cb.r), maxf(absf(ca.g - cb.g), absf(ca.b - cb.b)))
             if delta > (1.0 / 255.0):
                 changed += 1
-                max_delta = max(max_delta, delta)
-                min_x = min(min_x, x)
-                min_y = min(min_y, y)
-                max_x = max(max_x, x)
-                max_y = max(max_y, y)
+                max_delta = maxf(max_delta, delta)
+                min_x = mini(min_x, x)
+                min_y = mini(min_y, y)
+                max_x = maxi(max_x, x)
+                max_y = maxi(max_y, y)
     var total := a.get_width() * a.get_height()
     return {
         "state": "PASS",
