@@ -1,0 +1,215 @@
+name: Object target front-latch rig evidence
+
+on:
+  pull_request:
+    paths:
+      - "tools/build_object_target_front_latch_rig_binding.py"
+      - "tests/test_object_target_front_latch_rig_binding.py"
+      - "latch-rig-target-proof/**"
+      - ".github/workflows/object-target-front-latch-rig.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  target-front-latch-rig:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      matrix:
+        python-version: ['3.11', '3.13']
+    steps:
+      - name: Checkout exact Rigging candidate head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+
+      - name: Checkout exact source Rigging donor
+        uses: actions/checkout@v4
+        with:
+          repository: mike-axiom-mir/axm-object-design
+          ref: a1acd2bcb2074f41e536562f2673508e2cb0a4d5
+          path: .source-rig
+          fetch-depth: 0
+
+      - name: Checkout exact Technical Art rigid-scene donor
+        uses: actions/checkout@v4
+        with:
+          repository: mike-axiom-mir/axm-object-design
+          ref: 965fb2f24dbd0b0cbb748d9f8b8712d62966315f
+          path: .tech-art
+
+      - name: Checkout exact Universal Creation rigid-scene donor
+        uses: actions/checkout@v4
+        with:
+          repository: mike-axiom-mir/axm-universal-creation
+          ref: 6dc465987e01362264f88b7cef4213609ae50763
+          path: .uc
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Compile and run complete current Object tests
+        run: |
+          python -m compileall -q tools tests
+          python -m unittest discover -s tests -v
+
+      - name: Re-run exact source-owned latch Rigging donor
+        run: |
+          cd .source-rig
+          python -m compileall -q tools tests
+          python -m unittest discover -s tests -v
+          git show 3b667ff5d30c46ec2fe7da7679518970f8610018:assets/modular-equipment-case-001/front-latch-articulation-001.json > /tmp/front-latch-articulation-001.json
+          rm -rf /tmp/source-rig-evidence
+          python tools/verify_front_latch_source_rig_binding.py \
+            --host assets/modular-equipment-case-001/source.json \
+            --ownership assets/modular-equipment-case-001/front-latch-ownership-001.json \
+            --interface assets/modular-equipment-case-001/front-latch-pivot-interface-001.json \
+            --historical-plan /tmp/front-latch-articulation-001.json \
+            --binding assets/modular-equipment-case-001/front-latch-source-rig-binding-002.json \
+            --out /tmp/source-rig-evidence
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          r=json.loads(Path('/tmp/source-rig-evidence/front-latch-source-rig-binding-evidence.json').read_text())
+          assert r['result']=='PASS_SOURCE_OWNED_FRONT_LATCH_RIG_REBIND',r
+          assert r['pose_samples_deg']==[0.0,25.0,50.0],r
+          assert r['maximum_pivot_drift_m']<=1e-12,r
+          assert r['maximum_rigid_pairwise_distance_drift_m']<=1e-12,r
+          PY
+
+      - name: Rebuild exact Technical Art target hierarchy
+        run: |
+          cd .tech-art
+          rm -rf rigid-proof/generated
+          mkdir -p rigid-proof/generated
+          PYTHONPATH=../.uc/src python tools/build_object_uc_rigid_scene_handoff.py \
+            --uc-root ../.uc \
+            --expected-uc-commit 6dc465987e01362264f88b7cef4213609ae50763 \
+            --out rigid-proof/generated
+
+      - name: Build exact target front-latch rig binding
+        run: |
+          rm -rf latch-rig-target-proof/generated
+          mkdir -p latch-rig-target-proof/generated
+          SOURCE_RIG_HEAD="$(git -C .source-rig rev-parse HEAD)"
+          TECH_ART_HEAD="$(git -C .tech-art rev-parse HEAD)"
+          UC_HEAD="$(git -C .uc rev-parse HEAD)"
+          python tools/build_object_target_front_latch_rig_binding.py \
+            --source-rig-binding .source-rig/assets/modular-equipment-case-001/front-latch-source-rig-binding-002.json \
+            --interface .source-rig/assets/modular-equipment-case-001/front-latch-pivot-interface-001.json \
+            --tech-receipt .tech-art/rigid-proof/generated/uc-rigid-scene-handoff-receipt.json \
+            --rebound-glb .tech-art/rigid-proof/generated/object-rigid-components-rebound.glb \
+            --observed-source-rig-head "$SOURCE_RIG_HEAD" \
+            --observed-tech-art-head "$TECH_ART_HEAD" \
+            --observed-uc-head "$UC_HEAD" \
+            --out latch-rig-target-proof/generated/target-front-latch-rig-binding.json
+          cp .tech-art/rigid-proof/generated/object-rigid-components-rebound.glb latch-rig-target-proof/generated/
+          cp .source-rig/assets/modular-equipment-case-001/front-latch-source-rig-binding-002.json latch-rig-target-proof/generated/source-rig-binding.json
+          cp .source-rig/assets/modular-equipment-case-001/front-latch-pivot-interface-001.json latch-rig-target-proof/generated/source-pivot-interface.json
+          cp /tmp/source-rig-evidence/front-latch-source-rig-binding-evidence.json latch-rig-target-proof/generated/source-rig-evidence.json
+          git rev-parse HEAD > latch-rig-target-proof/generated/exact-candidate-head.txt
+          printf '%s\n' "$SOURCE_RIG_HEAD" > latch-rig-target-proof/generated/exact-source-rig-head.txt
+          printf '%s\n' "$TECH_ART_HEAD" > latch-rig-target-proof/generated/exact-technical-art-head.txt
+          printf '%s\n' "$UC_HEAD" > latch-rig-target-proof/generated/exact-uc-head.txt
+
+      - name: Validate binding identity and negative control
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('latch-rig-target-proof/generated/target-front-latch-rig-binding.json')
+          b=json.loads(p.read_text())
+          assert b['result']=='PASS_EXACT_SOURCE_OWNED_FRONT_LATCH_RIG_TO_UC_TARGET_BINDING_READY',b
+          assert b['source_rig_donor_head']=='a1acd2bcb2074f41e536562f2673508e2cb0a4d5',b
+          assert b['source_interface_head']=='6086f39a3da344c57a68653f90d040e03e04cec2',b
+          assert b['technical_art_donor_head']=='965fb2f24dbd0b0cbb748d9f8b8712d62966315f',b
+          assert b['uc_donor_head']=='6dc465987e01362264f88b7cef4213609ae50763',b
+          assert b['representative_source_angles_deg']==[0.0,25.0,50.0],b
+          assert b['representative_target_angles_deg']==[-0.0,-25.0,-50.0],b
+          assert [row['pivot_target_m'] for row in b['stations']]==[[-0.22,0.2105,-0.258],[0.22,0.2105,-0.258]],b
+          assert b['truth_boundary']['animation_timing_or_clip_acceptance'] is False,b
+          assert b['truth_boundary']['runtime_controller_or_state_machine_acceptance'] is False,b
+          PY
+          if python tools/build_object_target_front_latch_rig_binding.py \
+            --source-rig-binding .source-rig/assets/modular-equipment-case-001/front-latch-source-rig-binding-002.json \
+            --interface .source-rig/assets/modular-equipment-case-001/front-latch-pivot-interface-001.json \
+            --tech-receipt .tech-art/rigid-proof/generated/uc-rigid-scene-handoff-receipt.json \
+            --rebound-glb .tech-art/rigid-proof/generated/object-rigid-components-rebound.glb \
+            --observed-source-rig-head 0000000000000000000000000000000000000000 \
+            --observed-tech-art-head 965fb2f24dbd0b0cbb748d9f8b8712d62966315f \
+            --observed-uc-head 6dc465987e01362264f88b7cef4213609ae50763 \
+            --out /tmp/should-not-pass.json; then
+            echo "negative identity control unexpectedly passed" >&2
+            exit 1
+          fi
+
+      - name: Download pinned Godot 4.7.2
+        if: matrix.python-version == '3.11'
+        env:
+          GODOT_URL: https://github.com/godotengine/godot-builds/releases/download/4.7.2-stable/Godot_v4.7.2-stable_linux.x86_64.zip
+          GODOT_SHA256: cadd3204e728a35d3f13adb7fd0d7902636b79f6b95c40c265eb73b6c35329e4
+        run: |
+          set -euo pipefail
+          mkdir -p .godot-bin
+          curl --fail --location --retry 3 --retry-delay 2 "$GODOT_URL" --output .godot-bin/godot.zip
+          echo "$GODOT_SHA256  .godot-bin/godot.zip" | sha256sum --check --strict
+          unzip -q .godot-bin/godot.zip -d .godot-bin
+          chmod +x .godot-bin/Godot_v4.7.2-stable_linux.x86_64
+          .godot-bin/Godot_v4.7.2-stable_linux.x86_64 --version
+
+      - name: Exercise exact source-owned latch rig on real target hierarchy
+        if: matrix.python-version == '3.11'
+        run: |
+          rm -f latch-rig-target-proof/target-front-latch-rig-receipt.json
+          .godot-bin/Godot_v4.7.2-stable_linux.x86_64 \
+            --headless \
+            --rendering-method gl_compatibility \
+            --path latch-rig-target-proof \
+            --script observe.gd
+
+      - name: Validate target-host latch rig receipt
+        if: matrix.python-version == '3.11'
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          root=Path('latch-rig-target-proof')
+          b=json.loads((root/'generated/target-front-latch-rig-binding.json').read_text())
+          r=json.loads((root/'target-front-latch-rig-receipt.json').read_text())
+          assert r['state']=='PASS_EXACT_SOURCE_OWNED_FRONT_LATCH_RIG_ON_UC_TARGET_HIERARCHY',r
+          assert r['glb_sha256']==b['technical_art_rebound_glb_sha256'],(b,r)
+          assert [row['source_angle_deg'] for row in r['representative_poses']]==[0.0,25.0,50.0],r
+          assert [row['target_rotation_x_deg'] for row in r['representative_poses']]==[-0.0,-25.0,-50.0],r
+          assert r['maximum_expected_transform_residual']<=1e-6,r
+          assert r['maximum_pivot_drift_m']<=1e-6,r
+          assert r['maximum_rigid_pairwise_signature_drift_m']<=1e-6,r
+          assert r['maximum_fixed_component_center_drift_m']<=1e-6,r
+          assert r['maximum_bilateral_center_movement_residual_m']<=1e-6,r
+          assert r['maximum_neutral_return_transform_drift']<=1e-6,r
+          assert r['truth_boundary']['animationplayer_acceptance'] is False,r
+          assert r['truth_boundary']['runtime_controller_or_state_machine_acceptance'] is False,r
+          print(json.dumps(r,indent=2))
+          PY
+
+      - name: Retain exact target latch rig evidence
+        if: matrix.python-version == '3.11' && always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: object-target-front-latch-rig-${{ github.event.pull_request.head.sha || github.sha }}
+          path: |
+            latch-rig-target-proof/generated/target-front-latch-rig-binding.json
+            latch-rig-target-proof/generated/object-rigid-components-rebound.glb
+            latch-rig-target-proof/generated/source-rig-binding.json
+            latch-rig-target-proof/generated/source-pivot-interface.json
+            latch-rig-target-proof/generated/source-rig-evidence.json
+            latch-rig-target-proof/generated/exact-candidate-head.txt
+            latch-rig-target-proof/generated/exact-source-rig-head.txt
+            latch-rig-target-proof/generated/exact-technical-art-head.txt
+            latch-rig-target-proof/generated/exact-uc-head.txt
+            latch-rig-target-proof/target-front-latch-rig-receipt.json
+          if-no-files-found: warn
+          retention-days: 30
