@@ -8,7 +8,9 @@ on:
       - "lookdev/**"
       - "lookdev-proof/**"
       - "tests/test_materials_lookdev.py"
+      - "tests/test_material_articulation.py"
       - "tools/build_object_material_lookdev_evidence.py"
+      - "tools/build_object_material_articulation_evidence.py"
       - ".github/workflows/object-material-lookdev.yml"
       - "assets/modular-equipment-case-001/source.json"
       - "assets/modular-equipment-case-001/utility-module-001.json"
@@ -27,6 +29,8 @@ jobs:
     steps:
       - name: Checkout Object Materials lane
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -58,6 +62,46 @@ jobs:
           print(json.dumps(r,indent=2))
           PY
 
+      - name: Materialize exact Animation + Rigging donors for articulated lookdev
+        env:
+          ANIMATION_COMMIT: f89a3b3f1aa6f448c8a97c6d00d5e270e7d3bb00
+          RIG_COMMIT: 4b72c9918c5fc1e89bd18a0be24fb4afac6e7775
+        run: |
+          set -euo pipefail
+          git fetch --no-tags origin \
+            studio/animation-object-lid-open-close-001 \
+            studio/rigging-object-lid-articulation-001
+          git cat-file -e "$ANIMATION_COMMIT^{commit}"
+          git cat-file -e "$RIG_COMMIT^{commit}"
+          mkdir -p lookdev-proof/generated
+          git show "$ANIMATION_COMMIT:assets/modular-equipment-case-001/lid-motion-clip.json" > lookdev-proof/generated/lid-motion-clip.json
+          git show "$RIG_COMMIT:assets/modular-equipment-case-001/articulation.json" > lookdev-proof/generated/articulation.json
+          printf '%s\n' "$ANIMATION_COMMIT" > lookdev-proof/generated/animation-donor-head.txt
+          printf '%s\n' "$RIG_COMMIT" > lookdev-proof/generated/rig-donor-head.txt
+
+      - name: Build exact articulated material review payload
+        run: python tools/build_object_material_articulation_evidence.py
+
+      - name: Validate articulated material review payload
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          root=Path('lookdev-proof/generated')
+          r=json.loads((root/'articulation_build_receipt.json').read_text())
+          p=json.loads((root/'object_material_articulation_payload.json').read_text())
+          assert r['result']=='PASS_SOURCE_BOUND_ARTICULATED_MATERIAL_REVIEW_PAYLOAD',r
+          assert r['base_material_payload_result']=='PASS_SOURCE_BOUND_FUNCTIONAL_SURFACE_PAYLOAD',r
+          assert r['pose_angles_deg']==[0.0,50.0,100.0],r
+          assert set(r['camera_contexts'])=={'three_quarter','rear_hinge'},r
+          assert p['truth_boundary']['static_pose_material_review_only'] is True,p
+          assert p['truth_boundary']['target_engine_animation_playback'] is False,p
+          assert p['truth_boundary']['controller_or_gameplay_acceptance'] is False,p
+          assert p['animation_dependency']['commit']=='f89a3b3f1aa6f448c8a97c6d00d5e270e7d3bb00',p
+          assert p['rig_dependency']['commit']=='4b72c9918c5fc1e89bd18a0be24fb4afac6e7775',p
+          print(json.dumps(r,indent=2))
+          PY
+
       - name: Download pinned Godot 4.7.2
         if: matrix.python-version == '3.11'
         env:
@@ -84,7 +128,7 @@ jobs:
         if: matrix.python-version == '3.11'
         run: |
           set -euo pipefail
-          rm -f lookdev-proof/material-lookdev-runtime-receipt.json lookdev-proof/*.png
+          rm -f lookdev-proof/material-lookdev-runtime-receipt.json lookdev-proof/baseline-*.png lookdev-proof/candidate-*.png
           xvfb-run --auto-servernum --server-args="-screen 0 1000x760x24" \
             .godot-bin/Godot_v4.7.2-stable_linux.x86_64 \
             --display-driver x11 \
@@ -115,6 +159,48 @@ jobs:
           print(json.dumps(r,indent=2))
           PY
 
+      - name: Render articulated material A-B in exact static poses
+        if: matrix.python-version == '3.11'
+        run: |
+          set -euo pipefail
+          rm -f lookdev-proof/articulation-lookdev-runtime-receipt.json lookdev-proof/articulation-*.png
+          xvfb-run --auto-servernum --server-args="-screen 0 1000x760x24" \
+            .godot-bin/Godot_v4.7.2-stable_linux.x86_64 \
+            --display-driver x11 \
+            --rendering-method gl_compatibility \
+            --path lookdev-proof \
+            --script articulation_observe.gd
+
+      - name: Validate articulated target-host material evidence
+        if: matrix.python-version == '3.11'
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          root=Path('lookdev-proof')
+          r=json.loads((root/'articulation-lookdev-runtime-receipt.json').read_text())
+          assert r['state']=='PASS_TARGET_HOST_ARTICULATED_SURFACE_AB_READY',r
+          assert r['promotion_effect']=='NONE',r
+          assert set(r['poses'])=={'closed','mid_open','peak_open'},r
+          for pose,contexts in r['poses'].items():
+            assert set(contexts)=={'three_quarter','rear_hinge'},(pose,contexts)
+            for context,row in contexts.items():
+              assert row['baseline']['state']=='PASS',(pose,context,row)
+              assert row['candidate']['state']=='PASS',(pose,context,row)
+              assert row['baseline']['component_count']==row['candidate']['component_count'],(pose,context,row)
+              assert row['pixel_difference']['changed_pixels']>0,(pose,context,row)
+              assert row['pixel_difference']['changed_fraction']>0.001,(pose,context,row)
+              for variant in ('baseline','candidate'):
+                path=root/f'articulation-{pose}-{context}-{variant}.png'
+                assert path.stat().st_size>2000,path
+          assert set(r['candidate_pose_differences_from_closed'])=={'mid_open','peak_open'},r
+          for pose,contexts in r['candidate_pose_differences_from_closed'].items():
+            for context,diff in contexts.items():
+              assert diff['changed_pixels']>0,(pose,context,diff)
+          assert r['truth_boundary']['target_engine_animation_playback'] is False,r
+          print(json.dumps(r,indent=2))
+          PY
+
       - name: Retain exact material comparison evidence
         if: matrix.python-version == '3.11' && always()
         uses: actions/upload-artifact@v4
@@ -131,5 +217,24 @@ jobs:
             lookdev-proof/candidate-three_quarter.png
             lookdev-proof/baseline-rear_hinge.png
             lookdev-proof/candidate-rear_hinge.png
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Retain exact articulated material evidence
+        if: matrix.python-version == '3.11' && always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: object-material-articulation-001-${{ github.event.pull_request.head.sha || github.sha }}
+          path: |
+            lookdev/object_material_profile_001.json
+            lookdev/articulated_material_review_001.json
+            lookdev-proof/generated/lid-motion-clip.json
+            lookdev-proof/generated/articulation.json
+            lookdev-proof/generated/animation-donor-head.txt
+            lookdev-proof/generated/rig-donor-head.txt
+            lookdev-proof/generated/object_material_articulation_payload.json
+            lookdev-proof/generated/articulation_build_receipt.json
+            lookdev-proof/articulation-lookdev-runtime-receipt.json
+            lookdev-proof/articulation-*.png
           if-no-files-found: warn
           retention-days: 30
