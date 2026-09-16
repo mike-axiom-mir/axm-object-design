@@ -252,6 +252,7 @@ func _initialize() -> void:
     receipt["technical_art_object_head"] = technical.get("source_repository_head")
     receipt["uc_rigid_scene_commit"] = technical.get("observed_uc_commit")
     receipt["uc_runtime_commit"] = bridge.get("uc_runtime_commit")
+    receipt["uc_runtime_module_git_blob_sha"] = bridge.get("uc_runtime_module_git_blob_sha")
     receipt["uc_runtime_module_sha256"] = bridge.get("uc_runtime_module_sha256")
     receipt["uc_runtime_source_sha256"] = bridge.get("uc_runtime_source_sha256")
     receipt["uc_runtime_commands_sha256"] = bridge.get("uc_runtime_commands_sha256")
