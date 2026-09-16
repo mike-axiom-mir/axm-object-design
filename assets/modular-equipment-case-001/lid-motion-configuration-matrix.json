@@ -1,0 +1,34 @@
+{
+  "schema": "axm.object-motion-configuration-matrix/v0.1",
+  "matrix_id": "lid-motion-configuration-matrix-001",
+  "asset_id": "modular-equipment-case-001",
+  "intent": "Prove that the exact existing lid-open-hold-close clip remains one unchanged authored motion sequence across the exact bounded empty/left/right/bilateral service-module configurations, without retargeting, retiming, or taking Procedural/Rigging/runtime ownership.",
+  "motion_identity": {
+    "clip_id": "lid-open-hold-close-001",
+    "clip_digest": "9e149195ab315f83f2d6f7d76f374f4be245567f77402de3e8a1d40ab79ef340",
+    "source_sha256": "49b1f9ed9865893d6de6f1ec8f069576732df694853fde4e3fcff366de32644a",
+    "rig_plan_digest": "0ad6dc2ca22676cf301579932e599a441eb7c4bccce31991d1b727aeb22ac422",
+    "joint_id": "rear-lid-hinge-001",
+    "endpoint_inclusive_sample_count": 81,
+    "repeated_visible_sample_count": 80
+  },
+  "procedural_dependency": {
+    "repository": "mike-axiom-mir/axm-object-design",
+    "commit": "4fd7546d520b515533678464307d7a49d13479e0",
+    "family_id": "service-module-configuration-family-001",
+    "required_result": "PASS_BOUNDED_SERVICE_MODULE_CONFIGURATION_FAMILY",
+    "required_configuration_ids": ["empty", "left-only", "right-only", "bilateral"],
+    "required_instance_counts": [0, 1, 1, 2]
+  },
+  "composition_policy": {
+    "motion_component": "lid_shell",
+    "fixed_component": "body_shell",
+    "service_module_motion": "STATIC_SOURCE_FRAME_CONFIGURATION",
+    "clip_application": "IDENTICAL_AUTHORED_SAMPLES_ALL_CONFIGURATIONS",
+    "retiming": "FORBIDDEN",
+    "retargeting": "FORBIDDEN",
+    "configuration_reauthoring": "FORBIDDEN",
+    "collision_claim": "USE_RIGGING_PREREQUISITE_ONLY_DO_NOT_RECOMPUTE_HERE"
+  },
+  "truth_boundary": "A matrix PASS proves only that the exact already-authored source-space lid pose sequence composes deterministically with four exact Procedural service-module occupancy outputs without changing clip timing, joint identity, lid geometry sequence, or static module geometry. It does not prove target-engine playback, runtime attach/detach, controller/state-machine behavior, collision/physics, gameplay timing, final motion style, Art Direction/Visual QA acceptance, target-device performance, CANON, production readiness, or Animation mastery."
+}
