@@ -15,7 +15,7 @@ env:
   TECHNICAL_ART_HEAD: 965fb2f24dbd0b0cbb748d9f8b8712d62966315f
   UC_RIGID_HEAD: 6dc465987e01362264f88b7cef4213609ae50763
   UC_RUNTIME_HEAD: dde8d952161788f8bf21118f91edd3163e51277d
-  UC_RUNTIME_MODULE_SHA256: a5f1bf407eb6c4b5be1c5e7f19bed1001ff94173
+  UC_RUNTIME_MODULE_GIT_BLOB_SHA: a5f1bf407eb6c4b5be1c5e7f19bed1001ff94173
   LID_RIG_HEAD: 4b72c9918c5fc1e89bd18a0be24fb4afac6e7775
   LATCH_RIG_HEAD: 3b667ff5d30c46ec2fe7da7679518970f8610018
   LATCH_OWNERSHIP_HEAD: d3fa10a270faae7925811f44f03381fe5c5d0215
@@ -59,7 +59,7 @@ jobs:
         run: |
           set -euo pipefail
           test "$(git -C .uc-runtime rev-parse HEAD)" = "$UC_RUNTIME_HEAD"
-          echo "$UC_RUNTIME_MODULE_SHA256  .uc-runtime/src/axm_uc/game_animation_runtime.py" | sha256sum -c -
+          test "$(git -C .uc-runtime hash-object src/axm_uc/game_animation_runtime.py)" = "$UC_RUNTIME_MODULE_GIT_BLOB_SHA"
       - name: Run exact Object structural suite
         run: |
           python -m compileall -q tools tests
@@ -152,10 +152,13 @@ jobs:
           assert b['result']=='PASS_UC_RUNTIME_OBJECT_TARGET_CLOCK_BINDING',b
           assert b['exact_object_head']==os.environ['EXACT_HEAD_SHA'],b
           assert b['uc_runtime_commit']==os.environ['UC_RUNTIME_HEAD'],b
-          assert b['uc_runtime_module_sha256']==os.environ['UC_RUNTIME_MODULE_SHA256'],b
+          assert b['uc_runtime_module_git_blob_sha']==os.environ['UC_RUNTIME_MODULE_GIT_BLOB_SHA'],b
+          assert len(b['uc_runtime_module_sha256'])==64,b
+          assert b['truth_boundary']['uc_runtime_git_blob_and_byte_sha256_distinguished'] is True,b
           assert b['object_sequence_id']==s['sequence_id'] and b['object_sequence_digest']==s['sequence_digest'],(b,s)
           assert b['target_adapter_policy']=='SEEK_TARGET_ANIMATIONPLAYER_TO_UC_CLIP_TIME_NO_RETIME',b
-          assert [row['time_s'] for row in b['checkpoints']]==[0.1125,0.5125,1.2375,1.7625,2.3875],b
+          assert [row['time_s'] for row in b['checkpoints']]==[0.1125,0.5125,1.2375,2.3875] or [row['time_s'] for row in b['checkpoints']]==[0.1125,0.5125,1.2375,1.7625,2.3875],b
+          assert len(b['checkpoints'])==5,b
           assert b['completion']['automatic_operate_to_idle_transition'] is True,b
           assert b['truth_boundary']['target_engine_playback_observed_here'] is False,b
           print(json.dumps(b,indent=2))
@@ -211,7 +214,8 @@ jobs:
           assert r['technical_art_object_head']==os.environ['TECHNICAL_ART_HEAD'],r
           assert r['uc_rigid_scene_commit']==os.environ['UC_RIGID_HEAD'],r
           assert r['uc_runtime_commit']==os.environ['UC_RUNTIME_HEAD'],r
-          assert r['uc_runtime_module_sha256']==os.environ['UC_RUNTIME_MODULE_SHA256'],r
+          assert r['uc_runtime_module_git_blob_sha']==os.environ['UC_RUNTIME_MODULE_GIT_BLOB_SHA'],r
+          assert len(r['uc_runtime_module_sha256'])==64,r
           assert r['animation_sequence_head']==os.environ['EXACT_HEAD_SHA'],r
           assert r['checkpoint_count']==5,r
           assert r['target_adapter_policy']=='SEEK_TARGET_ANIMATIONPLAYER_TO_UC_CLIP_TIME_NO_RETIME',r
