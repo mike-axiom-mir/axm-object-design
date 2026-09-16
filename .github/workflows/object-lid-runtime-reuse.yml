@@ -1,4 +1,4 @@
-name: Object lid sampled Runtime resource evidence
+name: Object lid/latch sampled Runtime resource evidence
 
 on:
   push:
@@ -7,14 +7,18 @@ on:
       - "runtime/**"
       - "runtime-proof/**"
       - "tools/verify_object_lid_runtime.py"
+      - "tools/verify_object_lid_latch_runtime.py"
       - "tests/test_object_lid_runtime.py"
+      - "tests/test_object_lid_latch_runtime.py"
       - ".github/workflows/object-lid-runtime-reuse.yml"
   pull_request:
     paths:
       - "runtime/**"
       - "runtime-proof/**"
       - "tools/verify_object_lid_runtime.py"
+      - "tools/verify_object_lid_latch_runtime.py"
       - "tests/test_object_lid_runtime.py"
+      - "tests/test_object_lid_latch_runtime.py"
       - ".github/workflows/object-lid-runtime-reuse.yml"
   workflow_dispatch:
 
@@ -23,8 +27,12 @@ permissions:
 
 env:
   MATERIALS_BASE_HEAD: c8b775d85f6007eab8d05fdb5e2ddc3e4ab871d4
-  ANIMATION_HEAD: 12a350fc38f67348f342cd0e53ed6b16383b789d
-  RIG_HEAD: 4b72c9918c5fc1e89bd18a0be24fb4afac6e7775
+  ANIMATION_HEAD: 13069d6b6180e5d9e07009f6a263375ca16ddb60
+  LID_RIG_HEAD: 4b72c9918c5fc1e89bd18a0be24fb4afac6e7775
+  LATCH_OWNERSHIP_HEAD: d3fa10a270faae7925811f44f03381fe5c5d0215
+  LATCH_OWNERSHIP_SHA256: 0702e4180f858d29c42ff8c38a61eaa16278d6848c8ce6f3ecfae172969ca8ae
+  LATCH_RIG_HEAD: 3b667ff5d30c46ec2fe7da7679518970f8610018
+  LATCH_RIG_PLAN_SHA256: 81c27ab7b73ed9a43cb3f554b56c3f4294b893712075e33d13f5b02e008455db
 
 jobs:
   tests:
@@ -44,7 +52,7 @@ jobs:
           python -m compileall -q tools tests
           python -m unittest discover -s tests -v
 
-  exact-lid-runtime-proof:
+  exact-lid-latch-runtime-proof:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -69,66 +77,120 @@ jobs:
             exit 1
           }
 
-      - name: Materialize exact current Animation clip, evidence builder, and Rig donor
+      - name: Materialize exact current Animation, lid Rigging, latch ownership and latch Rigging donors
         run: |
           set -euo pipefail
           git fetch --no-tags origin \
             studio/animation-object-lid-open-close-001 \
-            studio/rigging-object-lid-articulation-001
-          git cat-file -e "$ANIMATION_HEAD^{commit}"
-          git cat-file -e "$RIG_HEAD^{commit}"
-          mkdir -p lookdev-proof/generated runtime-proof/generated /tmp/axm-animation-runtime
-          git show "$ANIMATION_HEAD:assets/modular-equipment-case-001/lid-motion-clip.json" > lookdev-proof/generated/lid-motion-clip.json
-          git show "$ANIMATION_HEAD:tools/build_lid_motion_evidence.py" > /tmp/axm-animation-runtime/build_lid_motion_evidence.py
-          git show "$RIG_HEAD:assets/modular-equipment-case-001/articulation.json" > lookdev-proof/generated/articulation.json
-          printf '%s\n' "$ANIMATION_HEAD" > runtime-proof/generated/animation-donor-head.txt
-          printf '%s\n' "$RIG_HEAD" > runtime-proof/generated/rig-donor-head.txt
+            studio/rigging-object-lid-articulation-001 \
+            studio/hard-surface-front-latch-ownership-001 \
+            studio/rigging-front-latch-articulation-001
+          for head in "$ANIMATION_HEAD" "$LID_RIG_HEAD" "$LATCH_OWNERSHIP_HEAD" "$LATCH_RIG_HEAD"; do
+            git cat-file -e "$head^{commit}"
+          done
 
-      - name: Rebuild exact current Animation motion evidence
+          mkdir -p lookdev-proof/generated runtime-proof/generated /tmp/axm-animation-runtime /tmp/axm-latch-runtime /tmp/axm-latch-rig-evidence
+
+          git show "$ANIMATION_HEAD:assets/modular-equipment-case-001/lid-motion-clip.json" > lookdev-proof/generated/lid-motion-clip.json
+          git show "$ANIMATION_HEAD:assets/modular-equipment-case-001/lid-latch-motion-sequence-001.json" > /tmp/axm-animation-runtime/lid-latch-motion-sequence-001.json
+          git show "$ANIMATION_HEAD:tools/build_lid_motion_evidence.py" > /tmp/axm-animation-runtime/build_lid_motion_evidence.py
+          git show "$ANIMATION_HEAD:tools/build_lid_latch_motion_evidence.py" > /tmp/axm-animation-runtime/build_lid_latch_motion_evidence.py
+          git show "$LID_RIG_HEAD:assets/modular-equipment-case-001/articulation.json" > lookdev-proof/generated/articulation.json
+
+          git show "$LATCH_OWNERSHIP_HEAD:assets/modular-equipment-case-001/front-latch-ownership-001.json" > /tmp/axm-latch-runtime/front-latch-ownership-001.json
+          git show "$LATCH_OWNERSHIP_HEAD:tools/verify_front_latch_ownership.py" > /tmp/axm-latch-runtime/verify_front_latch_ownership.py
+          git show "$LATCH_RIG_HEAD:assets/modular-equipment-case-001/front-latch-articulation-001.json" > /tmp/axm-latch-runtime/front-latch-articulation-001.json
+          git show "$LATCH_RIG_HEAD:tools/verify_front_latch_articulation.py" > /tmp/axm-latch-runtime/verify_front_latch_articulation.py
+
+          echo "$LATCH_OWNERSHIP_SHA256  /tmp/axm-latch-runtime/front-latch-ownership-001.json" | sha256sum -c -
+          echo "$LATCH_RIG_PLAN_SHA256  /tmp/axm-latch-runtime/front-latch-articulation-001.json" | sha256sum -c -
+
+          printf '%s\n' "$ANIMATION_HEAD" > runtime-proof/generated/animation-donor-head.txt
+          printf '%s\n' "$LID_RIG_HEAD" > runtime-proof/generated/lid-rig-donor-head.txt
+          printf '%s\n' "$LATCH_OWNERSHIP_HEAD" > runtime-proof/generated/latch-ownership-donor-head.txt
+          printf '%s\n' "$LATCH_RIG_HEAD" > runtime-proof/generated/latch-rig-donor-head.txt
+
+      - name: Rebuild exact current base lid motion evidence
         run: |
           set -euo pipefail
-          python /tmp/axm-animation-runtime/build_lid_motion_evidence.py \
+          PYTHONPATH="$PWD/tools:/tmp/axm-animation-runtime" python /tmp/axm-animation-runtime/build_lid_motion_evidence.py \
             --source assets/modular-equipment-case-001/source.json \
             --rig lookdev-proof/generated/articulation.json \
             --clip lookdev-proof/generated/lid-motion-clip.json \
-            --out /tmp/axm-animation-runtime/evidence \
+            --out /tmp/axm-animation-runtime/lid-evidence \
             --exact-head "$ANIMATION_HEAD"
-          cp /tmp/axm-animation-runtime/evidence/lid-motion-evidence.json runtime-proof/generated/lid-motion-evidence.json
 
-      - name: Rebuild exact articulated receiving representation
+      - name: Rebuild exact latch Rigging prerequisite
+        run: |
+          set -euo pipefail
+          PYTHONPATH="$PWD/tools:/tmp/axm-latch-runtime" python /tmp/axm-latch-runtime/verify_front_latch_articulation.py \
+            --host assets/modular-equipment-case-001/source.json \
+            --ownership /tmp/axm-latch-runtime/front-latch-ownership-001.json \
+            --plan /tmp/axm-latch-runtime/front-latch-articulation-001.json \
+            --out /tmp/axm-latch-rig-evidence
+
+      - name: Rebuild exact current latch/lid Animation sequence evidence
+        run: |
+          set -euo pipefail
+          PYTHONPATH="$PWD/tools:/tmp/axm-animation-runtime" python /tmp/axm-animation-runtime/build_lid_latch_motion_evidence.py \
+            --source assets/modular-equipment-case-001/source.json \
+            --sequence /tmp/axm-animation-runtime/lid-latch-motion-sequence-001.json \
+            --motion-evidence /tmp/axm-animation-runtime/lid-evidence/lid-motion-evidence.json \
+            --ownership /tmp/axm-latch-runtime/front-latch-ownership-001.json \
+            --rig-receipt /tmp/axm-latch-rig-evidence/front-latch-articulation.receipt.json \
+            --rig-head "$LATCH_RIG_HEAD" \
+            --rig-plan-sha256 "$LATCH_RIG_PLAN_SHA256" \
+            --out /tmp/axm-animation-runtime/lid-latch-evidence \
+            --exact-head "$ANIMATION_HEAD"
+
+      - name: Rebuild exact articulated receiving representation and Runtime inputs
         run: |
           set -euo pipefail
           python tools/build_object_material_articulation_evidence.py
           cp lookdev-proof/generated/object_material_articulation_payload.json runtime-proof/generated/object_material_articulation_payload.json
-          cp runtime/object_lid_runtime_contract_001.json runtime-proof/generated/runtime_contract.json
+          cp /tmp/axm-animation-runtime/lid-latch-evidence/lid-latch-motion-evidence.json runtime-proof/generated/lid-latch-motion-evidence.json
+          cp /tmp/axm-latch-runtime/front-latch-ownership-001.json runtime-proof/generated/front-latch-ownership-001.json
+          cp /tmp/axm-latch-rig-evidence/front-latch-articulation.receipt.json runtime-proof/generated/front-latch-articulation.receipt.json
+          cp runtime/object_lid_latch_runtime_contract_001.json runtime-proof/generated/runtime_lid_latch_contract.json
 
       - name: Verify exact Runtime input identities
         run: |
           python - <<'PY'
           import json, os
           from pathlib import Path
-          root=Path('runtime-proof/generated')
-          c=json.loads((root/'runtime_contract.json').read_text())
-          m=json.loads((root/'lid-motion-evidence.json').read_text())
-          p=json.loads((root/'object_material_articulation_payload.json').read_text())
-          assert c['materials_receiving_base']['commit']==os.environ['MATERIALS_BASE_HEAD'],c
-          assert c['animation_dependency']['commit']==os.environ['ANIMATION_HEAD'],c
-          assert c['rig_dependency']['commit']==os.environ['RIG_HEAD'],c
-          assert m['result']=='PASS_BOUNDED_LID_MOTION_CLIP',m
-          assert m['exact_receiving_head']==os.environ['ANIMATION_HEAD'],m
-          assert m['endpoint_inclusive_sample_count']==81,m
-          assert m['repeated_visible_sample_count']==80,m
-          assert p['animation_clip_digest']==m['clip_digest'],(p,m)
-          assert p['observed_rig_plan_digest']==m['observed_rig_plan_digest'],(p,m)
-          assert p['hinge_origin_m']==m['hinge_origin_m'],(p,m)
-          assert c['required_display_sample_count']==80,c
-          assert c['truth_boundary']['materials_receiving_representation_not_exact_uc_glb'] is True,c
+          root = Path('runtime-proof/generated')
+          c = json.loads((root/'runtime_lid_latch_contract.json').read_text())
+          m = json.loads((root/'lid-latch-motion-evidence.json').read_text())
+          p = json.loads((root/'object_material_articulation_payload.json').read_text())
+          o = json.loads((root/'front-latch-ownership-001.json').read_text())
+          r = json.loads((root/'front-latch-articulation.receipt.json').read_text())
+          assert c['materials_receiving_base']['commit'] == os.environ['MATERIALS_BASE_HEAD'], c
+          assert c['animation_dependency']['commit'] == os.environ['ANIMATION_HEAD'], c
+          assert c['lid_rig_dependency']['commit'] == os.environ['LID_RIG_HEAD'], c
+          assert c['latch_ownership_dependency']['commit'] == os.environ['LATCH_OWNERSHIP_HEAD'], c
+          assert c['latch_rig_dependency']['commit'] == os.environ['LATCH_RIG_HEAD'], c
+          assert m['result'] == 'PASS_ORDERED_LATCH_RELEASE_LID_CLIP_REENGAGE_SEQUENCE', m
+          assert m['exact_receiving_head'] == os.environ['ANIMATION_HEAD'], m
+          assert m['endpoint_inclusive_sample_count'] == 101, m
+          assert m['repeated_visible_sample_count'] == 100, m
+          assert p['animation_clip_digest'] == m['base_lid_clip_digest'], (p, m)
+          assert p['observed_rig_plan_digest'] == c['lid_rig_dependency']['plan_digest'], (p, c)
+          assert o['host_source_sha256'] == m['host_source_sha256'], (o, m)
+          assert r['host_source_sha256'] == m['host_source_sha256'], (r, m)
+          assert r['articulation_plan_sha256'] == os.environ['LATCH_RIG_PLAN_SHA256'], r
+          assert r['ownership_contract_sha256'] == os.environ['LATCH_OWNERSHIP_SHA256'], r
+          assert c['required_moving_component_count'] == 7, c
+          assert c['truth_boundary']['materials_receiving_representation_not_exact_uc_glb'] is True, c
+          assert c['truth_boundary']['physical_latch_mechanism'] is False, c
           print(json.dumps({
-            'animation_head':m['exact_receiving_head'],
-            'clip_digest':m['clip_digest'],
-            'rig_plan_digest':m['observed_rig_plan_digest'],
-            'display_samples':m['repeated_visible_sample_count']
-          },indent=2))
+            'animation_head': m['exact_receiving_head'],
+            'sequence_id': m['sequence_id'],
+            'sequence_digest': m['sequence_digest'],
+            'sequence_geometry_digest': m['sequence_geometry_digest'],
+            'display_samples': m['repeated_visible_sample_count'],
+            'latch_rig_head': m['latch_rig_dependency_head'],
+            'ownership_head': m['ownership_dependency_head'],
+          }, indent=2))
           PY
 
       - name: Download pinned Godot 4.7.2
@@ -159,9 +221,9 @@ jobs:
             --display-driver x11 \
             --rendering-method gl_compatibility \
             --path runtime-proof \
-            --script lid_motion_budget_observe.gd -- rebuild_moving_parts_control
+            --script lid_latch_motion_budget_observe.gd -- rebuild_moving_parts_control
 
-      - name: Run stable moving-resource transform candidate
+      - name: Run stable heterogeneous moving-resource transform candidate
         run: |
           set -euo pipefail
           xvfb-run --auto-servernum --server-args="-screen 0 1000x760x24" \
@@ -169,49 +231,53 @@ jobs:
             --display-driver x11 \
             --rendering-method gl_compatibility \
             --path runtime-proof \
-            --script lid_motion_budget_observe.gd -- reuse_moving_parts_transform
+            --script lid_latch_motion_budget_observe.gd -- reuse_moving_parts_transform
 
       - name: Compare exact before and after evidence
         run: |
           set -euo pipefail
-          out=evidence/object_lid_runtime_001
+          out=evidence/object_lid_latch_runtime_001
           mkdir -p "$out/rendered"
-          cp runtime-proof/object-lid-runtime-rebuild_moving_parts_control.json "$out/control.json"
-          cp runtime-proof/object-lid-runtime-reuse_moving_parts_transform.json "$out/candidate.json"
-          cp runtime-proof/lid-runtime-*.png "$out/rendered/"
-          cp runtime-proof/generated/lid-motion-evidence.json "$out/"
+          cp runtime-proof/object-lid-latch-runtime-rebuild_moving_parts_control.json "$out/control.json"
+          cp runtime-proof/object-lid-latch-runtime-reuse_moving_parts_transform.json "$out/candidate.json"
+          cp runtime-proof/lid-latch-runtime-*.png "$out/rendered/"
+          cp runtime-proof/generated/lid-latch-motion-evidence.json "$out/"
           cp runtime-proof/generated/object_material_articulation_payload.json "$out/"
-          cp runtime-proof/generated/runtime_contract.json "$out/"
-          cp runtime-proof/generated/animation-donor-head.txt "$out/"
-          cp runtime-proof/generated/rig-donor-head.txt "$out/"
-          python tools/verify_object_lid_runtime.py \
+          cp runtime-proof/generated/front-latch-ownership-001.json "$out/"
+          cp runtime-proof/generated/front-latch-articulation.receipt.json "$out/"
+          cp runtime-proof/generated/runtime_lid_latch_contract.json "$out/"
+          cp runtime-proof/generated/*-donor-head.txt "$out/"
+          python tools/verify_object_lid_latch_runtime.py \
             --control "$out/control.json" \
             --candidate "$out/candidate.json" \
-            --contract runtime/object_lid_runtime_contract_001.json \
+            --contract runtime/object_lid_latch_runtime_contract_001.json \
             --runtime-head "$(cat exact-head.txt)" \
             --output "$out/comparison.json"
           cp exact-head.txt "$out/"
           python - <<'PY'
           import json
           from pathlib import Path
-          data=json.loads(Path('evidence/object_lid_runtime_001/comparison.json').read_text())
-          assert data['state']=='PASS_REUSE_RIGID_LID_TARGET_HOST_RESOURCES',data
-          assert all(data['checks'].values()),data
-          assert data['visual_tradeoff_for_art_director']=='NONE_OBSERVED_IN_EXACT_RETAINED_PROOF_FRAMES',data
-          assert data['measurements']['moving_node_constructions']['candidate'] < data['measurements']['moving_node_constructions']['control'],data
+          data = json.loads(Path('evidence/object_lid_latch_runtime_001/comparison.json').read_text())
+          assert data['state'] == 'PASS_REUSE_HETEROGENEOUS_LID_LATCH_TARGET_HOST_RESOURCES', data
+          assert all(data['checks'].values()), data
+          assert data['workload']['moving_component_count'] == 7, data
+          assert data['workload']['total_updates_per_mode'] == 2000, data
+          assert data['measurements']['moving_node_constructions']['control'] == 14000, data
+          assert data['measurements']['moving_node_constructions']['candidate'] == 7, data
+          assert data['visual_tradeoff_for_art_director'] == 'NONE_OBSERVED_IN_EXACT_RETAINED_PROOF_FRAMES', data
           print(json.dumps({
-            'state':data['state'],
-            'workload':data['workload'],
-            'measurements':data['measurements'],
-            'visual_tradeoff_for_art_director':data['visual_tradeoff_for_art_director']
-          },indent=2))
+            'state': data['state'],
+            'workload': data['workload'],
+            'measurements': data['measurements'],
+            'visual_tradeoff_for_art_director': data['visual_tradeoff_for_art_director'],
+          }, indent=2))
           PY
 
-      - name: Upload exact Object lid Runtime evidence
+      - name: Upload exact Object lid/latch Runtime evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: object-lid-runtime-001-${{ github.event.pull_request.head.sha || github.sha }}
-          path: evidence/object_lid_runtime_001
+          name: object-lid-latch-runtime-001-${{ github.event.pull_request.head.sha || github.sha }}
+          path: evidence/object_lid_latch_runtime_001
           if-no-files-found: warn
           retention-days: 30
