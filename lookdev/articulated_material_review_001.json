@@ -1,0 +1,38 @@
+{
+  "schema": "axm.object-articulated-material-review/v0.1",
+  "asset_id": "modular-equipment-case-001",
+  "material_profile": "lookdev/object_material_profile_001.json",
+  "animation_dependency": {
+    "repository": "mike-axiom-mir/axm-object-design",
+    "commit": "f89a3b3f1aa6f448c8a97c6d00d5e270e7d3bb00",
+    "path": "assets/modular-equipment-case-001/lid-motion-clip.json",
+    "clip_id": "lid-open-hold-close-001"
+  },
+  "rig_dependency": {
+    "repository": "mike-axiom-mir/axm-object-design",
+    "commit": "4b72c9918c5fc1e89bd18a0be24fb4afac6e7775",
+    "path": "assets/modular-equipment-case-001/articulation.json",
+    "joint_id": "rear-lid-hinge-001",
+    "plan_digest": "0ad6dc2ca22676cf301579932e599a441eb7c4bccce31991d1b727aeb22ac422"
+  },
+  "pose_samples": [
+    {"id": "closed", "time_s": 0.0, "expected_open_angle_deg": 0.0},
+    {"id": "mid_open", "time_s": 0.375, "expected_open_angle_deg": 50.0},
+    {"id": "peak_open", "time_s": 0.75, "expected_open_angle_deg": 100.0}
+  ],
+  "camera_contexts": ["three_quarter", "rear_hinge"],
+  "moving_component_roles": ["lid_shell", "hinge_knuckle_lid"],
+  "purpose": "challenge the existing Object scalar-PBR surface family across three exact static poses sampled from the source-owned lid animation candidate without taking animation/controller ownership",
+  "truth_boundary": {
+    "static_pose_material_review_only": true,
+    "same_geometry_and_material_family_across_poses": true,
+    "target_engine_animation_playback": false,
+    "wall_clock_timing": false,
+    "controller_or_gameplay_acceptance": false,
+    "full_component_articulation": false,
+    "uvs": false,
+    "textures": false,
+    "art_direction_acceptance": false,
+    "runtime_performance_acceptance": false
+  }
+}
