@@ -56,21 +56,33 @@ func override_mesh_materials(node: Node, cull_mode: int) -> Dictionary:
     var mesh_nodes := 0
     var surfaces := 0
     var triangles := 0
+    var override_modes := []
     if node is MeshInstance3D:
         var instance := node as MeshInstance3D
         if instance.mesh == null:
             return {"state": "FAIL_MISSING_MESH"}
         mesh_nodes += 1
+        var review_material := make_review_material(cull_mode)
+        # Geometry-level material_override has higher precedence than imported
+        # per-surface material bookkeeping, so this target observer tests culling
+        # rather than accidentally retaining the imported material state.
+        instance.material_override = review_material
+        if instance.material_override == null:
+            return {"state": "FAIL_MATERIAL_OVERRIDE_MISSING"}
+        override_modes.append(int((instance.material_override as BaseMaterial3D).cull_mode))
         for surface_index in range(instance.mesh.get_surface_count()):
             var arrays := instance.mesh.surface_get_arrays(surface_index)
-            var vertices := arrays[Mesh.ARRAY_VERTEX] as PackedVector3Array
-            var indices := arrays[Mesh.ARRAY_INDEX] as PackedInt32Array
+            var vertices: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+            var indices: PackedInt32Array = arrays[Mesh.ARRAY_INDEX]
             if vertices.is_empty():
                 return {"state": "FAIL_EMPTY_SURFACE"}
-            var triangle_count := indices.size() / 3 if not indices.is_empty() else vertices.size() / 3
+            var triangle_count: int
+            if indices.is_empty():
+                triangle_count = vertices.size() / 3
+            else:
+                triangle_count = indices.size() / 3
             triangles += triangle_count
             surfaces += 1
-            instance.set_surface_override_material(surface_index, make_review_material(cull_mode))
     for child in node.get_children():
         var child_result := override_mesh_materials(child, cull_mode)
         if String(child_result.get("state", "PASS")) != "PASS":
@@ -78,7 +90,8 @@ func override_mesh_materials(node: Node, cull_mode: int) -> Dictionary:
         mesh_nodes += int(child_result.get("mesh_nodes", 0))
         surfaces += int(child_result.get("surfaces", 0))
         triangles += int(child_result.get("triangles", 0))
-    return {"state": "PASS", "mesh_nodes": mesh_nodes, "surfaces": surfaces, "triangles": triangles}
+        override_modes.append_array(child_result.get("override_modes", []))
+    return {"state": "PASS", "mesh_nodes": mesh_nodes, "surfaces": surfaces, "triangles": triangles, "override_modes": override_modes}
 
 func configure_camera(camera: Camera3D, context: String) -> void:
     camera.near = 0.03
@@ -91,6 +104,16 @@ func configure_camera(camera: Camera3D, context: String) -> void:
     else:
         camera.look_at_from_position(Vector3(1.15, 0.78, -1.30), Vector3(0.0, 0.28, 0.0), Vector3.UP)
 
+func visible_pixels(image: Image) -> int:
+    var changed := 0
+    for y in range(image.get_height()):
+        for x in range(image.get_width()):
+            var p := image.get_pixel(x, y)
+            var delta := maxf(absf(p.r - BACKGROUND.r), maxf(absf(p.g - BACKGROUND.g), absf(p.b - BACKGROUND.b)))
+            if delta > (1.0 / 255.0):
+                changed += 1
+    return changed
+
 func capture(path: String, context: String, cull_mode: int, label: String) -> Dictionary:
     var imported := import_scene(path)
     if imported == null:
@@ -102,6 +125,14 @@ func capture(path: String, context: String, cull_mode: int, label: String) -> Di
     if int(mesh_stats.get("triangles", 0)) != 812:
         imported.queue_free()
         return {"state": "FAIL_TRIANGLE_COUNT", "triangles": mesh_stats.get("triangles", -1)}
+    var modes: Array = mesh_stats.get("override_modes", [])
+    if modes.size() != int(mesh_stats.get("mesh_nodes", 0)):
+        imported.queue_free()
+        return {"state": "FAIL_OVERRIDE_MODE_COUNT"}
+    for mode in modes:
+        if int(mode) != cull_mode:
+            imported.queue_free()
+            return {"state": "FAIL_OVERRIDE_MODE_DRIFT", "expected": cull_mode, "observed": mode}
 
     var viewport := SubViewport.new()
     viewport.size = Vector2i(820, 620)
@@ -135,6 +166,10 @@ func capture(path: String, context: String, cull_mode: int, label: String) -> Di
     if image == null or image.is_empty():
         viewport.queue_free()
         return {"state": "FAIL_CAPTURE"}
+    var visible := visible_pixels(image)
+    if visible < 1000:
+        viewport.queue_free()
+        return {"state": "FAIL_CAPTURE_INSUFFICIENT_OBJECT_COVERAGE", "visible_pixels": visible}
     var png_path := "res://front-face-%s-%s.png" % [context, label]
     if image.save_png(png_path) != OK:
         viewport.queue_free()
@@ -147,7 +182,9 @@ func capture(path: String, context: String, cull_mode: int, label: String) -> Di
         "png_bytes": FileAccess.get_file_as_bytes(png_path).size(),
         "mesh_nodes": mesh_stats["mesh_nodes"],
         "surfaces": mesh_stats["surfaces"],
-        "triangles": mesh_stats["triangles"]
+        "triangles": mesh_stats["triangles"],
+        "visible_pixels": visible,
+        "active_cull_mode": cull_mode
     }
     viewport.queue_free()
     for _i in range(2):
@@ -192,7 +229,9 @@ func strip_image(entry: Dictionary) -> Dictionary:
         "png_bytes": entry.get("png_bytes"),
         "mesh_nodes": entry.get("mesh_nodes"),
         "surfaces": entry.get("surfaces"),
-        "triangles": entry.get("triangles")
+        "triangles": entry.get("triangles"),
+        "visible_pixels": entry.get("visible_pixels"),
+        "active_cull_mode": entry.get("active_cull_mode")
     }
 
 func _initialize() -> void:
@@ -220,6 +259,7 @@ func _initialize() -> void:
             "rendering_method": "gl_compatibility",
             "adapter": RenderingServer.get_video_adapter_name()
         },
+        "material_override_scope": "GeometryInstance3D.material_override; highest-priority review-only unshaded culling observer",
         "source_transport_receipt_sha256": sha256_file(SOURCE_RECEIPT),
         "corrected_glb_sha256": sha256_file(CORRECTED_GLB),
         "unadapted_glb_sha256": sha256_file(UNADAPTED_GLB),
@@ -240,7 +280,7 @@ func _initialize() -> void:
         var unadapted_two := await capture(UNADAPTED_GLB, context, BaseMaterial3D.CULL_DISABLED, "unadapted-two-sided")
         for item in [corrected_back, corrected_two, unadapted_back, unadapted_two]:
             if String(item.get("state", "")) != "PASS":
-                fail("capture/import failed for %s" % context, receipt)
+                fail("capture/import failed for %s: %s" % [context, JSON.stringify(item)], receipt)
                 return
 
         var spatial := image_diff(corrected_two["image"], unadapted_two["image"])
