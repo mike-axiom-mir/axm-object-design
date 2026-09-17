@@ -81,9 +81,9 @@ class LidKeeperSocketBindingTests(unittest.TestCase):
             self.run_verify(ownership=bad)
 
     def test_one_millimeter_socket_offset_drift_fails_closed(self):
-        # Exact neutral source offset for latch_0_keeper is [-0.22, -0.251, -0.049].
+        # Exact neutral lid-local center offset is [-0.22, -0.251, -0.061] m.
         # A +1 mm X mutation must not be silently accepted as the same socket.
-        override = {"latch_0_keeper": [-0.219, -0.251, -0.049]}
+        override = {"latch_0_keeper": [-0.219, -0.251, -0.061]}
         with self.assertRaisesRegex(AssertionError, "keeper local socket offset drift"):
             self.run_verify(override=override)
 
