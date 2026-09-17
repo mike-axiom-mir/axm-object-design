@@ -1,0 +1,187 @@
+name: Object material rigid-shell winding lookdev
+
+on:
+  push:
+    branches: [studio/materials-object-functional-surface-001]
+    paths:
+      - "lookdev/object_rigid_shell_winding_lookdev_001.json"
+      - "tools/verify_object_rigid_shell_winding_lookdev.py"
+      - "lookdev-proof/rigid_shell_winding_observe.gd"
+      - ".github/workflows/object-material-rigid-shell-winding-lookdev.yml"
+      - "lookdev/object_material_profile_001.json"
+      - "assets/modular-equipment-case-001/source.json"
+      - "tools/build_modular_case.py"
+  pull_request:
+    paths:
+      - "lookdev/object_rigid_shell_winding_lookdev_001.json"
+      - "tools/verify_object_rigid_shell_winding_lookdev.py"
+      - "lookdev-proof/rigid_shell_winding_observe.gd"
+      - ".github/workflows/object-material-rigid-shell-winding-lookdev.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  rigid-shell-winding-lookdev:
+    runs-on: ubuntu-latest
+    timeout-minutes: 28
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ['3.11', '3.13']
+    steps:
+      - name: Checkout exact Materials head
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Record exact Materials head
+        run: |
+          set -euo pipefail
+          mkdir -p lookdev-proof/generated
+          git rev-parse HEAD > lookdev-proof/generated/rigid-shell-winding-materials-exact-head.txt
+          test "$(cat lookdev-proof/generated/rigid-shell-winding-materials-exact-head.txt)" = "${{ github.event.pull_request.head.sha || github.sha }}"
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Compile and run complete Object suite
+        run: |
+          python -m compileall -q tools tests
+          python -m unittest discover -s tests -v
+
+      - name: Materialize exact Geometry owner candidate
+        env:
+          GEOMETRY_HEAD: 606d8189a3bf4502141d8038f08d35d421829dde
+        run: |
+          set -euo pipefail
+          git fetch --no-tags origin "$GEOMETRY_HEAD" --depth=1
+          git cat-file -e "$GEOMETRY_HEAD^{commit}"
+          rm -rf /tmp/object-geometry-owner
+          git worktree add --detach /tmp/object-geometry-owner "$GEOMETRY_HEAD"
+          (
+            cd /tmp/object-geometry-owner
+            PYTHONPATH=. python tools/verify_rigid_shell_orientation.py \
+              --receipt "$GITHUB_WORKSPACE/lookdev-proof/generated/object-geometry-orientation-receipt.json" \
+              --obj "$GITHUB_WORKSPACE/lookdev-proof/generated/object-geometry-orientation-candidate.obj"
+          )
+          printf '%s\n' "$GEOMETRY_HEAD" > lookdev-proof/generated/rigid-shell-winding-geometry-exact-head.txt
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          r=json.loads(Path('lookdev-proof/generated/object-geometry-orientation-receipt.json').read_text())
+          assert r['result']=='PASS_DERIVED_RIGID_SHELL_OUTWARD_ORIENTATION_CANDIDATE',r
+          assert r['source_vertices']==468 and r['source_triangles']==812 and r['source_rigid_groups']==31,r
+          assert r['source_orientation_conflict_edges']==304,r
+          assert r['candidate_orientation_conflict_edges']==0,r
+          assert r['candidate_flipped_faces']==508,r
+          assert r['source_adopted'] is False,r
+          print(json.dumps(r,indent=2))
+          PY
+
+      - name: Build exact Materials receiving payload
+        run: |
+          python tools/verify_object_rigid_shell_winding_lookdev.py \
+            --exact-head "$(git rev-parse HEAD)"
+
+      - name: Negative control rejects Geometry triangle-membership drift
+        run: |
+          set -euo pipefail
+          cp lookdev-proof/generated/object-geometry-orientation-candidate.obj /tmp/bad-orientation-candidate.obj
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('/tmp/bad-orientation-candidate.obj')
+          lines=p.read_text().splitlines()
+          for i,line in enumerate(lines):
+              if line.startswith('f '):
+                  parts=line.split()
+                  a=int(parts[1]); b=int(parts[2]); c=int(parts[3])
+                  replacement=1 if 1 not in (a,b,c) else 2 if 2 not in (a,b,c) else 3
+                  parts[3]=str(replacement)
+                  lines[i]=' '.join(parts)
+                  break
+          p.write_text('\n'.join(lines)+'\n')
+          PY
+          set +e
+          output="$(python tools/verify_object_rigid_shell_winding_lookdev.py \
+            --candidate-obj /tmp/bad-orientation-candidate.obj \
+            --exact-head "$(git rev-parse HEAD)" 2>&1)"
+          status=$?
+          set -e
+          test "$status" -ne 0
+          printf '%s\n' "$output" | grep -q "changed triangle membership"
+          printf '%s\n' "triangle-membership negative rejected as expected"
+
+      - name: Download pinned Godot 4.7.2
+        if: matrix.python-version == '3.11'
+        env:
+          GODOT_URL: https://github.com/godotengine/godot-builds/releases/download/4.7.2-stable/Godot_v4.7.2-stable_linux.x86_64.zip
+          GODOT_SHA256: cadd3204e728a35d3f13adb7fd0d7902636b79f6b95c40c265eb73b6c35329e4
+        run: |
+          set -euo pipefail
+          mkdir -p .godot-bin
+          curl --fail --location --retry 3 --retry-delay 2 "$GODOT_URL" --output .godot-bin/godot.zip
+          echo "$GODOT_SHA256  .godot-bin/godot.zip" | sha256sum --check --strict
+          unzip -q .godot-bin/godot.zip -d .godot-bin
+          chmod +x .godot-bin/Godot_v4.7.2-stable_linux.x86_64
+          .godot-bin/Godot_v4.7.2-stable_linux.x86_64 --version
+
+      - name: Install virtual display when needed
+        if: matrix.python-version == '3.11'
+        run: |
+          if ! command -v xvfb-run >/dev/null 2>&1; then
+            sudo apt-get update
+            sudo apt-get install -y xvfb
+          fi
+
+      - name: Render owner-order versus host-reversed winding
+        if: matrix.python-version == '3.11'
+        run: |
+          set -euo pipefail
+          rm -f \
+            lookdev-proof/rigid-shell-winding-lookdev-runtime-receipt.json \
+            lookdev-proof/rigid-shell-winding-*.png
+          xvfb-run --auto-servernum --server-args="-screen 0 1000x760x24" \
+            .godot-bin/Godot_v4.7.2-stable_linux.x86_64 \
+            --display-driver x11 \
+            --rendering-method gl_compatibility \
+            --path lookdev-proof \
+            --script rigid_shell_winding_observe.gd
+
+      - name: Validate bounded target-host winding evidence
+        if: matrix.python-version == '3.11'
+        run: |
+          python tools/verify_object_rigid_shell_winding_lookdev.py \
+            --runtime-receipt lookdev-proof/rigid-shell-winding-lookdev-runtime-receipt.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          r=json.loads(Path('lookdev-proof/rigid-shell-winding-lookdev-runtime-receipt.json').read_text())
+          assert r['state']=='PASS_EVIDENCE',r
+          assert r['two_sided_byte_identity_all_contexts'] is True,r
+          assert r['aggregate_owner_vs_host_reversed_back_gt1'] > 0,r
+          print(json.dumps(r,indent=2))
+          PY
+
+      - name: Retain exact rigid-shell winding lookdev evidence
+        if: matrix.python-version == '3.11' && always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: object-material-rigid-shell-winding-${{ github.event.pull_request.head.sha || github.sha }}
+          path: |
+            lookdev/object_rigid_shell_winding_lookdev_001.json
+            tools/verify_object_rigid_shell_winding_lookdev.py
+            lookdev-proof/rigid_shell_winding_observe.gd
+            lookdev-proof/generated/rigid-shell-winding-materials-exact-head.txt
+            lookdev-proof/generated/rigid-shell-winding-geometry-exact-head.txt
+            lookdev-proof/generated/object-geometry-orientation-receipt.json
+            lookdev-proof/generated/object-geometry-orientation-candidate.obj
+            lookdev-proof/generated/object_rigid_shell_winding_lookdev_payload.json
+            lookdev-proof/generated/object_rigid_shell_winding_lookdev_build_receipt.json
+            lookdev-proof/rigid-shell-winding-lookdev-runtime-receipt.json
+            lookdev-proof/rigid-shell-winding-*.png
+          if-no-files-found: warn
+          retention-days: 30
