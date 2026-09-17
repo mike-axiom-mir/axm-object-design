@@ -1,0 +1,70 @@
+{
+  "schema": "axm.object-service-dark-atlas-pack-review/v0.1",
+  "asset_id": "modular-equipment-case-001",
+  "intent": "convert the Art-preferred 0.05 m/UV service_dark review family into one bounded two-surface texture-atlas candidate with exact pixels-per-meter, packing and edge dilation evidence without source UV/material adoption or final texture approval",
+  "upstream": {
+    "materials_family_path": "lookdev/service_dark_uv_density_family_001.json",
+    "materials_family_schema": "axm.object-service-dark-uv-density-family-review/v0.1",
+    "art_direction_coordination_commit": "668fd707a364400bb850073a5d8decde7a0e1cb7",
+    "art_direction_decision": "PASS_ART_DIRECTION_OBJECT_SERVICE_DARK_0P05_M_PER_UV_REVIEW_SCALE_PREFERENCE_022"
+  },
+  "atlas": {
+    "width_px": 512,
+    "height_px": 512,
+    "pixels_per_meter": 500,
+    "meters_per_pixel": 0.002,
+    "review_uv_unit_m": 0.05,
+    "texels_per_review_uv_unit": 25,
+    "padding_px": 16,
+    "filtering": "LINEAR_MIPMAP_ANISOTROPIC",
+    "repeat": false
+  },
+  "surfaces": [
+    {
+      "surface_id": "lid_inner_service_surface",
+      "component_name": "lid_shell",
+      "semantic": "interior_service_surface",
+      "basis": "SOURCE_LOCAL_X_TO_U__SOURCE_LOCAL_Y_TO_V",
+      "physical_size_m": [0.78, 0.48],
+      "pixel_size": [390, 240],
+      "rect_px": [16, 16, 390, 240]
+    },
+    {
+      "surface_id": "front_service_panel_outer_service_surface",
+      "component_name": "front_service_panel",
+      "semantic": "exterior_service_surface",
+      "basis": "SOURCE_LOCAL_X_TO_U__SOURCE_LOCAL_Z_TO_V",
+      "physical_size_m": [0.468, 0.156],
+      "pixel_size": [234, 78],
+      "rect_px": [16, 288, 234, 78]
+    }
+  ],
+  "diagnostic_texture": {
+    "kind": "SELF_GENERATED_SERVICE_DARK_MANUFACTURED_COATING_CALIBRATION",
+    "content": "subtle deterministic brushed-value variation plus sparse bounded specks at exact atlas texel scale",
+    "external_assets": [],
+    "production_art": false
+  },
+  "negative_control": {
+    "id": "NO_EDGE_DILATION_WITH_HIGH_CONTRAST_OUTSIDE_ISLANDS",
+    "purpose": "prove the real target-host observer can see atlas-edge contamination under filtering/mipmapping when padding dilation is omitted"
+  },
+  "truth_boundary": {
+    "source_geometry_changed": false,
+    "source_surface_identities_changed": false,
+    "source_material_slots_authored": false,
+    "source_uv_authored": false,
+    "production_uv_adopted": false,
+    "material_scalars_changed": false,
+    "diagnostic_texture_generated": true,
+    "production_texture_authored": false,
+    "final_pixels_per_meter_accepted": false,
+    "final_atlas_pack_accepted": false,
+    "target_import_transport_accepted": false,
+    "runtime_cost_accepted": false,
+    "art_direction_final_accepted": false,
+    "visual_qa_final_accepted": false,
+    "canon": false,
+    "production_ready": false
+  }
+}
