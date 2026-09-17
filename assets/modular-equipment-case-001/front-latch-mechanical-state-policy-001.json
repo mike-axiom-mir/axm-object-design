@@ -1,0 +1,82 @@
+{
+  "schema": "axm.object-front-latch-mechanical-state-policy/v0.1",
+  "policy_id": "front-latch-mechanical-state-guard-001",
+  "asset_id": "modular-equipment-case-001",
+  "source_interface_dependency": {
+    "interface_id": "front-latch-pivot-interface-001",
+    "exact_head": "6086f39a3da344c57a68653f90d040e03e04cec2",
+    "file_sha256": "bcbbe098371eb702bc9289a97370744093105925202eda6036bdced6e25e34d3"
+  },
+  "animation_observation_dependency": {
+    "exact_head": "9725eb2ddde3b79c73bfdbbaef7c0e14da6af1a7",
+    "contract_id": "lid-latch-continuous-moving-phase-guard-001",
+    "file_sha256": "cfc75666bc15eb94301a0dd03743265b37595aab4cd5aebae2c3aed617f80fb0",
+    "required_rigging_head": "44e0a56872a823cf768c749672116fd026b1ef5e",
+    "required_rigging_artifact_id": 10483747546,
+    "required_rigging_artifact_sha256": "2785d67b29325a4041f5761033b56d07b93aa30ca9645db05434d432892b4a9e",
+    "role": "evidence donor only; Hard Surface owns mechanical admissibility, Animation retains timing/key/style authority, Rigging retains continuous-clearance mathematics"
+  },
+  "mechanical_states": [
+    {
+      "id": "engaged_neutral",
+      "lid_open_angle_deg": 0.0,
+      "latch_lever_angle_deg": 0.0,
+      "lid_motion_allowed": false,
+      "contact_semantic": "INTENTIONAL_ENGAGEMENT_OVERLAP"
+    },
+    {
+      "id": "released_neutral",
+      "lid_open_angle_deg": 0.0,
+      "latch_lever_angle_deg": 50.0,
+      "lid_motion_allowed": true,
+      "contact_semantic": "SOURCE_REVIEW_RELEASE_ENDPOINT_SEPARATED"
+    },
+    {
+      "id": "released_lid_motion",
+      "lid_open_interval_deg": [
+        0.0,
+        100.0
+      ],
+      "latch_lever_angle_deg": 50.0,
+      "lid_motion_allowed": true,
+      "continuous_clearance_dependency_required": true,
+      "contact_semantic": "CLEARANCE_REQUIRED_DURING_LID_MOTION"
+    },
+    {
+      "id": "reengagement_neutral",
+      "lid_open_angle_deg": 0.0,
+      "latch_transition_deg": [
+        50.0,
+        0.0
+      ],
+      "lid_motion_allowed": false,
+      "continuous_clearance_claimed": false,
+      "contact_semantic": "INTENTIONAL_RETURN_TO_ENGAGEMENT"
+    }
+  ],
+  "allowed_transition_order": [
+    "engaged_neutral",
+    "released_neutral",
+    "released_lid_motion",
+    "released_neutral",
+    "reengagement_neutral",
+    "engaged_neutral"
+  ],
+  "source_rules": {
+    "lid_departure_requires_latch_angle_deg": 50.0,
+    "latch_may_enter_below_release_angle_only_when_lid_open_angle_deg": 0.0,
+    "neutral_engagement_overlap_is_not_a_collision_defect": true,
+    "continuous_release_clearance_claimed": false,
+    "continuous_reengagement_clearance_claimed": false,
+    "animation_timing_owned": false,
+    "runtime_controller_owned": false,
+    "physics_engine_accepted": false
+  },
+  "failure_policy": "FAIL_CLOSED_ON_INTERFACE_DRIFT_ANIMATION_GUARD_DRIFT_RIGGING_IDENTITY_DRIFT_UNRELEASED_LID_MOTION_FALSE_CLEARANCE_PROMOTION_OR_ENGAGEMENT_SEMANTIC_LOSS",
+  "truth_boundary": "PASS means only that Object source ownership now declares the admissible latch/lid mechanical states already supported by the exact source interface plus exact downstream Rigging/Animation evidence: intentional engaged overlap at neutral; exact 50 degree released state before lid motion; lid motion only while held released; return to neutral before reengagement. It does not own animation timing, controller logic, physics-engine behavior, continuous clearance during release/reengagement, physical capture/retention, manufacturing, gameplay, visual acceptance, CANON or production readiness.",
+  "provenance": {
+    "method": "source-owner promotion of already-proven downstream mechanical phase constraints without changing geometry or motion authorship",
+    "external_assets": [],
+    "external_geometry": false
+  }
+}
