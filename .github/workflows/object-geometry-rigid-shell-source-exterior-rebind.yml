@@ -1,0 +1,120 @@
+name: Object Geometry rigid-shell source-exterior rebind evidence
+
+on:
+  pull_request:
+    paths:
+      - "assets/modular-equipment-case-001/source.json"
+      - "assets/modular-equipment-case-001/rigid-shell-orientation-review-001.json"
+      - "assets/modular-equipment-case-001/rigid-shell-source-exterior-rebind-001.json"
+      - "tools/build_modular_case.py"
+      - "tools/verify_rigid_shell_orientation.py"
+      - "tools/verify_rigid_shell_source_exterior_rebind.py"
+      - "tests/test_rigid_shell_orientation.py"
+      - "tests/test_rigid_shell_source_exterior_rebind.py"
+      - ".github/workflows/object-geometry-rigid-shell-source-exterior-rebind.yml"
+  workflow_dispatch:
+
+jobs:
+  geometry-source-exterior-rebind:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.13"]
+    steps:
+      - name: Checkout exact Geometry candidate
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Compile structural tools and tests
+        run: python -m compileall -q tools tests
+
+      - name: Run complete Object regression suite
+        env:
+          PYTHONPATH: .
+        run: python -m unittest discover -s tests -p "test_*.py"
+
+      - name: Bind exact Hard-Surface exterior-intent donor
+        env:
+          HARD_SURFACE_HEAD: 77a4058b305fab7fd04dab94781b9460f089727e
+        run: |
+          git fetch --no-tags origin refs/pull/34/head:refs/remotes/origin/hard-surface-34
+          test "$(git rev-parse refs/remotes/origin/hard-surface-34)" = "$HARD_SURFACE_HEAD"
+          rm -rf /tmp/axm-object-hard-surface-34
+          git worktree add --detach /tmp/axm-object-hard-surface-34 "$HARD_SURFACE_HEAD"
+          test "$(git -C /tmp/axm-object-hard-surface-34 rev-parse HEAD)" = "$HARD_SURFACE_HEAD"
+
+      - name: Rebuild historical Geometry candidate and exact Hard-Surface source-exterior receipt
+        if: matrix.python-version == '3.11'
+        env:
+          PYTHONPATH: .
+          HISTORICAL_GEOMETRY_HEAD: 606d8189a3bf4502141d8038f08d35d421829dde
+        run: |
+          rm -rf geometry-source-exterior-evidence
+          mkdir -p geometry-source-exterior-evidence
+          python tools/verify_rigid_shell_orientation.py \
+            --receipt geometry-source-exterior-evidence/historical-geometry-receipt.json \
+            --obj geometry-source-exterior-evidence/modular-equipment-case-001-rigid-shell-orientation-candidate.obj
+          (
+            cd /tmp/axm-object-hard-surface-34
+            PYTHONPATH=. python tools/verify_rigid_shell_exterior_intent.py \
+              --geometry-candidate-obj "$GITHUB_WORKSPACE/geometry-source-exterior-evidence/modular-equipment-case-001-rigid-shell-orientation-candidate.obj" \
+              --geometry-head "$HISTORICAL_GEOMETRY_HEAD" \
+              --receipt "$GITHUB_WORKSPACE/geometry-source-exterior-evidence/hard-surface-exterior-intent-receipt.json"
+          )
+
+      - name: Build exact Geometry source-exterior semantic rebind receipt
+        if: matrix.python-version == '3.11'
+        env:
+          PYTHONPATH: .
+        run: |
+          python tools/verify_rigid_shell_source_exterior_rebind.py \
+            --hard-surface-receipt geometry-source-exterior-evidence/hard-surface-exterior-intent-receipt.json \
+            --receipt geometry-source-exterior-evidence/geometry-source-exterior-rebind-receipt.json
+          cp assets/modular-equipment-case-001/source.json geometry-source-exterior-evidence/source.json
+          cp assets/modular-equipment-case-001/rigid-shell-orientation-review-001.json geometry-source-exterior-evidence/historical-geometry-policy.json
+          cp assets/modular-equipment-case-001/rigid-shell-source-exterior-rebind-001.json geometry-source-exterior-evidence/source-exterior-rebind-policy.json
+          cp /tmp/axm-object-hard-surface-34/assets/modular-equipment-case-001/rigid-shell-exterior-intent-001.json geometry-source-exterior-evidence/hard-surface-exterior-intent-contract.json
+          printf '%s\n' "${{ github.event.pull_request.head.sha || github.sha }}" > geometry-source-exterior-evidence/exact-geometry-head.txt
+          printf '%s\n' "77a4058b305fab7fd04dab94781b9460f089727e" > geometry-source-exterior-evidence/exact-hard-surface-head.txt
+          python - <<'PY'
+          import hashlib
+          import json
+          from pathlib import Path
+
+          receipt = json.loads(Path('geometry-source-exterior-evidence/geometry-source-exterior-rebind-receipt.json').read_text())
+          assert receipt['result'] == 'PASS_DERIVED_RIGID_SHELL_SOURCE_EXTERIOR_COHERENT_ORIENTATION_CANDIDATE'
+          assert receipt['historical_geometry_candidate_exact_head'] == '606d8189a3bf4502141d8038f08d35d421829dde'
+          assert receipt['hard_surface_exterior_intent_exact_head'] == '77a4058b305fab7fd04dab94781b9460f089727e'
+          assert receipt['candidate_faces_matching_source_exterior_intent'] == 812
+          assert receipt['candidate_face_mismatches'] == 0
+          assert receipt['candidate_face_order_digest'] == '3a28b04f065cd58a21a310588ab4cecce54878c67b41793439d358c837647d63'
+          assert receipt['candidate_source_exterior_coherent'] is True
+          assert receipt['positive_signed_volume_defines_outward'] is False
+          assert receipt['source_geometry_changed'] is False
+          assert receipt['candidate_geometry_changed'] is False
+          assert receipt['source_adopted'] is False
+          assert receipt['technical_art_transport_adopted'] is False
+          assert receipt['renderer_front_face_selected'] is False
+          assert receipt['runtime_adopted'] is False
+          assert receipt['gameplay_collision_adopted'] is False
+
+          contract = Path('geometry-source-exterior-evidence/hard-surface-exterior-intent-contract.json')
+          data = contract.read_bytes()
+          blob = hashlib.sha1(f'blob {len(data)}\0'.encode() + data).hexdigest()
+          assert blob == 'a9f3c40868f7d77c524738155178af51c91b947e'
+          PY
+
+      - name: Upload retained Geometry source-exterior evidence
+        if: matrix.python-version == '3.11'
+        uses: actions/upload-artifact@v4
+        with:
+          name: object-geometry-rigid-shell-source-exterior-${{ github.event.pull_request.head.sha || github.sha }}
+          path: geometry-source-exterior-evidence
+          retention-days: 30
