@@ -1,0 +1,65 @@
+{
+  "schema": "axm.object-material-rigid-shell-winding-lookdev/v0.1",
+  "review_id": "modular-equipment-case-001-rigid-shell-winding-lookdev-001",
+  "asset_id": "modular-equipment-case-001",
+  "source_path": "assets/modular-equipment-case-001/source.json",
+  "source_sha256": "49b1f9ed9865893d6de6f1ec8f069576732df694853fde4e3fcff366de32644a",
+  "material_profile_path": "lookdev/object_material_profile_001.json",
+  "material_profile_sha256": "dc200229d6c25fa84063aa51f66103abc022efa54b2167e4432a5b47fc40360c",
+  "geometry_owner": {
+    "repository": "mike-axiom-mir/axm-object-design",
+    "pull_request": 33,
+    "exact_head": "606d8189a3bf4502141d8038f08d35d421829dde",
+    "expected_result": "PASS_DERIVED_RIGID_SHELL_OUTWARD_ORIENTATION_CANDIDATE",
+    "expected_vertices": 468,
+    "expected_triangles": 812,
+    "expected_rigid_groups": 31,
+    "expected_source_orientation_conflict_edges": 304,
+    "expected_candidate_orientation_conflict_edges": 0,
+    "expected_candidate_flipped_faces": 508,
+    "source_adopted": false
+  },
+  "receiver": {
+    "engine": "Godot",
+    "version": "4.7.2-stable",
+    "rendering_method": "gl_compatibility",
+    "source_to_host_position_map": "[x,y,z] -> [x,z,-y]",
+    "source_to_host_transform_determinant": 1,
+    "camera_contexts": [
+      "front_service",
+      "three_quarter",
+      "rear_hinge"
+    ]
+  },
+  "comparison": {
+    "owner_order": "exact Geometry outward-orientation candidate face order",
+    "host_reversed_order": "same exact Geometry candidate with only each triangle index order reversed for target-host front-face review",
+    "normal_policy": "one flat owner normal is derived from the Geometry candidate source-space winding and preserved unchanged in both index-order variants",
+    "material_policy": "use the existing self-authored Object candidate scalar-PBR role family unchanged",
+    "cull_modes": [
+      "back",
+      "disabled"
+    ]
+  },
+  "provenance": {
+    "external_textures": [],
+    "external_material_assets": [],
+    "geometry_candidate_generated_only_by_exact_geometry_owner_tool": true,
+    "materials_branch_reimplements_geometry_orientation_algorithm": false
+  },
+  "truth_boundary": {
+    "source_geometry_changed": false,
+    "source_geometry_adopted": false,
+    "geometry_candidate_adopted": false,
+    "host_winding_adapter_adopted": false,
+    "material_scalars_changed": false,
+    "uvs_changed": false,
+    "textures_changed": false,
+    "technical_art_transport_adopted": false,
+    "runtime_acceptance": false,
+    "art_direction_acceptance": false,
+    "visual_qa_acceptance": false,
+    "canon": false,
+    "production_ready": false
+  }
+}
