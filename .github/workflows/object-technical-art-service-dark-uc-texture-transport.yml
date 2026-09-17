@@ -5,6 +5,7 @@ on:
     branches: [studio/technical-art-service-dark-uc-texture-transport-001]
     paths:
       - "tools/build_object_service_dark_uc_texture_transport.py"
+      - "tools/prove_object_service_dark_uc_godot_front_views.py"
       - ".github/workflows/object-technical-art-service-dark-uc-texture-transport.yml"
       - "lookdev/**"
       - "lookdev-proof/**"
@@ -17,6 +18,7 @@ on:
   pull_request:
     paths:
       - "tools/build_object_service_dark_uc_texture_transport.py"
+      - "tools/prove_object_service_dark_uc_godot_front_views.py"
       - ".github/workflows/object-technical-art-service-dark-uc-texture-transport.yml"
   workflow_dispatch:
 
@@ -138,33 +140,40 @@ jobs:
             --path lookdev-proof \
             --script service_dark_atlas_pack_observe.gd
 
-      - name: Prove Materials atlas through current UC native textured GLB and real Godot target
+      - name: Prove Materials atlas through current UC native textured GLB
         run: |
           set -euo pipefail
-          set +e
-          xvfb-run --auto-servernum --server-args="-screen 0 1000x760x24" \
-            env AXM_GODOT="$GITHUB_WORKSPACE/.godot-bin/Godot_v4.7.2-stable_linux.x86_64" \
-            PYTHONPATH="$GITHUB_WORKSPACE/_donor/axm-universal-creation/src" \
+          PYTHONPATH="$GITHUB_WORKSPACE/_donor/axm-universal-creation/src" \
             python tools/build_object_service_dark_uc_texture_transport.py \
               --uc-root _donor/axm-universal-creation \
               --expected-materials-head 4c12a0a57f6aa8778cff41efad321e13567c6c91 \
               --expected-uc-head 6ad6ad51e6f40a3dc1d0cccd3af7f7c7ab28fb33 \
               --out creations/technical-art-proof/generated \
-              --run-godot \
               > technical-art-proof/proof.log 2>&1
-          code=$?
-          set -e
           cat technical-art-proof/proof.log
-          exit "$code"
 
-      - name: Validate exact Technical Art transport receipt
+      - name: Prove real Godot target from source-front evidence views
+        run: |
+          set -euo pipefail
+          xvfb-run --auto-servernum --server-args="-screen 0 1000x760x24" \
+            env AXM_GODOT="$GITHUB_WORKSPACE/.godot-bin/Godot_v4.7.2-stable_linux.x86_64" \
+            PYTHONPATH="$GITHUB_WORKSPACE/_donor/axm-universal-creation/src" \
+            python tools/prove_object_service_dark_uc_godot_front_views.py \
+              --uc-root _donor/axm-universal-creation \
+              --expected-uc-head 6ad6ad51e6f40a3dc1d0cccd3af7f7c7ab28fb33 \
+              --transport-dir creations/technical-art-proof/generated \
+              --out creations/technical-art-proof/godot-front-view-proof \
+              > technical-art-proof/godot-front-view.log 2>&1
+          cat technical-art-proof/godot-front-view.log
+
+      - name: Validate exact Technical Art transport receipts
         run: |
           python - <<'PY'
           import json
           from pathlib import Path
           root=Path("creations/technical-art-proof/generated")
           r=json.loads((root/"technical-art-uc-texture-transport-receipt.json").read_text())
-          assert r["result"]=="PASS_OBJECT_SERVICE_DARK_EXACT_ATLAS_RGB_TO_CURRENT_UC_TEXTURED_GLB_TO_GODOT",r
+          assert r["result"]=="PASS_OBJECT_SERVICE_DARK_EXACT_ATLAS_RGB_TO_CURRENT_UC_TEXTURED_GLB",r
           assert r["technical_art_head"]==Path("technical-art-proof/technical-art-head.txt").read_text().strip(),r
           assert r["materials_authority_head"]=="4c12a0a57f6aa8778cff41efad321e13567c6c91",r
           assert r["uc_head"]=="6ad6ad51e6f40a3dc1d0cccd3af7f7c7ab28fb33",r
@@ -173,14 +182,28 @@ jobs:
           assert r["rgb_adapter"]["max_rgb_channel_delta"]==0,r
           assert r["rgb_adapter"]["source_alpha_min"]==255 and r["rgb_adapter"]["source_alpha_max"]==255,r
           assert r["uc_quality_status"]=="PASS" and r["uc_uv_status"]=="MEASURED",r
-          assert r["godot_target_status"]=="PASS" and r["godot_target_observation_status"]=="PASS",r
+          assert r["godot_target_status"] is None and r["godot_target_observation_status"] is None,r
           assert set(r["measured_center_sample_texels_per_m"])=={
               "lid_inner_service_surface","front_service_panel_outer_service_surface"},r
           assert min(r["measured_center_sample_texels_per_m"].values())>480.0,r
           assert r["truth_boundary"]["production_uv_adopted"] is False,r
           assert r["truth_boundary"]["production_texture_authored"] is False,r
           assert r["truth_boundary"]["neutral_companion_maps_are_transport_shims"] is True,r
-          print(json.dumps(r,indent=2))
+
+          target=Path("creations/technical-art-proof/godot-front-view-proof")
+          g=json.loads((target/"technical-art-uc-godot-front-view-receipt.json").read_text())
+          assert g["result"]=="PASS_OBJECT_SERVICE_DARK_EXACT_ATLAS_RGB_TO_CURRENT_UC_TEXTURED_GLB_TO_GODOT_FRONT_VIEWS",g
+          assert g["technical_art_head"]==r["technical_art_head"],g
+          assert g["uc_head"]==r["uc_head"],g
+          assert g["glb_sha256"]==r["glb_sha256"],g
+          assert g["uc_product_modified"] is False,g
+          assert g["godot_status"]=="PASS" and g["godot_observation_status"]=="PASS",g
+          assert len(g["godot_images"])==2 and all(row["visible_pixels"]>0 for row in g["godot_images"]),g
+          for row in g["view_sidedness_evidence"]:
+              assert min(row["front_normal_dot_camera_direction"].values())>0.0,row
+          assert g["truth_boundary"]["material_double_sidedness_enabled"] is False,g
+          assert g["truth_boundary"]["uc_camera_contract_changed"] is False,g
+          print(json.dumps({"transport":r,"target":g},indent=2))
           PY
 
       - name: Negative control rejects one-texel UV transport drift
@@ -210,7 +233,9 @@ jobs:
             technical-art-proof/technical-art-head.txt
             technical-art-proof/uc-head.txt
             technical-art-proof/proof.log
+            technical-art-proof/godot-front-view.log
             creations/technical-art-proof/generated/**
+            creations/technical-art-proof/godot-front-view-proof/**
             technical-art-proof/negative-one-texel.log
             lookdev/service_dark_atlas_pack_review_001.json
             lookdev/service_dark_uv_density_family_001.json
