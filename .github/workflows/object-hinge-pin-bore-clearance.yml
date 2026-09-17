@@ -1,4 +1,4 @@
-name: Object hinge-pin bore-clearance evidence
+name: Object hinge construction evidence
 
 on:
   pull_request:
@@ -25,7 +25,7 @@ jobs:
         run: python -m compileall tools tests
       - name: Test full repository suite
         run: python -m unittest discover -s tests -v
-      - name: Build exact hinge-pin bore-clearance evidence
+      - name: Build exact hinge construction evidence
         if: matrix.python-version == '3.11'
         run: |
           mkdir -p evidence/hinge-pin-bore-clearance
@@ -38,15 +38,20 @@ jobs:
             --bore-contract assets/modular-equipment-case-001/hinge-pin-bore-clearance-001.json \
             --mesh-contract assets/modular-equipment-case-001/hinge-pin-annular-mesh-001.json \
             --out evidence/hinge-pin-bore-clearance
+          python tools/verify_hinge_knuckle_owner_stack.py \
+            --host assets/modular-equipment-case-001/source.json \
+            --contract assets/modular-equipment-case-001/hinge-knuckle-owner-stack-001.json \
+            --out evidence/hinge-pin-bore-clearance
           cp assets/modular-equipment-case-001/source.json evidence/hinge-pin-bore-clearance/host-source.json
           cp assets/modular-equipment-case-001/hinge-pin-bore-clearance-001.json evidence/hinge-pin-bore-clearance/bore-clearance-contract.json
           cp assets/modular-equipment-case-001/hinge-pin-annular-mesh-001.json evidence/hinge-pin-bore-clearance/annular-mesh-contract.json
+          cp assets/modular-equipment-case-001/hinge-knuckle-owner-stack-001.json evidence/hinge-pin-bore-clearance/owner-stack-contract.json
           git rev-parse HEAD > evidence/hinge-pin-bore-clearance/exact-head.txt
       - name: Upload retained evidence
         if: matrix.python-version == '3.11'
         uses: actions/upload-artifact@v4
         with:
-          name: modular-equipment-case-001-hinge-pin-bore-clearance-evidence
+          name: modular-equipment-case-001-hinge-bore-and-owner-stack-evidence
           path: evidence/hinge-pin-bore-clearance
           if-no-files-found: error
           retention-days: 30
