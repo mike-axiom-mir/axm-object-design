@@ -1,5 +1,6 @@
 {
   "schema": "axm.object-service-dark-roughness-selected-field-runtime-rebind/v0.1",
+  "verification_revision": "selected-field-rebind-001",
   "asset_id": "modular-equipment-case-001",
   "material_id": "service_dark",
   "intent": "bind the already-measured RGBA8 -> L8 Runtime budget result to the exact later Materials-owned Art-preferred selected roughness scalar identity, without changing the roughness field, Runtime representation, Materials policy, Technical Art transport, Art Direction, Visual QA, Universal Creation or target-device claims",
