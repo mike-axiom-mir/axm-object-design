@@ -1,0 +1,127 @@
+name: Object lid-owned keeper socket binding
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  keeper-socket-binding:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.11', '3.13']
+    steps:
+      - name: Checkout exact receiving Rigging head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          path: object
+          fetch-depth: 0
+
+      - name: Preserve exact ownership and prior Rigging ancestry
+        working-directory: object
+        run: |
+          set -euo pipefail
+          git merge-base --is-ancestor d3fa10a270faae7925811f44f03381fe5c5d0215 HEAD
+          git merge-base --is-ancestor 9556308c9986f71519bc488badc1b1a63e855e7e HEAD
+
+      - name: Checkout exact historical lid-articulation donor
+        uses: actions/checkout@v4
+        with:
+          repository: mike-axiom-mir/axm-object-design
+          ref: 4b72c9918c5fc1e89bd18a0be24fb4afac6e7775
+          path: lid-rig-donor
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Compile and run full Object regression suite
+        working-directory: object
+        run: |
+          python -m compileall -q tools tests
+          python -m unittest discover -s tests -v
+
+      - name: Build exact lid-owned keeper socket evidence
+        if: matrix.python-version == '3.11'
+        working-directory: object
+        env:
+          CURRENT_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          set -euo pipefail
+          rm -rf evidence/lid-keeper-socket-binding-001
+          python tools/verify_lid_keeper_socket_binding.py \
+            --source assets/modular-equipment-case-001/source.json \
+            --ownership assets/modular-equipment-case-001/front-latch-ownership-001.json \
+            --lid-plan ../lid-rig-donor/assets/modular-equipment-case-001/articulation.json \
+            --observed-ownership-head d3fa10a270faae7925811f44f03381fe5c5d0215 \
+            --observed-lid-rig-head 4b72c9918c5fc1e89bd18a0be24fb4afac6e7775 \
+            --observed-previous-rigging-head 9556308c9986f71519bc488badc1b1a63e855e7e \
+            --out evidence/lid-keeper-socket-binding-001
+          printf '%s\n' "$CURRENT_HEAD" > evidence/lid-keeper-socket-binding-001/exact-head.txt
+          printf '%s\n' 'd3fa10a270faae7925811f44f03381fe5c5d0215' > evidence/lid-keeper-socket-binding-001/ownership-head.txt
+          printf '%s\n' '4b72c9918c5fc1e89bd18a0be24fb4afac6e7775' > evidence/lid-keeper-socket-binding-001/lid-rig-head.txt
+          printf '%s\n' '9556308c9986f71519bc488badc1b1a63e855e7e' > evidence/lid-keeper-socket-binding-001/previous-rigging-head.txt
+          cp ../lid-rig-donor/assets/modular-equipment-case-001/articulation.json evidence/lid-keeper-socket-binding-001/lid-articulation-plan.json
+          cp assets/modular-equipment-case-001/front-latch-ownership-001.json evidence/lid-keeper-socket-binding-001/front-latch-ownership.json
+
+      - name: Prove fail-closed one-millimetre socket drift
+        if: matrix.python-version == '3.11'
+        working-directory: object
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json, sys
+          from pathlib import Path
+          sys.path.insert(0, 'tools')
+          import build_modular_case
+          from verify_lid_keeper_socket_binding import verify, sha256_file
+
+          source_path=Path('assets/modular-equipment-case-001/source.json')
+          ownership_path=Path('assets/modular-equipment-case-001/front-latch-ownership-001.json')
+          plan_path=Path('../lid-rig-donor/assets/modular-equipment-case-001/articulation.json')
+          source=json.loads(source_path.read_text())
+          ownership=json.loads(ownership_path.read_text())
+          plan=json.loads(plan_path.read_text())
+          built=build_modular_case.build(source)
+          comps={c['name']:c for c in built['components']}
+          lid=comps['lid_shell']['center_m']
+          keeper=comps['latch_0_keeper']['center_m']
+          offset=[keeper[i]-lid[i] for i in range(3)]
+          mutated=list(offset); mutated[0]+=0.001
+          try:
+              verify(source, ownership, plan,
+                     source_sha256=sha256_file(source_path),
+                     observed_ownership_head='d3fa10a270faae7925811f44f03381fe5c5d0215',
+                     observed_lid_rig_head='4b72c9918c5fc1e89bd18a0be24fb4afac6e7775',
+                     observed_previous_rigging_head='9556308c9986f71519bc488badc1b1a63e855e7e',
+                     local_offset_override={'latch_0_keeper':mutated})
+          except AssertionError as exc:
+              text=str(exc)
+              assert 'keeper local socket offset drift' in text
+              Path('evidence/lid-keeper-socket-binding-001/negative-control.txt').write_text(
+                  'PASS_FAILS_CLOSED_ON_1MM_KEEPER_SOCKET_OFFSET_DRIFT\n'+text+'\n')
+          else:
+              raise SystemExit('negative control unexpectedly passed')
+          PY
+
+      - name: Assert truth boundary remains explicit
+        if: matrix.python-version == '3.11'
+        working-directory: object
+        run: |
+          grep -q 'PASS_LID_OWNED_KEEPER_SOCKET_BINDING_111_POSES' evidence/lid-keeper-socket-binding-001/receipt.json
+          grep -q '"animation_accepted": false' evidence/lid-keeper-socket-binding-001/receipt.json
+          grep -q '"runtime_accepted": false' evidence/lid-keeper-socket-binding-001/receipt.json
+          grep -q 'PASS_FAILS_CLOSED_ON_1MM_KEEPER_SOCKET_OFFSET_DRIFT' evidence/lid-keeper-socket-binding-001/negative-control.txt
+
+      - name: Upload exact Rigging evidence
+        if: ${{ always() && matrix.python-version == '3.11' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: object-lid-keeper-socket-binding-${{ github.event.pull_request.head.sha || github.sha }}
+          path: object/evidence/lid-keeper-socket-binding-001
+          if-no-files-found: error
+          retention-days: 30
