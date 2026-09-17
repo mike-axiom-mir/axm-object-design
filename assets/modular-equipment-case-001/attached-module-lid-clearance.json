@@ -1,0 +1,19 @@
+{
+  "schema": "axm.object-attached-module-lid-clearance-constraint/v0.1",
+  "host_asset_id": "modular-equipment-case-001",
+  "host_source_sha256": "49b1f9ed9865893d6de6f1ec8f069576732df694853fde4e3fcff366de32644a",
+  "module_asset_id": "utility-module-001",
+  "module_source_sha256": "ffd7b42294d3af71e02aa172157beccefa08c6af2c1198f88836862d2a50fc2e",
+  "rig_donor": {
+    "repository": "mike-axiom-mir/axm-object-design",
+    "commit": "4b72c9918c5fc1e89bd18a0be24fb4afac6e7775",
+    "plan_path": "assets/modular-equipment-case-001/articulation.json",
+    "plan_digest": "0ad6dc2ca22676cf301579932e599a441eb7c4bccce31991d1b727aeb22ac422",
+    "joint_id": "rear-lid-hinge-001"
+  },
+  "attached_socket_ids": [
+    "left-service-socket",
+    "right-service-socket"
+  ],
+  "claim_scope": "continuous rigid lid-shell clearance against the exact fixed bilateral utility-module bodies over the exact donor rig's 0..110 degree hinge envelope; no attachment dynamics, animation, runtime, gameplay, engineering or full-component collision acceptance"
+}

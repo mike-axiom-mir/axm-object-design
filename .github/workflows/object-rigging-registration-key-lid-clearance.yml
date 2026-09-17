@@ -1,0 +1,62 @@
+name: Object rigging registration-key clearance evidence
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  registered-attachment-clearance:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.11', '3.13']
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Compile
+        run: python -m compileall -q tools tests
+      - name: Full repository tests
+        run: python -m unittest discover -s tests -v
+      - name: Materialize exact pinned rig and registration donors
+        if: matrix.python-version == '3.11'
+        run: |
+          mkdir -p .tmp-rig-donor .tmp-registration-donor
+          git fetch --no-tags --depth=1 origin 4b72c9918c5fc1e89bd18a0be24fb4afac6e7775
+          git show 4b72c9918c5fc1e89bd18a0be24fb4afac6e7775:assets/modular-equipment-case-001/articulation.json > .tmp-rig-donor/articulation.json
+          git fetch --no-tags --depth=1 origin 3f091bda68b33482bdefe1cf4adf97caf9c0c87e
+          git show 3f091bda68b33482bdefe1cf4adf97caf9c0c87e:assets/modular-equipment-case-001/utility-module-registration-key-001.json > .tmp-registration-donor/utility-module-registration-key-001.json
+      - name: Build exact registered-attachment articulation evidence
+        if: matrix.python-version == '3.11'
+        run: |
+          OUT=evidence/modular-equipment-case-001-registered-attachment-clearance
+          mkdir -p "$OUT"
+          python tools/certify_registration_key_lid_clearance.py \
+            --host assets/modular-equipment-case-001/source.json \
+            --module assets/modular-equipment-case-001/utility-module-001.json \
+            --rig-plan .tmp-rig-donor/articulation.json \
+            --base-constraint assets/modular-equipment-case-001/attached-module-lid-clearance.json \
+            --registration .tmp-registration-donor/utility-module-registration-key-001.json \
+            --constraint assets/modular-equipment-case-001/registration-key-lid-clearance.json \
+            --out "$OUT/continuous-lid-to-registered-attachment-clearance.certificate.json"
+          cp assets/modular-equipment-case-001/source.json "$OUT/host-source.json"
+          cp assets/modular-equipment-case-001/utility-module-001.json "$OUT/module-source.json"
+          cp assets/modular-equipment-case-001/attached-module-lid-clearance.json "$OUT/base-clearance-constraint.json"
+          cp assets/modular-equipment-case-001/registration-key-lid-clearance.json "$OUT/registration-key-clearance-constraint.json"
+          cp .tmp-rig-donor/articulation.json "$OUT/donor-articulation-plan.json"
+          cp .tmp-registration-donor/utility-module-registration-key-001.json "$OUT/donor-registration-source.json"
+          git rev-parse HEAD > "$OUT/exact-head.txt"
+          printf '%s\n' 4b72c9918c5fc1e89bd18a0be24fb4afac6e7775 > "$OUT/rig-donor-head.txt"
+          printf '%s\n' 3f091bda68b33482bdefe1cf4adf97caf9c0c87e > "$OUT/registration-donor-head.txt"
+      - name: Upload retained exact-head evidence
+        if: matrix.python-version == '3.11'
+        uses: actions/upload-artifact@v4
+        with:
+          name: modular-equipment-case-001-registered-attachment-clearance-evidence
+          path: evidence/modular-equipment-case-001-registered-attachment-clearance
+          if-no-files-found: error
+          retention-days: 30
