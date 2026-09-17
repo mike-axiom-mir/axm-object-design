@@ -1,9 +1,14 @@
 from __future__ import annotations
 
 import copy
+import sys
 import unittest
+from pathlib import Path
 
-from tools.build_service_module_oriented_configuration_family import (
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "tools"))
+
+from build_service_module_oriented_configuration_family import (
     canonical_family_digest,
     orient_configuration,
     validate_contract_static,
