@@ -1,0 +1,136 @@
+name: Object Runtime selected roughness field rebind
+
+on:
+  push:
+    branches: [studio/runtime-object-service-dark-roughness-l8-budget-001]
+    paths:
+      - "runtime/service_dark_roughness_selected_field_rebind_001.json"
+      - "tools/verify_object_service_dark_runtime_selected_field_rebind.py"
+      - ".github/workflows/object-runtime-service-dark-roughness-selected-field-rebind.yml"
+  pull_request:
+    paths:
+      - "runtime/service_dark_roughness_selected_field_rebind_001.json"
+      - "tools/verify_object_service_dark_runtime_selected_field_rebind.py"
+      - ".github/workflows/object-runtime-service-dark-roughness-selected-field-rebind.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  MATERIALS_HEAD: 0515a2d5ad2c7a1eb545f2b7b327b7367530dfca
+  MATERIALS_CONTRACT_PATH: lookdev/service_dark_roughness_selected_field_001.json
+  MATERIALS_CONTRACT_BLOB: 16ab4ea07c41273e58b72f970d6bed383bbbfe33
+  RUNTIME_ARTIFACT_ID: "10488003795"
+  RUNTIME_ARCHIVE_SHA256: 20ecffa5da693c8c091c5eac3eed3e1a6c2e2575efa0cbb43fd239a63808e6b4
+
+jobs:
+  exact-selected-field-runtime-rebind:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout exact Runtime head
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Bind exact current Materials selected-field identity
+        run: |
+          set -euo pipefail
+          mkdir -p runtime-proof/generated runtime-proof/prior-runtime
+          git rev-parse HEAD > runtime-proof/generated/exact-runtime-rebind-head.txt
+          git fetch --no-tags origin studio/materials-object-functional-surface-001
+          git cat-file -e "$MATERIALS_HEAD^{commit}"
+          observed_blob="$(git rev-parse "$MATERIALS_HEAD:$MATERIALS_CONTRACT_PATH")"
+          test "$observed_blob" = "$MATERIALS_CONTRACT_BLOB"
+          git show "$MATERIALS_HEAD:$MATERIALS_CONTRACT_PATH" > runtime-proof/generated/materials-selected-field-contract.json
+          printf '%s\n' "$MATERIALS_HEAD" > runtime-proof/generated/exact-materials-selected-field-head.txt
+          printf '%s  %s\n' "$MATERIALS_CONTRACT_BLOB" "$MATERIALS_CONTRACT_PATH" > runtime-proof/generated/materials-selected-field-contract-blob.txt
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install bounded verifier dependency
+        run: python -m pip install --disable-pip-version-check pillow
+
+      - name: Download exact retained Runtime L8 evidence
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          curl --fail --location --retry 3 --retry-delay 2 \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer $GITHUB_TOKEN" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/$GITHUB_REPOSITORY/actions/artifacts/$RUNTIME_ARTIFACT_ID/zip" \
+            --output runtime-proof/prior-runtime.zip
+          echo "$RUNTIME_ARCHIVE_SHA256  runtime-proof/prior-runtime.zip" | sha256sum --check --strict
+          unzip -q runtime-proof/prior-runtime.zip -d runtime-proof/prior-runtime
+          printf '%s  prior-runtime.zip\n' "$RUNTIME_ARCHIVE_SHA256" > runtime-proof/generated/prior-runtime-archive.sha256.txt
+
+      - name: Verify exact selected-field identity against prior measured Runtime result
+        run: |
+          set -euo pipefail
+          python tools/verify_object_service_dark_runtime_selected_field_rebind.py \
+            --materials-contract runtime-proof/generated/materials-selected-field-contract.json \
+            --runtime-artifact-root runtime-proof/prior-runtime \
+            --runtime-archive runtime-proof/prior-runtime.zip
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          r=json.loads(Path('runtime-proof/generated/service_dark_roughness_selected_field_rebind_receipt.json').read_text())
+          assert r['result']=='PASS_OBJECT_SERVICE_DARK_ROUGHNESS_L8_EXACT_SELECTED_FIELD_IDENTITY_REBOUND__HOLD_ART_QA_TARGET_DEVICE_AND_ADOPTION',r
+          assert r['materials_selected_field_head']=='0515a2d5ad2c7a1eb545f2b7b327b7367530dfca',r
+          assert r['materials_selected_scalar_r8_sha256']=='b8d13c07f9b71278042b0d42d44b84579a3f327c6adf6723cae4c8c8f06dd38e',r
+          assert r['runtime_control_png_sha256']=='57cf746a9a7e0615884fe3c45c6c4df677c2bd0631def61b3ccb1684daa26949',r
+          assert r['runtime_control_scalar_r8_sha256']==r['materials_selected_scalar_r8_sha256'],r
+          assert r['runtime_l8_candidate_scalar_r8_sha256']==r['materials_selected_scalar_r8_sha256'],r
+          assert r['modeled_mip_bytes_saved']==1048575,r
+          assert r['observed_texture_allocation_bytes_saved']==1048575,r
+          assert r['changed_pixels_total']==0 and r['max_channel_delta_lsb']==0,r
+          assert r['evidence_semantics']=='EXACT_IDENTITY_REBIND_OF_PRIOR_MEASURED_RUNTIME_RESULT__NO_NEW_RENDERER_MEASUREMENT',r
+          print(json.dumps(r,indent=2))
+          PY
+
+      - name: Negative control rejects selected scalar identity drift
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          src=Path('runtime-proof/generated/materials-selected-field-contract.json')
+          data=json.loads(src.read_text())
+          data['selected_field']['scalar_r8_sha256']='0'*64
+          Path('/tmp/bad-selected-field-contract.json').write_text(json.dumps(data))
+          PY
+          set +e
+          output="$(python tools/verify_object_service_dark_runtime_selected_field_rebind.py \
+            --materials-contract /tmp/bad-selected-field-contract.json \
+            --runtime-artifact-root runtime-proof/prior-runtime \
+            --runtime-archive runtime-proof/prior-runtime.zip \
+            --out /tmp/negative-receipt.json 2>&1)"
+          status=$?
+          set -e
+          test "$status" -ne 0
+          printf '%s\n' "$output" | grep -q "Materials selected scalar digest drift"
+          printf '%s\n' "selected scalar identity drift rejected as expected"
+
+      - name: Retain exact selected-field Runtime rebind evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: object-runtime-service-dark-roughness-selected-field-rebind-${{ github.event.pull_request.head.sha || github.sha }}
+          path: |
+            runtime/service_dark_roughness_selected_field_rebind_001.json
+            tools/verify_object_service_dark_runtime_selected_field_rebind.py
+            runtime-proof/generated/exact-runtime-rebind-head.txt
+            runtime-proof/generated/exact-materials-selected-field-head.txt
+            runtime-proof/generated/materials-selected-field-contract.json
+            runtime-proof/generated/materials-selected-field-contract-blob.txt
+            runtime-proof/generated/prior-runtime-archive.sha256.txt
+            runtime-proof/generated/service_dark_roughness_selected_field_rebind_receipt.json
+          if-no-files-found: warn
+          retention-days: 30
