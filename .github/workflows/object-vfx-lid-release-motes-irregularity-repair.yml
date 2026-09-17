@@ -1,0 +1,287 @@
+name: Object VFX lid-release mote irregularity repair
+
+on:
+  pull_request:
+    paths:
+      - 'assets/modular-equipment-case-001/lid-open-release-motes-001-irregularity-candidate.json'
+      - '.github/workflows/object-vfx-lid-release-motes-irregularity-repair.yml'
+      - 'animation-proof/observe_lid_release_motes_wallclock.gd'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  OWNER_VFX_HEAD: 7994d6f28050053f07dd355d8c54a983b0e8268b
+  OWNER_EFFECT_SHA256: f7a038c488405cdd8341368d155db325093907090ddbb74d557139cadf6ba813
+  OWNER_RECEIVER_ARTIFACT_ID: '10514900595'
+  OWNER_RECEIVER_ARTIFACT_SHA256: cf620d98c315189f1d5c4f3c8cea702aee969602eaef9a5ad7f5374daa894187
+  OWNER_RECEIVER_ARTIFACT_NAME: object-vfx-lid-release-motes-7994d6f28050053f07dd355d8c54a983b0e8268b
+  OWNER_WALLCLOCK_HEAD: 1fc2eb89b7869b81a97614a586e04375a7ad0547
+  OWNER_WALLCLOCK_ARTIFACT_ID: '10519072445'
+  OWNER_WALLCLOCK_ARTIFACT_SHA256: 7afca1cba57a60ca77113663e51fa7c2392fc27cfe2770b9c4138af96e801ebe
+  OWNER_WALLCLOCK_ARTIFACT_NAME: object-vfx-owner-wallclock-two-context-1fc2eb89b7869b81a97614a586e04375a7ad0547
+  CANDIDATE_PATH: assets/modular-equipment-case-001/lid-open-release-motes-001-irregularity-candidate.json
+
+jobs:
+  target-host-irregularity-repair:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout exact repair head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+
+      - name: Bind owner and candidate identities
+        run: |
+          set -euo pipefail
+          REPAIR_HEAD="$(git rev-parse HEAD)"
+          echo "REPAIR_HEAD=$REPAIR_HEAD" >> "$GITHUB_ENV"
+          git merge-base --is-ancestor "$OWNER_WALLCLOCK_HEAD" HEAD
+          test "$(sha256sum assets/modular-equipment-case-001/lid-open-release-motes-001.json | cut -d' ' -f1)" = "$OWNER_EFFECT_SHA256"
+          python - <<'PY'
+          import hashlib, json, os
+          from pathlib import Path
+
+          owner_path=Path('assets/modular-equipment-case-001/lid-open-release-motes-001.json')
+          candidate_path=Path(os.environ['CANDIDATE_PATH'])
+          owner=json.loads(owner_path.read_text())
+          candidate=json.loads(candidate_path.read_text())
+
+          assert candidate['effect_id']=='lid-open-release-motes-001-irregularity-repair-candidate',candidate
+          assert candidate['animation_dependency']==owner['animation_dependency'],(owner,candidate)
+          for key,value in owner['visual_source'].items():
+              assert candidate['visual_source'][key]==value,(key,value,candidate['visual_source'].get(key))
+          assert candidate['visual_source']['parameter_sampling']=='DECORRELATED_INTEGER_MIX_V1',candidate
+          assert candidate['visual_source']['parameter_sampling_semantics']=='DETERMINISTIC_SAME_SEED_AND_NUMERIC_RANGES__REDUCE_CROSS_DIMENSION_CORRELATION_ONLY',candidate
+          assert candidate['candidate_relationship']['owner_seed']==41027,candidate
+          assert candidate['candidate_relationship']['repair_scope']=='DECORRELATE_PARAMETER_DIMENSIONS_ONLY',candidate
+          assert candidate['candidate_relationship']['not_adopted'] is True,candidate
+          assert candidate['verification']==owner['verification'],(owner,candidate)
+          assert candidate['ownership']==owner['ownership'],(owner,candidate)
+          print('owner/candidate exact bounded-delta contract PASS')
+          print('candidate_sha256',hashlib.sha256(candidate_path.read_bytes()).hexdigest())
+          PY
+
+      - name: Set up Python 3.11 and run Object regression suite
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: |
+          python -m compileall -q tools tests
+          python -m unittest discover -s tests -v
+
+      - name: Download exact green owner receiver and wall-clock baseline
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          rm -rf .owner-receiver .owner-wallclock /tmp/object-vfx-owner.zip /tmp/object-vfx-wallclock.zip
+          mkdir -p .owner-receiver .owner-wallclock
+
+          receiver_digest="$(gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/${OWNER_RECEIVER_ARTIFACT_ID}" --jq '.digest')"
+          receiver_name="$(gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/${OWNER_RECEIVER_ARTIFACT_ID}" --jq '.name')"
+          test "$receiver_digest" = "sha256:${OWNER_RECEIVER_ARTIFACT_SHA256}"
+          test "$receiver_name" = "$OWNER_RECEIVER_ARTIFACT_NAME"
+          gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/${OWNER_RECEIVER_ARTIFACT_ID}/zip" > /tmp/object-vfx-owner.zip
+          echo "${OWNER_RECEIVER_ARTIFACT_SHA256}  /tmp/object-vfx-owner.zip" | sha256sum -c -
+          unzip -q /tmp/object-vfx-owner.zip -d .owner-receiver
+
+          wallclock_digest="$(gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/${OWNER_WALLCLOCK_ARTIFACT_ID}" --jq '.digest')"
+          wallclock_name="$(gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/${OWNER_WALLCLOCK_ARTIFACT_ID}" --jq '.name')"
+          test "$wallclock_digest" = "sha256:${OWNER_WALLCLOCK_ARTIFACT_SHA256}"
+          test "$wallclock_name" = "$OWNER_WALLCLOCK_ARTIFACT_NAME"
+          gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/${OWNER_WALLCLOCK_ARTIFACT_ID}/zip" > /tmp/object-vfx-wallclock.zip
+          echo "${OWNER_WALLCLOCK_ARTIFACT_SHA256}  /tmp/object-vfx-wallclock.zip" | sha256sum -c -
+          unzip -q /tmp/object-vfx-wallclock.zip -d .owner-wallclock
+
+          test "$(cat .owner-receiver/animation-proof/generated/exact-vfx-head.txt)" = "$OWNER_VFX_HEAD"
+          test "$(sha256sum .owner-receiver/animation-proof/generated/lid-open-release-motes-001.json | cut -d' ' -f1)" = "$OWNER_EFFECT_SHA256"
+          test "$(cat .owner-wallclock/animation-proof/generated/exact-presentation-head.txt)" = "$OWNER_WALLCLOCK_HEAD"
+
+      - name: Assemble exact owner receiver with one candidate substitution
+        run: |
+          set -euo pipefail
+          rm -rf animation-proof/generated animation-proof/owner-baseline
+          mkdir -p animation-proof/generated animation-proof/owner-baseline
+          cp .owner-receiver/animation-proof/generated/object-rigid-components-rebound.glb animation-proof/generated/
+          cp .owner-receiver/animation-proof/generated/uc-rigid-scene-handoff-receipt.json animation-proof/generated/
+          cp .owner-receiver/animation-proof/generated/lid-latch-motion-evidence.json animation-proof/generated/
+          cp .owner-receiver/animation-proof/generated/front-latch-articulation.receipt.json animation-proof/generated/
+          cp .owner-receiver/animation-proof/generated/lid-latch-motion-sequence-001.json animation-proof/generated/
+          cp .owner-receiver/animation-proof/generated/exact-animation-parent.txt animation-proof/generated/
+          cp .owner-receiver/animation-proof/generated/exact-technical-art-head.txt animation-proof/generated/
+          cp .owner-receiver/animation-proof/generated/exact-uc-head.txt animation-proof/generated/
+          cp .owner-receiver/animation-proof/generated/exact-vfx-head.txt animation-proof/generated/
+          cp "$CANDIDATE_PATH" animation-proof/generated/lid-open-release-motes-001-irregularity-candidate.json
+          printf '%s\n' "$REPAIR_HEAD" > animation-proof/generated/exact-presentation-head.txt
+          cp .owner-wallclock/animation-proof/static-*.png animation-proof/owner-baseline/
+          cp .owner-wallclock/animation-proof/wallclock-*.png animation-proof/owner-baseline/
+          cp .owner-wallclock/animation-proof/vfx-lid-release-motes-wallclock-receipt.json animation-proof/owner-baseline/
+
+      - name: Derive exact candidate observer from retained wall-clock observer
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          src=Path('animation-proof/observe_lid_release_motes_wallclock.gd').read_text()
+          old_hash='''func hash01(seed: int, index: int, salt: int) -> float:\n    var value := (seed + (index + 1) * 1103515245 + (salt + 1) * 12345) & 0x7fffffff\n    return float(value % 10000) / 9999.0\n'''
+          new_hash='''func hash01(seed: int, index: int, salt: int) -> float:\n    # Candidate repair: retain seed and all authored numeric ranges, but mix\n    # index/salt dimensions before sampling so start/spawn/lifetime/size/velocity\n    # are not coupled by the prior near-linear integer progression.\n    var value: int = (seed * 1664525 + (index + 1) * 1013904223 + (salt + 1) * 374761393) & 0x7fffffff\n    value = ((value ^ (value >> 13)) * 1274126177) & 0x7fffffff\n    value = value ^ (value >> 16)\n    return float(value & 0x7fffffff) / 2147483647.0\n'''
+          assert old_hash in src
+          src=src.replace('const EFFECT_PATH := "res://generated/lid-open-release-motes-001.json"','const EFFECT_PATH := "res://generated/lid-open-release-motes-001-irregularity-candidate.json"')
+          src=src.replace('const RECEIPT_PATH := "res://vfx-lid-release-motes-wallclock-receipt.json"','const RECEIPT_PATH := "res://vfx-lid-release-motes-irregularity-receipt.json"')
+          src=src.replace('const TRACE_PATH := "res://vfx-lid-release-motes-wallclock-trace.json"','const TRACE_PATH := "res://vfx-lid-release-motes-irregularity-trace.json"')
+          src=src.replace('receipt["state"] = "FAIL_TARGET_HOST_OWNER_SEED_WALLCLOCK_PRESENTATION"','receipt["state"] = "FAIL_TARGET_HOST_OWNER_SEED_IRREGULARITY_REPAIR_PRESENTATION"')
+          src=src.replace(old_hash,new_hash)
+          needle='''    if int(effect.get("visual_source", {}).get("particle_count", 0)) != 18:\n        fail("owner particle count drift")\n        return\n'''
+          assert needle in src
+          src=src.replace(needle,needle+'''    if String(effect.get("visual_source", {}).get("parameter_sampling", "")) != "DECORRELATED_INTEGER_MIX_V1":\n        fail("irregularity repair sampler identity drift")\n        return\n''')
+          src=src.replace('receipt["state"] = "PASS_TARGET_HOST_OWNER_SEED_WALLCLOCK_TWO_CONTEXT_PRESENTATION"','receipt["state"] = "PASS_TARGET_HOST_OWNER_SEED_IRREGULARITY_REPAIR_TWO_CONTEXT_PRESENTATION"')
+          src=src.replace('receipt["decision"] = "PASS_OWNER_41027_REAL_PLAYBACK_PRESENTATION_SURFACE__HOLD_FINAL_ART_QA_AND_TARGET_DEVICE"','receipt["decision"] = "PASS_OWNER_41027_IRREGULARITY_REPAIR_PRESENTATION_SURFACE__HOLD_ART_QA_AND_TARGET_DEVICE"')
+          src=src.replace('receipt["effect_source_label"] = effect["visual_source"].get("source_label")','receipt["effect_source_label"] = effect["visual_source"].get("source_label")\n    receipt["parameter_sampling"] = effect["visual_source"].get("parameter_sampling")')
+          src=src.replace('"owner_effect_parameters_modified": false,','"owner_effect_parameters_modified": true,\n        "owner_numeric_ranges_modified": false,\n        "sampling_correlation_repair_only": true,')
+          src=src.replace('print("AXM OBJECT VFX WALLCLOCK ", JSON.stringify(receipt))','print("AXM OBJECT VFX IRREGULARITY ", JSON.stringify(receipt))')
+          Path('animation-proof/observe_lid_release_motes_irregularity_candidate.gd').write_text(src)
+          print('derived candidate observer lines',len(src.splitlines()))
+          PY
+
+      - name: Download pinned Godot 4.7.2
+        env:
+          GODOT_URL: https://github.com/godotengine/godot-builds/releases/download/4.7.2-stable/Godot_v4.7.2-stable_linux.x86_64.zip
+          GODOT_SHA256: cadd3204e728a35d3f13adb7fd0d7902636b79f6b95c40c265eb73b6c35329e4
+        run: |
+          set -euo pipefail
+          mkdir -p .godot-bin
+          curl --fail --location --retry 3 --retry-delay 2 "$GODOT_URL" --output .godot-bin/godot.zip
+          echo "$GODOT_SHA256  .godot-bin/godot.zip" | sha256sum --check --strict
+          unzip -q .godot-bin/godot.zip -d .godot-bin
+          chmod +x .godot-bin/Godot_v4.7.2-stable_linux.x86_64
+          .godot-bin/Godot_v4.7.2-stable_linux.x86_64 --version
+
+      - name: Install virtual display when needed
+        run: |
+          if ! command -v xvfb-run >/dev/null 2>&1; then
+            sudo apt-get update
+            sudo apt-get install -y xvfb
+          fi
+
+      - name: Exercise candidate through real wall-clock playback
+        run: |
+          set -euo pipefail
+          rm -f animation-proof/vfx-lid-release-motes-irregularity-receipt.json \
+                animation-proof/vfx-lid-release-motes-irregularity-trace.json \
+                animation-proof/wallclock-*.png \
+                animation-proof/static-*.png
+          xvfb-run --auto-servernum --server-args="-screen 0 1000x760x24" \
+            .godot-bin/Godot_v4.7.2-stable_linux.x86_64 \
+            --display-driver x11 \
+            --rendering-method gl_compatibility \
+            --path animation-proof \
+            --script observe_lid_release_motes_irregularity_candidate.gd
+
+      - name: Validate bounded candidate receipt
+        run: |
+          python - <<'PY'
+          import hashlib, json, os
+          from pathlib import Path
+          root=Path('animation-proof')
+          r=json.loads((root/'vfx-lid-release-motes-irregularity-receipt.json').read_text())
+          candidate=Path(os.environ['CANDIDATE_PATH'])
+          assert r['state']=='PASS_TARGET_HOST_OWNER_SEED_IRREGULARITY_REPAIR_TWO_CONTEXT_PRESENTATION',r
+          assert r['decision']=='PASS_OWNER_41027_IRREGULARITY_REPAIR_PRESENTATION_SURFACE__HOLD_ART_QA_AND_TARGET_DEVICE',r
+          assert r['presentation_head']==os.environ['REPAIR_HEAD'],r
+          assert r['owner_vfx_head']==os.environ['OWNER_VFX_HEAD'],r
+          assert r['owner_seed']==41027,r
+          assert r['parameter_sampling']=='DECORRELATED_INTEGER_MIX_V1',r
+          assert r['effect_sha256']==hashlib.sha256(candidate.read_bytes()).hexdigest(),r
+          t=r['timing_trace_summary']
+          assert t['mode']=='REAL_ANIMATIONPLAYER_PLAY_CAPTURE_FREE_TIMING_TRACE',t
+          assert t['viewport_image_readbacks_inside_timed_loop']==0,t
+          assert t['disk_writes_inside_timed_loop']==0,t
+          assert t['sample_count']>=10,t
+          assert t['pre_trigger_inactive_seen'] and t['active_window_seen'] and t['post_effect_inactive_seen'],t
+          contexts=r['capture_contexts']
+          assert [c['context']['id'] for c in contexts]==['continuity_three_quarter','left_oblique_seam'],contexts
+          for c in contexts:
+              assert c['frame_count']>=5,c
+              assert c['active_frame_count']>=2,c
+          checks={(x['context_id'],round(float(x['time_s']),2)):x for x in r['static_context_checks']}
+          for cid in ('continuity_three_quarter','left_oblique_seam'):
+              assert checks[(cid,0.20)]['active_particle_count']==0 and checks[(cid,0.20)]['diff']['changed_pixels']==0,checks[(cid,0.20)]
+              assert checks[(cid,0.80)]['active_particle_count']==0 and checks[(cid,0.80)]['diff']['changed_pixels']==0,checks[(cid,0.80)]
+              assert checks[(cid,0.40)]['active_particle_count']>0 and checks[(cid,0.40)]['diff']['changed_pixels']>=80,checks[(cid,0.40)]
+          tb=r['truth_boundary']
+          assert tb['owner_effect_parameters_modified'] is True,tb
+          assert tb['owner_numeric_ranges_modified'] is False,tb
+          assert tb['sampling_correlation_repair_only'] is True,tb
+          assert tb['owner_seed_changed'] is False,tb
+          assert tb['animation_timing_or_easing_modified'] is False,tb
+          for key in ('gameplay_event_semantics_claimed','physical_dust_pressure_airflow_or_fluid_simulation','collision_damage_or_interaction','production_particle_runtime','target_device_performance_acceptance','art_direction_final_acceptance','visual_qa_final_acceptance','canon_or_production_readiness'):
+              assert tb[key] is False,(key,tb)
+          trace=json.loads((root/'vfx-lid-release-motes-irregularity-trace.json').read_text())
+          assert trace['viewport_image_readbacks_inside_timed_loop']==0 and trace['disk_writes_inside_timed_loop']==0,trace
+          print(json.dumps(r,indent=2))
+          PY
+
+      - name: Write exact owner-versus-candidate evidence index
+        if: always()
+        run: |
+          python - <<'PY'
+          import hashlib, json, os
+          from pathlib import Path
+          root=Path('animation-proof')
+          candidate=Path(os.environ['CANDIDATE_PATH'])
+          report={
+            'schema':'axm.object-vfx-irregularity-repair-review/v0.1',
+            'repair_head':os.environ.get('REPAIR_HEAD',''),
+            'owner_vfx_head':os.environ['OWNER_VFX_HEAD'],
+            'owner_wallclock_head':os.environ['OWNER_WALLCLOCK_HEAD'],
+            'owner_seed':41027,
+            'owner_effect_sha256':os.environ['OWNER_EFFECT_SHA256'],
+            'candidate_sha256':hashlib.sha256(candidate.read_bytes()).hexdigest(),
+            'candidate_sampler':'DECORRELATED_INTEGER_MIX_V1',
+            'numeric_ranges_changed':False,
+            'animation_trigger_or_timing_changed':False,
+            'automatic_adoption':False,
+            'art_direction_acceptance_claimed':False,
+            'visual_qa_acceptance_claimed':False,
+            'gameplay_or_physics_claimed':False
+          }
+          receipt_path=root/'vfx-lid-release-motes-irregularity-receipt.json'
+          if receipt_path.exists():
+              r=json.loads(receipt_path.read_text())
+              report['target_host_state']=r.get('state')
+              report['target_host_decision']=r.get('decision')
+              report['static_context_checks']=r.get('static_context_checks',[])
+          (root/'vfx-lid-release-motes-irregularity-evidence-index.json').write_text(json.dumps(report,indent=2)+'\n')
+          PY
+
+      - name: Retain owner/candidate irregularity repair evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: object-vfx-lid-release-motes-irregularity-repair-${{ github.event.pull_request.head.sha || github.sha }}
+          path: |
+            assets/modular-equipment-case-001/lid-open-release-motes-001.json
+            assets/modular-equipment-case-001/lid-open-release-motes-001-irregularity-candidate.json
+            animation-proof/observe_lid_release_motes_wallclock.gd
+            animation-proof/observe_lid_release_motes_irregularity_candidate.gd
+            animation-proof/generated/exact-vfx-head.txt
+            animation-proof/generated/exact-presentation-head.txt
+            animation-proof/generated/exact-animation-parent.txt
+            animation-proof/generated/exact-technical-art-head.txt
+            animation-proof/generated/exact-uc-head.txt
+            animation-proof/generated/uc-rigid-scene-handoff-receipt.json
+            animation-proof/generated/lid-latch-motion-evidence.json
+            animation-proof/generated/front-latch-articulation.receipt.json
+            animation-proof/generated/lid-latch-motion-sequence-001.json
+            animation-proof/generated/lid-open-release-motes-001-irregularity-candidate.json
+            animation-proof/vfx-lid-release-motes-irregularity-receipt.json
+            animation-proof/vfx-lid-release-motes-irregularity-trace.json
+            animation-proof/vfx-lid-release-motes-irregularity-evidence-index.json
+            animation-proof/wallclock-*.png
+            animation-proof/static-*.png
+            animation-proof/owner-baseline/*
+          if-no-files-found: warn
