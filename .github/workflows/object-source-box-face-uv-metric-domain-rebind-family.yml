@@ -1,0 +1,160 @@
+name: Object source box-face UV metric-domain rebind family evidence
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  procedural:
+    strategy:
+      matrix:
+        python-version: ['3.11', '3.13']
+    runs-on: ubuntu-latest
+    env:
+      AXM_STICKER_FABRIC_ROOT: _donor/axm-sticker-fabric
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+      - name: Checkout exact Sticker Fabric dependency for inherited Procedural tests
+        uses: actions/checkout@v4
+        with:
+          repository: mike-axiom-mir/axm-sticker-fabric
+          ref: 3aa93b0132eea9becefb20c716c6ec1a023ad28b
+          path: _donor/axm-sticker-fabric
+      - name: Checkout exact Hard-Surface source-face authority donor
+        uses: actions/checkout@v4
+        with:
+          repository: mike-axiom-mir/axm-object-design
+          ref: fcae744a8bdbcb765c32758e9da03fe54ffe4dbc
+          path: _donor/object-hard-surface-face
+      - name: Checkout exact Hard-Surface service-frame authority donor
+        uses: actions/checkout@v4
+        with:
+          repository: mike-axiom-mir/axm-object-design
+          ref: 6a9593b942e7cda4befe8106bfb8cc260e3e6b5f
+          path: _donor/object-hard-surface-frames
+      - name: Checkout exact current Hard-Surface metric-domain authority donor
+        uses: actions/checkout@v4
+        with:
+          repository: mike-axiom-mir/axm-object-design
+          ref: f7c64d08e4e2a0d6954291d8b4e064d7345ab658
+          path: _donor/object-hard-surface-metric
+      - name: Checkout exact Materials UV-family donor
+        uses: actions/checkout@v4
+        with:
+          repository: mike-axiom-mir/axm-object-design
+          ref: ad2378f18be55efa1f8e6dba9d8823c6b5d500e1
+          path: _donor/object-materials
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Compile
+        run: python -m compileall tools tests
+      - name: Test full repository suite
+        run: python -m unittest discover -s tests -v
+      - name: Materialize exact review inputs for source-face prerequisite
+        if: matrix.python-version == '3.11'
+        run: |
+          mkdir -p evidence/source-box-face-uv-metric-domain-rebind/source-faces
+          git fetch origin 8e92324648d837a92b7c3e0b1107df1f58f9aa61 --depth=1
+          lid_blob="$(git rev-parse 8e92324648d837a92b7c3e0b1107df1f58f9aa61:lookdev/inner_lid_surface_review_001.json)"
+          test "$lid_blob" = "cc90cd2c4c0f8eaf6b93d190436bc278c0fa1c83"
+          git show 8e92324648d837a92b7c3e0b1107df1f58f9aa61:lookdev/inner_lid_surface_review_001.json > /tmp/inner_lid_surface_review_001.json
+          git fetch origin 04c521a5a7e31bef54093c818108fd6c2080ca0e --depth=1
+          panel_blob="$(git rev-parse 04c521a5a7e31bef54093c818108fd6c2080ca0e:lookdev/front_service_panel_uv_review_001.json)"
+          test "$panel_blob" = "c473d20a466b97ea2e7d513a4efe78533245de77"
+          git show 04c521a5a7e31bef54093c818108fd6c2080ca0e:lookdev/front_service_panel_uv_review_001.json > /tmp/front_service_panel_uv_review_001.json
+      - name: Rebuild exact source-owned face prerequisite
+        if: matrix.python-version == '3.11'
+        run: |
+          python tools/build_source_box_face_extraction_family.py \
+            --family assets/modular-equipment-case-001/source-box-face-extraction-family-001.json \
+            --hard-surface-root _donor/object-hard-surface-face \
+            --review lid_inner_service_surface=/tmp/inner_lid_surface_review_001.json \
+            --review front_service_panel_outer_service_surface=/tmp/front_service_panel_uv_review_001.json \
+            --out evidence/source-box-face-uv-metric-domain-rebind/source-faces
+      - name: Rebuild exact previous Procedural UV family
+        if: matrix.python-version == '3.11'
+        run: |
+          mkdir -p evidence/source-box-face-uv-metric-domain-rebind/previous-uv-family
+          python tools/build_source_box_face_uv_projection_family.py \
+            --family assets/modular-equipment-case-001/source-box-face-uv-projection-family-001.json \
+            --materials-root _donor/object-materials \
+            --face-root evidence/source-box-face-uv-metric-domain-rebind/source-faces \
+            --out evidence/source-box-face-uv-metric-domain-rebind/previous-uv-family
+      - name: Rebuild exact source-frame rebound UV family
+        if: matrix.python-version == '3.11'
+        run: |
+          mkdir -p evidence/source-box-face-uv-metric-domain-rebind/source-frame-family
+          python tools/build_source_box_face_uv_source_frame_rebind_family.py \
+            --family assets/modular-equipment-case-001/source-box-face-uv-source-frame-rebind-family-001.json \
+            --materials-root _donor/object-materials \
+            --face-root evidence/source-box-face-uv-metric-domain-rebind/source-faces \
+            --hard-surface-frame-root _donor/object-hard-surface-frames \
+            --previous-summary evidence/source-box-face-uv-metric-domain-rebind/previous-uv-family/summary.json \
+            --out evidence/source-box-face-uv-metric-domain-rebind/source-frame-family
+      - name: Build metric-domain rebound UV family
+        if: matrix.python-version == '3.11'
+        run: |
+          mkdir -p evidence/source-box-face-uv-metric-domain-rebind/metric-rebound-family
+          python tools/build_source_box_face_uv_metric_domain_rebind_family.py \
+            --family assets/modular-equipment-case-001/source-box-face-uv-metric-domain-rebind-family-001.json \
+            --previous-root evidence/source-box-face-uv-metric-domain-rebind/source-frame-family \
+            --hard-surface-metric-root _donor/object-hard-surface-metric \
+            --out evidence/source-box-face-uv-metric-domain-rebind/metric-rebound-family
+          cp assets/modular-equipment-case-001/source-box-face-uv-metric-domain-rebind-family-001.json evidence/source-box-face-uv-metric-domain-rebind/family-profile.json
+          cp assets/modular-equipment-case-001/source-box-face-uv-source-frame-rebind-family-001.json evidence/source-box-face-uv-metric-domain-rebind/previous-source-frame-family-profile.json
+          cp _donor/object-hard-surface-metric/assets/modular-equipment-case-001/service-surface-metric-domains-001.json evidence/source-box-face-uv-metric-domain-rebind/hard-surface-service-metric-domains.json
+          git rev-parse HEAD > evidence/source-box-face-uv-metric-domain-rebind/exact-head.txt
+          git -C _donor/object-hard-surface-metric rev-parse HEAD > evidence/source-box-face-uv-metric-domain-rebind/hard-surface-metric-head.txt
+          git -C _donor/object-materials rev-parse HEAD > evidence/source-box-face-uv-metric-domain-rebind/materials-head.txt
+      - name: Assert metric authority, variation pressure, exact continuity and failure bounds
+        if: matrix.python-version == '3.11'
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          summary = json.loads(Path('evidence/source-box-face-uv-metric-domain-rebind/metric-rebound-family/summary.json').read_text())
+          assert summary['result'] == 'PASS_BOUNDED_SOURCE_BOX_FACE_UV_METRIC_DOMAIN_REBIND_FAMILY'
+          assert summary['decision'] == 'PASS_SOURCE_METRIC_DOMAIN_REBOUND_REVIEW_UV_FAMILY_ONLY__NO_SOURCE_UV_OR_MATERIALS_ADOPTION'
+          assert summary['surface_count'] == 2
+          assert summary['variant_output_count'] == 4
+          assert summary['exact_source_metric_binding_count'] == 4
+          assert summary['distinct_metric_domain_count'] == 2
+          assert summary['distinct_basis_plane_count'] == 2
+          assert summary['distinct_metric_uv_corner_set_count'] == 4
+          assert summary['maximum_uv_corner_residual'] <= 1e-12
+          assert len(summary['negative_controls']) == 7
+          assert all(row['result'] == 'HOLD_INVALID_SOURCE_BOX_FACE_UV_METRIC_DOMAIN_REBIND_FAMILY' for row in summary['negative_controls'])
+          assert all(row['exact_source_metric_binding'] for row in summary['outputs'])
+          assert {row['basis'] for row in summary['outputs']} == {
+              'SOURCE_LOCAL_X_TO_U__SOURCE_LOCAL_Y_TO_V',
+              'SOURCE_LOCAL_X_TO_U__SOURCE_LOCAL_Z_TO_V',
+          }
+          by_surface = {}
+          for row in summary['outputs']:
+              by_surface.setdefault(row['surface_id'], row['source_metric_domain'])
+          assert by_surface['lid_inner_service_surface']['primary_extent_m'] == 0.78
+          assert by_surface['lid_inner_service_surface']['secondary_extent_m'] == 0.48
+          assert by_surface['front_service_panel_outer_service_surface']['primary_extent_m'] == 0.468
+          assert by_surface['front_service_panel_outer_service_surface']['secondary_extent_m'] == 0.156
+          assert summary['truth_boundary']['source_uv_authored'] is False
+          assert summary['truth_boundary']['production_uv_adopted'] is False
+          assert summary['truth_boundary']['metric_extent_guessing_for_authority'] is False
+          assert summary['truth_boundary']['hard_surface_metric_domain_authority_rewritten'] is False
+          assert summary['truth_boundary']['materials_uv_authority_rewritten'] is False
+          print('PASS_OBJECT_SOURCE_BOX_FACE_UV_METRIC_DOMAIN_REBIND_FAMILY')
+          PY
+      - name: Upload retained evidence
+        if: matrix.python-version == '3.11'
+        uses: actions/upload-artifact@v4
+        with:
+          name: object-source-box-face-uv-metric-domain-rebind-family-001-evidence
+          path: evidence/source-box-face-uv-metric-domain-rebind
+          if-no-files-found: error
+          retention-days: 30
