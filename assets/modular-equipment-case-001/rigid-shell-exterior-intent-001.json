@@ -1,0 +1,54 @@
+{
+  "schema": "axm.object-rigid-shell-exterior-intent/v0.1",
+  "intent_id": "modular-equipment-case-001-rigid-shell-exterior-intent-001",
+  "asset_id": "modular-equipment-case-001",
+  "source_path": "assets/modular-equipment-case-001/source.json",
+  "source_sha256": "49b1f9ed9865893d6de6f1ec8f069576732df694853fde4e3fcff366de32644a",
+  "source_owner": {
+    "repository": "mike-axiom-mir/axm-object-design",
+    "pull_request": 17,
+    "exact_donor_head": "88bbaebc1071f5a0bb5993e89b86b1137495d903"
+  },
+  "source_builder": {
+    "path": "tools/build_modular_case.py",
+    "git_blob": "55c03ceb38e337b2bdc31bb66795d25f5bfbac10"
+  },
+  "component_scope": {
+    "selection": "all exact deterministic primitive components emitted by the pinned source builder",
+    "expected_components": 31,
+    "expected_vertices": 468,
+    "expected_triangles": 812
+  },
+  "interior_reference": {
+    "kind": "deterministic_primitive_center",
+    "semantics": "source-owned interior-side reference used only to disambiguate exterior half-space for each convex primitive component; not center of mass, pivot, attachment datum, collision proxy or manufacturing datum"
+  },
+  "exterior_side_rule": {
+    "rule": "for each source triangle, the exterior side is the triangle-plane half-space away from the owning primitive center; reverse only the normal sign for observation when the stored cross product points toward that center",
+    "stored_triangle_winding_authoritative": false,
+    "renderer_front_face_authoritative": false,
+    "automatic_source_winding_rewrite": false
+  },
+  "exact_source_observation": {
+    "stored_faces_already_exterior_aligned": 304,
+    "stored_faces_opposed_to_exterior_intent": 508,
+    "ambiguous_face_planes": 0
+  },
+  "geometry_compatibility_probe": {
+    "repository": "mike-axiom-mir/axm-object-design",
+    "pull_request": 33,
+    "exact_head": "606d8189a3bf4502141d8038f08d35d421829dde",
+    "policy_git_blob": "66b7abde4a23eb6d4da485a03f20f2a0a574828c",
+    "helper_git_blob": "0588598b65bb54891a3a29a058650bde334b4974",
+    "authority": "evidence_only_no_source_adoption"
+  },
+  "authority": {
+    "hard_surface": "owns manufactured source exterior/interior side intent and exact primitive interior references",
+    "geometry_topology": "owns any derived winding repair or structural orientation candidate",
+    "technical_art": "owns export/import and target-host front-face adaptation",
+    "materials_art_qa": "own renderer-facing shading/culling and perceptual acceptance",
+    "runtime": "owns target-device representation/performance",
+    "physics_gameplay": "unchanged_and_unclaimed"
+  },
+  "truth_boundary": "This contract names which side of each exact manufactured primitive shell is source-intended exterior. It does not adopt Geometry PR #33, rewrite source triangle winding, choose a renderer front-face convention, rewrite normals/tangents/UVs, certify collision/manufacturing physics, transfer downstream acceptance, establish CANON or claim production readiness."
+}
