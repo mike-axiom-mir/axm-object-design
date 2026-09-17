@@ -1,0 +1,13 @@
+[application]
+config/name="AXM Object target front latch rig proof"
+run/main_scene=""
+
+[display]
+
+[display/window]
+size/viewport_width=640
+size/viewport_height=480
+
+[rendering]
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"
