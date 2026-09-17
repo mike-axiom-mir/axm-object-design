@@ -99,7 +99,7 @@ jobs:
           r=json.loads(Path('/tmp/source-rig-evidence/front-latch-source-rig-binding-evidence.json').read_text())
           assert r['result']=='PASS_SOURCE_OWNED_FRONT_LATCH_RIG_CAPTURE_ENVELOPE_REBIND',r
           assert r['pose_samples_deg']==[0.0,9.25,9.30,25.0,48.65,48.70,50.0],r
-          assert r['capture_transition_deg']==9.264790333551197,r
+          assert r['source_capture_transition_deg']==9.264790333551197,r
           assert r['z_aabb_only_transition_deg']==48.66480246428277,r
           assert r['maximum_pivot_drift_m']<=1e-12,r
           assert r['maximum_rigid_pairwise_distance_drift_m']<=1e-12,r
