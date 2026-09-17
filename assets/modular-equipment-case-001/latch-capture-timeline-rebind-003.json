@@ -1,0 +1,65 @@
+{
+  "schema": "axm.object-animation-capture-timeline-rebind/v0.1",
+  "contract_id": "lid-latch-capture-timeline-rebind-003",
+  "asset_id": "modular-equipment-case-001",
+  "host_source_sha256": "49b1f9ed9865893d6de6f1ec8f069576732df694853fde4e3fcff366de32644a",
+  "animation_sequence": {
+    "sequence_id": "lid-latch-open-hold-close-001",
+    "sequence_digest": "0a3523cf792264f610881552fd2ebd438aabdfd05e30e92af9dbb33ded1fa2d3",
+    "sample_rate_hz": 40,
+    "duration_s": 2.5,
+    "endpoint_inclusive_sample_count": 101,
+    "release_phase_s": [0.0, 0.25],
+    "moving_lid_phase_s": [0.25, 2.25],
+    "reengagement_phase_s": [2.25, 2.5],
+    "terminal_latch_angle_deg": 50.0,
+    "motion_mutation_policy": "FORBIDDEN_REBIND_AND_CHARACTERIZATION_ONLY"
+  },
+  "current_rigging_authority": {
+    "repository": "mike-axiom-mir/axm-object-design",
+    "pr": 20,
+    "exact_head": "3a17a02528918ec63a46e954e883179f752c8151",
+    "binding_path": "assets/modular-equipment-case-001/front-latch-source-rig-binding-003.json",
+    "binding_git_blob_sha": "0331d30528f58d353fa9396d7ca129a020e8c6ce",
+    "required_result": "PASS_SOURCE_OWNED_FRONT_LATCH_RIG_CAPTURE_ENVELOPE_REBIND"
+  },
+  "source_capture_authority": {
+    "repository": "mike-axiom-mir/axm-object-design",
+    "pr": 17,
+    "exact_head": "56aaaecb45b520fdff9e08fe2d4ea42562f5690f",
+    "policy_path": "assets/modular-equipment-case-001/front-latch-capture-envelope-001.json",
+    "policy_git_blob_sha": "b96df9c5469dffb20e674edd4b176941eda81b8e",
+    "required_result": "PASS_SOURCE_OWNED_FRONT_LATCH_CAPTURE_TO_CLEARANCE_ENVELOPE",
+    "required_capture_transition_deg_range": [9.2647, 9.2649],
+    "required_z_aabb_only_transition_deg_range": [48.6647, 48.6649],
+    "z_aabb_semantics": "BROAD_PHASE_AXIS_SEPARATION_ONLY_NOT_CAPTURE_THRESHOLD"
+  },
+  "timeline_policy": {
+    "release_interpretation": "CHARACTERIZE_WHEN_THE_UNCHANGED_RELEASE_CURVE_CROSSES_SOURCE_PROOF_VOLUME_CONTACT_AND_LATER_Z_AABB_BROAD_PHASE_BOUNDARIES",
+    "reengagement_interpretation": "CHARACTERIZE_THE_SAME_GEOMETRIC_BOUNDARIES_IN_REVERSE_WITH_LID_NEUTRAL",
+    "lid_motion_gate": "LID_MOTION_REMAINS_AFTER_EXACT_50_DEG_REVIEW_RELEASE_ENDPOINT",
+    "capture_semantics": "PROOF_VOLUME_CONTACT_BOUNDARY_ONLY_NOT_PHYSICAL_HOOK_RETENTION_OR_RUNTIME_EVENT",
+    "release_endpoint_semantics": "SOURCE_REVIEW_RELEASE_POSE_NOT_CAPTURE_THRESHOLD_NOT_RUNTIME_EVENT",
+    "failure_policy": "FAIL_CLOSED_ON_MOTION_DRIFT_CAPTURE_AUTHORITY_DRIFT_FALSE_Z_AABB_CAPTURE_EQUIVALENCE_PHASE_ORDER_DRIFT_OR_AUTHORITY_INFLATION"
+  },
+  "preservation_contract": {
+    "retimed": false,
+    "keys_changed": false,
+    "easing_changed": false,
+    "amplitude_changed": false,
+    "source_geometry_changed": false,
+    "rig_pivots_changed": false,
+    "rig_motion_envelope_changed": false
+  },
+  "truth_boundary": {
+    "animation_timeline_characterization_owned": true,
+    "proof_volume_capture_boundary_is_physical_retention": false,
+    "z_aabb_boundary_is_capture_threshold": false,
+    "continuous_release_forces_proven": false,
+    "continuous_reengagement_forces_proven": false,
+    "runtime_controller_accepted": false,
+    "gameplay_accepted": false,
+    "final_visual_motion_accepted": false,
+    "canon_or_production_ready": false
+  }
+}
