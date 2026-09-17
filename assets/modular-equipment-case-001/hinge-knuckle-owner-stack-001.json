@@ -1,0 +1,52 @@
+{
+  "schema": "axm.object-hinge-knuckle-owner-stack/v0.1",
+  "contract_id": "modular-equipment-case-001-hinge-knuckle-owner-stack-001",
+  "asset_id": "modular-equipment-case-001",
+  "host_source_sha256": "49b1f9ed9865893d6de6f1ec8f069576732df694853fde4e3fcff366de32644a",
+  "hinge_axis": [
+    1,
+    0,
+    0
+  ],
+  "ordered_knuckles": [
+    {
+      "id": "b0",
+      "owner": "body"
+    },
+    {
+      "id": "l0",
+      "owner": "lid"
+    },
+    {
+      "id": "b1",
+      "owner": "body"
+    },
+    {
+      "id": "l1",
+      "owner": "lid"
+    },
+    {
+      "id": "b2",
+      "owner": "body"
+    }
+  ],
+  "expected_owner_counts": {
+    "body": 3,
+    "lid": 2
+  },
+  "expected_knuckle_length_m": 0.1,
+  "expected_center_pitch_m": 0.14,
+  "expected_inter_knuckle_gap_m": 0.04,
+  "minimum_source_axial_clearance_m": 0.01,
+  "terminal_owner": "body",
+  "required_lid_bracketing_owner": "body",
+  "authority": {
+    "source_geometry_changed": false,
+    "rig_parenting_authorized": false,
+    "animation_authorized": false,
+    "physical_retention_claimed": false,
+    "load_capacity_claimed": false,
+    "manufacturing_fit_claimed": false
+  },
+  "truth_boundary": "Source-owned axial knuckle owner order, spacing and bracketing only. This contract does not prove pin retention, load transfer, bore fit, bearing behavior, manufacturing tolerance, rig parenting, animation, runtime physics, gameplay or visual acceptance."
+}
