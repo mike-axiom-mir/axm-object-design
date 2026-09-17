@@ -1,0 +1,52 @@
+{
+  "schema": "axm.object-hard-surface-surface-identity/v0.1",
+  "asset_id": "modular-equipment-case-001",
+  "host_source_sha256": "49b1f9ed9865893d6de6f1ec8f069576732df694853fde4e3fcff366de32644a",
+  "surface_id": "front_service_panel_outer_service_surface",
+  "component_name": "front_service_panel",
+  "required_role": "service_panel",
+  "required_kind": "box",
+  "surface_semantics": "exterior_service_surface",
+  "selector": {
+    "policy": "source_local_min_y_face",
+    "expected_triangle_count": 2,
+    "expected_unique_vertex_count": 4
+  },
+  "review_provenance": {
+    "repository": "mike-axiom-mir/axm-object-design",
+    "pull_request": 6,
+    "head": "04c521a5a7e31bef54093c818108fd6c2080ca0e",
+    "path": "lookdev/front_service_panel_uv_review_001.json",
+    "git_blob_sha": "c473d20a466b97ea2e7d513a4efe78533245de77",
+    "review_schema": "axm.object-front-service-panel-uv-review/v0.1",
+    "review_selector": "source_local_min_y_face",
+    "relationship": "surface identity only; no material preference, UV candidate, texel-density preference, or Materials acceptance inherited"
+  },
+  "material_authority": {
+    "hard_surface_assigns_material": false,
+    "source_material_assignment": "UNASSIGNED"
+  },
+  "uv_authority": {
+    "hard_surface_authors_uv": false,
+    "source_uv_assignment": "UNASSIGNED",
+    "review_uv_candidate_adopted": false
+  },
+  "purpose": "make the already-reviewed outward front service-panel face an explicit Object-owned manufactured surface identity so Materials, Technical Art and runtime evidence can bind to source semantics instead of rediscovering a primitive face; preserve host geometry and leave UV/material decisions outside Hard-Surface authority",
+  "truth_boundary": {
+    "host_source_geometry_changed": false,
+    "surface_identity_source_owned": true,
+    "material_assignment": false,
+    "uv_assignment": false,
+    "materials_uv_candidate_adopted": false,
+    "textures": false,
+    "decals": false,
+    "wear": false,
+    "bevel_or_normal_change": false,
+    "engine_import_acceptance": false,
+    "runtime_performance_acceptance": false,
+    "art_direction_acceptance": false,
+    "visual_qa_acceptance": false,
+    "canon": false,
+    "production_readiness": false
+  }
+}

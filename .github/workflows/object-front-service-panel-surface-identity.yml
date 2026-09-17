@@ -1,0 +1,58 @@
+name: Object front service-panel surface identity evidence
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  structural:
+    strategy:
+      matrix:
+        python-version: ['3.11', '3.13']
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Compile
+        run: python -m compileall tools tests
+      - name: Test full repository suite
+        run: python -m unittest discover -s tests -v
+      - name: Materialize exact Materials UV review donor
+        if: matrix.python-version == '3.11'
+        run: |
+          mkdir -p evidence/front-service-panel-surface-identity
+          git fetch origin 04c521a5a7e31bef54093c818108fd6c2080ca0e --depth=1
+          git cat-file -e 04c521a5a7e31bef54093c818108fd6c2080ca0e^{commit}
+          observed_blob="$(git rev-parse 04c521a5a7e31bef54093c818108fd6c2080ca0e:lookdev/front_service_panel_uv_review_001.json)"
+          test "$observed_blob" = "c473d20a466b97ea2e7d513a4efe78533245de77"
+          git show 04c521a5a7e31bef54093c818108fd6c2080ca0e:lookdev/front_service_panel_uv_review_001.json > /tmp/front_service_panel_uv_review_001.json
+          printf '%s\n' 04c521a5a7e31bef54093c818108fd6c2080ca0e > evidence/front-service-panel-surface-identity/materials-review-head.txt
+          printf '%s\n' "$observed_blob" > evidence/front-service-panel-surface-identity/materials-review-blob.txt
+      - name: Build exact front service-panel outer-surface identity evidence
+        if: matrix.python-version == '3.11'
+        run: |
+          python tools/verify_front_service_panel_outer_surface_identity.py \
+            --host assets/modular-equipment-case-001/source.json \
+            --contract assets/modular-equipment-case-001/front-service-panel-outer-surface-identity-001.json \
+            --materials-review /tmp/front_service_panel_uv_review_001.json \
+            --out evidence/front-service-panel-surface-identity
+          cp assets/modular-equipment-case-001/source.json evidence/front-service-panel-surface-identity/host-source.json
+          cp assets/modular-equipment-case-001/front-service-panel-outer-surface-identity-001.json evidence/front-service-panel-surface-identity/surface-identity-contract.json
+          cp /tmp/front_service_panel_uv_review_001.json evidence/front-service-panel-surface-identity/materials-review-donor.json
+          git rev-parse HEAD > evidence/front-service-panel-surface-identity/exact-head.txt
+      - name: Upload retained evidence
+        if: matrix.python-version == '3.11'
+        uses: actions/upload-artifact@v4
+        with:
+          name: modular-equipment-case-001-front-service-panel-surface-identity-evidence
+          path: evidence/front-service-panel-surface-identity
+          if-no-files-found: error
+          retention-days: 30

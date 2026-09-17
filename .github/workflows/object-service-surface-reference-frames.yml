@@ -1,0 +1,84 @@
+name: Object service-surface reference-frame evidence
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  structural:
+    strategy:
+      matrix:
+        python-version: ['3.11', '3.13']
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Compile and run complete Object suite
+        run: |
+          python -m compileall -q tools tests
+          python -m unittest discover -s tests -v
+      - name: Materialize exact Materials atlas-basis observation
+        if: matrix.python-version == '3.11'
+        run: |
+          set -euo pipefail
+          mkdir -p evidence/service-surface-reference-frames
+          git fetch --no-tags origin 4c12a0a57f6aa8778cff41efad321e13567c6c91 --depth=1
+          git cat-file -e 4c12a0a57f6aa8778cff41efad321e13567c6c91^{commit}
+          observed_blob="$(git rev-parse 4c12a0a57f6aa8778cff41efad321e13567c6c91:lookdev/service_dark_atlas_pack_review_001.json)"
+          test "$observed_blob" = "2b95fcc1fcc523576eca08dbf47a140a727ab598"
+          git show 4c12a0a57f6aa8778cff41efad321e13567c6c91:lookdev/service_dark_atlas_pack_review_001.json > /tmp/service_dark_atlas_pack_review_001.json
+          printf '%s\n' 4c12a0a57f6aa8778cff41efad321e13567c6c91 > evidence/service-surface-reference-frames/materials-review-head.txt
+          printf '%s\n' "$observed_blob" > evidence/service-surface-reference-frames/materials-review-blob.txt
+      - name: Build exact source-owned service-surface frame evidence
+        if: matrix.python-version == '3.11'
+        run: |
+          set -euo pipefail
+          python tools/verify_service_surface_reference_frames.py \
+            --host assets/modular-equipment-case-001/source.json \
+            --contract assets/modular-equipment-case-001/service-surface-reference-frames-001.json \
+            --lid-identity assets/modular-equipment-case-001/lid-inner-surface-identity-001.json \
+            --front-identity assets/modular-equipment-case-001/front-service-panel-outer-surface-identity-001.json \
+            --materials-review /tmp/service_dark_atlas_pack_review_001.json \
+            --out evidence/service-surface-reference-frames
+          cp assets/modular-equipment-case-001/source.json evidence/service-surface-reference-frames/host-source.json
+          cp assets/modular-equipment-case-001/service-surface-reference-frames-001.json evidence/service-surface-reference-frames/reference-frame-contract.json
+          cp assets/modular-equipment-case-001/lid-inner-surface-identity-001.json evidence/service-surface-reference-frames/lid-inner-surface-identity.json
+          cp assets/modular-equipment-case-001/front-service-panel-outer-surface-identity-001.json evidence/service-surface-reference-frames/front-service-panel-outer-surface-identity.json
+          cp /tmp/service_dark_atlas_pack_review_001.json evidence/service-surface-reference-frames/materials-atlas-review-donor.json
+          git rev-parse HEAD > evidence/service-surface-reference-frames/exact-head.txt
+      - name: Validate retained frame receipt
+        if: matrix.python-version == '3.11'
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('evidence/service-surface-reference-frames/service-surface-reference-frames-evidence.json')
+          r=json.loads(p.read_text())
+          assert r['result']=='PASS_SOURCE_OWNED_SERVICE_SURFACE_REFERENCE_FRAMES',r
+          assert r['host_vertices']==468 and r['host_triangles']==812,r
+          assert r['frame_count']==2,r
+          assert r['materials_basis_matches_source_frames'] is True,r
+          assert r['production_uv_authored'] is False,r
+          assert r['material_assignment_authored'] is False,r
+          assert r['technical_art_transport_accepted'] is False,r
+          by_id={row['surface_id']:row for row in r['frames']}
+          assert by_id['lid_inner_service_surface']['orientation_parity']==-1,r
+          assert by_id['front_service_panel_outer_service_surface']['orientation_parity']==1,r
+          print(json.dumps(r,indent=2,sort_keys=True))
+          PY
+      - name: Upload retained evidence
+        if: matrix.python-version == '3.11'
+        uses: actions/upload-artifact@v4
+        with:
+          name: modular-equipment-case-001-service-surface-reference-frames-${{ github.event.pull_request.head.sha || github.sha }}
+          path: evidence/service-surface-reference-frames
+          if-no-files-found: error
+          retention-days: 30

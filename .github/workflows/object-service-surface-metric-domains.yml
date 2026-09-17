@@ -1,0 +1,92 @@
+name: Object service-surface metric-domain evidence
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  structural:
+    strategy:
+      matrix:
+        python-version: ['3.11', '3.13']
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Compile and run complete Object suite
+        run: |
+          python -m compileall -q tools tests
+          python -m unittest discover -s tests -v
+      - name: Materialize exact current Materials physical-size observation
+        if: matrix.python-version == '3.11'
+        run: |
+          set -euo pipefail
+          mkdir -p evidence/service-surface-metric-domains
+          git fetch --no-tags origin 0515a2d5ad2c7a1eb545f2b7b327b7367530dfca --depth=1
+          git cat-file -e 0515a2d5ad2c7a1eb545f2b7b327b7367530dfca^{commit}
+          observed_blob="$(git rev-parse 0515a2d5ad2c7a1eb545f2b7b327b7367530dfca:lookdev/service_dark_atlas_pack_review_001.json)"
+          test "$observed_blob" = "2b95fcc1fcc523576eca08dbf47a140a727ab598"
+          git show 0515a2d5ad2c7a1eb545f2b7b327b7367530dfca:lookdev/service_dark_atlas_pack_review_001.json > /tmp/service_dark_atlas_pack_review_001.json
+          printf '%s\n' 0515a2d5ad2c7a1eb545f2b7b327b7367530dfca > evidence/service-surface-metric-domains/materials-review-head.txt
+          printf '%s\n' "$observed_blob" > evidence/service-surface-metric-domains/materials-review-blob.txt
+      - name: Build exact source-owned service-surface metric-domain evidence
+        if: matrix.python-version == '3.11'
+        run: |
+          set -euo pipefail
+          python tools/verify_service_surface_metric_domains.py \
+            --host assets/modular-equipment-case-001/source.json \
+            --metric-contract assets/modular-equipment-case-001/service-surface-metric-domains-001.json \
+            --frame-contract assets/modular-equipment-case-001/service-surface-reference-frames-001.json \
+            --lid-identity assets/modular-equipment-case-001/lid-inner-surface-identity-001.json \
+            --front-identity assets/modular-equipment-case-001/front-service-panel-outer-surface-identity-001.json \
+            --materials-review /tmp/service_dark_atlas_pack_review_001.json \
+            --out evidence/service-surface-metric-domains
+          cp assets/modular-equipment-case-001/source.json evidence/service-surface-metric-domains/host-source.json
+          cp assets/modular-equipment-case-001/service-surface-metric-domains-001.json evidence/service-surface-metric-domains/metric-domain-contract.json
+          cp assets/modular-equipment-case-001/service-surface-reference-frames-001.json evidence/service-surface-metric-domains/reference-frame-contract.json
+          cp assets/modular-equipment-case-001/lid-inner-surface-identity-001.json evidence/service-surface-metric-domains/lid-inner-surface-identity.json
+          cp assets/modular-equipment-case-001/front-service-panel-outer-surface-identity-001.json evidence/service-surface-metric-domains/front-service-panel-outer-surface-identity.json
+          cp /tmp/service_dark_atlas_pack_review_001.json evidence/service-surface-metric-domains/materials-atlas-review-donor.json
+          git rev-parse HEAD > evidence/service-surface-metric-domains/exact-head.txt
+      - name: Validate retained metric-domain receipt
+        if: matrix.python-version == '3.11'
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('evidence/service-surface-metric-domains/service-surface-metric-domains-evidence.json')
+          r=json.loads(p.read_text())
+          assert r['result']=='PASS_SOURCE_OWNED_SERVICE_SURFACE_METRIC_DOMAINS',r
+          assert r['host_vertices']==468 and r['host_triangles']==812,r
+          assert r['domain_count']==2,r
+          assert abs(r['total_service_surface_area_m2']-0.447408)<=1e-12,r
+          assert r['materials_physical_sizes_match_source_domains'] is True,r
+          assert r['production_uv_authored'] is False,r
+          assert r['atlas_policy_adopted'] is False,r
+          assert r['technical_art_transport_accepted'] is False,r
+          assert r['runtime_representation_accepted'] is False,r
+          by_id={row['surface_id']:row for row in r['domains']}
+          def near_vec(actual, expected):
+              return len(actual)==len(expected) and all(abs(float(a)-float(b))<=1e-12 for a,b in zip(actual,expected))
+          assert near_vec(by_id['lid_inner_service_surface']['primary_bounds_m'],[-0.39,0.39]),r
+          assert near_vec(by_id['lid_inner_service_surface']['secondary_bounds_m'],[-0.24,0.24]),r
+          assert near_vec(by_id['front_service_panel_outer_service_surface']['primary_bounds_m'],[-0.234,0.234]),r
+          assert near_vec(by_id['front_service_panel_outer_service_surface']['secondary_bounds_m'],[-0.078,0.078]),r
+          print(json.dumps(r,indent=2,sort_keys=True))
+          PY
+      - name: Upload retained evidence
+        if: matrix.python-version == '3.11'
+        uses: actions/upload-artifact@v4
+        with:
+          name: modular-equipment-case-001-service-surface-metric-domains-${{ github.event.pull_request.head.sha || github.sha }}
+          path: evidence/service-surface-metric-domains
+          if-no-files-found: error
+          retention-days: 30

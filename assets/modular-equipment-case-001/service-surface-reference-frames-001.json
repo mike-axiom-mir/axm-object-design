@@ -1,0 +1,82 @@
+{
+  "schema": "axm.object-hard-surface-service-surface-reference-frames/v0.1",
+  "asset_id": "modular-equipment-case-001",
+  "host_source_sha256": "49b1f9ed9865893d6de6f1ec8f069576732df694853fde4e3fcff366de32644a",
+  "coordinate_system": "+X right, +Y forward, +Z up",
+  "purpose": "source-own stable planar reference frames for the two already-owned manufactured service surfaces so downstream Materials and Technical Art do not have to rediscover axis orientation from primitive geometry; preserve source geometry and keep UV/material/texture/transport authority outside Hard Surface",
+  "frames": [
+    {
+      "surface_id": "lid_inner_service_surface",
+      "identity_contract_path": "assets/modular-equipment-case-001/lid-inner-surface-identity-001.json",
+      "component_name": "lid_shell",
+      "required_role": "lid_shell",
+      "selector": "source_local_min_z_face",
+      "origin_policy": "selected_face_center",
+      "primary_axis": [1, 0, 0],
+      "secondary_axis": [0, 1, 0],
+      "outward_normal": [0, 0, -1],
+      "orientation_parity": -1,
+      "frame_semantics": {
+        "primary": "source_local_positive_x",
+        "secondary": "source_local_positive_y",
+        "normal": "selected_face_outward"
+      }
+    },
+    {
+      "surface_id": "front_service_panel_outer_service_surface",
+      "identity_contract_path": "assets/modular-equipment-case-001/front-service-panel-outer-surface-identity-001.json",
+      "component_name": "front_service_panel",
+      "required_role": "service_panel",
+      "selector": "source_local_min_y_face",
+      "origin_policy": "selected_face_center",
+      "primary_axis": [1, 0, 0],
+      "secondary_axis": [0, 0, 1],
+      "outward_normal": [0, -1, 0],
+      "orientation_parity": 1,
+      "frame_semantics": {
+        "primary": "source_local_positive_x",
+        "secondary": "source_local_positive_z",
+        "normal": "selected_face_outward"
+      }
+    }
+  ],
+  "downstream_basis_observation": {
+    "repository": "mike-axiom-mir/axm-object-design",
+    "pull_request": 6,
+    "head": "4c12a0a57f6aa8778cff41efad321e13567c6c91",
+    "path": "lookdev/service_dark_atlas_pack_review_001.json",
+    "git_blob_sha": "2b95fcc1fcc523576eca08dbf47a140a727ab598",
+    "schema": "axm.object-service-dark-atlas-pack-review/v0.1",
+    "expected_materials_basis": {
+      "lid_inner_service_surface": "SOURCE_LOCAL_X_TO_U__SOURCE_LOCAL_Y_TO_V",
+      "front_service_panel_outer_service_surface": "SOURCE_LOCAL_X_TO_U__SOURCE_LOCAL_Z_TO_V"
+    },
+    "relationship": "compatibility observation only; Hard Surface owns the source-space frame axes, while Materials retains UV mapping, density, packing, texture and appearance authority"
+  },
+  "authority": {
+    "hard_surface_owns_surface_reference_frame": true,
+    "hard_surface_authors_uv": false,
+    "source_uv_assignment": "UNASSIGNED",
+    "hard_surface_assigns_material": false,
+    "source_material_assignment": "UNASSIGNED",
+    "materials_basis_adopted_as_source_uv": false,
+    "technical_art_transport_adopted": false
+  },
+  "truth_boundary": {
+    "host_source_geometry_changed": false,
+    "existing_surface_identities_changed": false,
+    "surface_reference_frames_source_owned": true,
+    "uv_assignment": false,
+    "material_assignment": false,
+    "texture_assignment": false,
+    "decal_assignment": false,
+    "tangent_space_acceptance": false,
+    "engine_import_acceptance": false,
+    "runtime_performance_acceptance": false,
+    "art_direction_acceptance": false,
+    "visual_qa_acceptance": false,
+    "manufacturing_validity": false,
+    "canon": false,
+    "production_readiness": false
+  }
+}

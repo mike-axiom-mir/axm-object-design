@@ -1,0 +1,58 @@
+name: Object lid inner-surface identity evidence
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  structural:
+    strategy:
+      matrix:
+        python-version: ['3.11', '3.13']
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Compile
+        run: python -m compileall tools tests
+      - name: Test full repository suite
+        run: python -m unittest discover -s tests -v
+      - name: Materialize exact Materials review donor
+        if: matrix.python-version == '3.11'
+        run: |
+          mkdir -p evidence/lid-inner-surface-identity
+          git fetch origin 8e92324648d837a92b7c3e0b1107df1f58f9aa61 --depth=1
+          git cat-file -e 8e92324648d837a92b7c3e0b1107df1f58f9aa61^{commit}
+          observed_blob="$(git rev-parse 8e92324648d837a92b7c3e0b1107df1f58f9aa61:lookdev/inner_lid_surface_review_001.json)"
+          test "$observed_blob" = "cc90cd2c4c0f8eaf6b93d190436bc278c0fa1c83"
+          git show 8e92324648d837a92b7c3e0b1107df1f58f9aa61:lookdev/inner_lid_surface_review_001.json > /tmp/inner_lid_surface_review_001.json
+          printf '%s\n' 8e92324648d837a92b7c3e0b1107df1f58f9aa61 > evidence/lid-inner-surface-identity/materials-review-head.txt
+          printf '%s\n' "$observed_blob" > evidence/lid-inner-surface-identity/materials-review-blob.txt
+      - name: Build exact lid inner-surface identity evidence
+        if: matrix.python-version == '3.11'
+        run: |
+          python tools/verify_lid_inner_surface_identity.py \
+            --host assets/modular-equipment-case-001/source.json \
+            --contract assets/modular-equipment-case-001/lid-inner-surface-identity-001.json \
+            --materials-review /tmp/inner_lid_surface_review_001.json \
+            --out evidence/lid-inner-surface-identity
+          cp assets/modular-equipment-case-001/source.json evidence/lid-inner-surface-identity/host-source.json
+          cp assets/modular-equipment-case-001/lid-inner-surface-identity-001.json evidence/lid-inner-surface-identity/surface-identity-contract.json
+          cp /tmp/inner_lid_surface_review_001.json evidence/lid-inner-surface-identity/materials-review-donor.json
+          git rev-parse HEAD > evidence/lid-inner-surface-identity/exact-head.txt
+      - name: Upload retained evidence
+        if: matrix.python-version == '3.11'
+        uses: actions/upload-artifact@v4
+        with:
+          name: modular-equipment-case-001-lid-inner-surface-identity-evidence
+          path: evidence/lid-inner-surface-identity
+          if-no-files-found: error
+          retention-days: 30
