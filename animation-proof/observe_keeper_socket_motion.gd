@@ -31,10 +31,9 @@ func read_json(path: String) -> Dictionary:
     return parsed as Dictionary if parsed is Dictionary else {}
 
 func sha256_file(path: String) -> String:
-    var bytes := FileAccess.get_file_as_bytes(path)
     var ctx := HashingContext.new()
     ctx.start(HashingContext.HASH_SHA256)
-    ctx.update(bytes)
+    ctx.update(FileAccess.get_file_as_bytes(path))
     return ctx.finish().hex_encode()
 
 func write_receipt() -> void:
@@ -59,34 +58,21 @@ func find_node(root: Node, wanted: String) -> Node3D:
             return found
     return null
 
-func world_mesh_center(node: Node3D) -> Vector3:
+func mesh_center(node: Node3D) -> Vector3:
     if not (node is MeshInstance3D):
-        fail("expected MeshInstance3D for " + String(node.name))
+        fail("expected MeshInstance3D: " + String(node.name))
         return Vector3.ZERO
-    var instance := node as MeshInstance3D
-    if instance.mesh == null:
-        fail("mesh missing for " + String(node.name))
+    var mesh_node := node as MeshInstance3D
+    if mesh_node.mesh == null:
+        fail("mesh missing: " + String(node.name))
         return Vector3.ZERO
-    return instance.global_transform * instance.mesh.get_aabb().get_center()
+    return mesh_node.global_transform * mesh_node.mesh.get_aabb().get_center()
 
 func source_to_uc(values: Array) -> Vector3:
     if values.size() != 3:
-        fail("source vec3 identity malformed")
+        fail("malformed source vec3")
         return Vector3.ZERO
     return Vector3(float(values[0]), float(values[2]), float(values[1]))
-
-func add_discrete_rotation_track(animation: Animation, root: Node3D, node: Node3D, samples: Array, value_key: String, flip_sign: bool) -> int:
-    var track := animation.add_track(Animation.TYPE_VALUE)
-    var path := str(root.get_path_to(node)) + ":rotation_degrees"
-    animation.track_set_path(track, NodePath(path))
-    animation.track_set_interpolation_type(track, Animation.INTERPOLATION_NEAREST)
-    animation.value_track_set_update_mode(track, Animation.UPDATE_DISCRETE)
-    for sample in samples:
-        var deg := float(sample[value_key])
-        if flip_sign:
-            deg = -deg
-        animation.track_insert_key(track, float(sample["time_s"]), Vector3(deg, 0.0, 0.0))
-    return track
 
 func station_lookup(rows: Array) -> Dictionary:
     var out := {}
@@ -99,14 +85,23 @@ func keeper_reference_lookup(keeper_rig: Dictionary) -> Dictionary:
     for row in keeper_rig.get("sweep", []):
         var angle := int(row.get("open_angle_deg", -999))
         if angle == 0 or angle == 50 or angle == 100:
-            var per_keeper := {}
+            var keepers := {}
             for keeper in row.get("keepers", []):
-                per_keeper[String(keeper["keeper"])] = source_to_uc(keeper["center_m"])
-            out[str(angle)] = per_keeper
+                keepers[String(keeper["keeper"])] = source_to_uc(keeper["center_m"])
+            out[str(angle)] = keepers
     return out
 
 func keeper_local_drift(lid: Node3D, keeper: Node3D, neutral_local: Vector3) -> float:
-    return neutral_local.distance_to(lid.to_local(world_mesh_center(keeper)))
+    return neutral_local.distance_to(lid.to_local(mesh_center(keeper)))
+
+func add_discrete_track(animation: Animation, root: Node3D, node: Node3D, samples: Array, key: String) -> int:
+    var track := animation.add_track(Animation.TYPE_VALUE)
+    animation.track_set_path(track, NodePath(str(root.get_path_to(node)) + ":rotation_degrees"))
+    animation.track_set_interpolation_type(track, Animation.INTERPOLATION_NEAREST)
+    animation.value_track_set_update_mode(track, Animation.UPDATE_DISCRETE)
+    for sample in samples:
+        animation.track_insert_key(track, float(sample["time_s"]), Vector3(-float(sample[key]), 0.0, 0.0))
+    return track
 
 func _initialize() -> void:
     var technical := read_json(TECH_RECEIPT_PATH)
@@ -131,16 +126,16 @@ func _initialize() -> void:
         fail("keeper-socket Rigging prerequisite missing or not green")
         return
     if String(keeper_rig.get("source_sha256", "")) != String(contract["host_source_sha256"]):
-        fail("keeper-socket Rigging source identity drift")
+        fail("keeper source identity drift")
         return
     if String(keeper_rig["identity"].get("ownership_head", "")) != String(contract["keeper_rig_dependency"]["ownership_head"]):
-        fail("keeper-socket ownership donor drift")
+        fail("keeper ownership donor drift")
         return
     if String(keeper_rig["identity"].get("lid_rig_head", "")) != String(contract["keeper_rig_dependency"]["lid_rig_head"]):
-        fail("keeper-socket lid-rig donor drift")
+        fail("keeper lid-rig donor drift")
         return
     if String(keeper_rig["identity"].get("previous_rigging_target_binding_head", "")) != String(contract["keeper_rig_dependency"]["previous_rigging_target_binding_head"]):
-        fail("keeper-socket prior Rigging donor drift")
+        fail("keeper prior Rigging donor drift")
         return
     if String(sequence.get("sequence_id", "")) != String(contract["sequence"]["sequence_id"]):
         fail("sequence identity drift")
@@ -160,8 +155,7 @@ func _initialize() -> void:
     if not FileAccess.file_exists(GLB_PATH):
         fail("exact rebound GLB missing")
         return
-    var glb_sha := sha256_file(GLB_PATH)
-    if glb_sha != String(technical.get("rebound_glb_sha256", "")):
+    if sha256_file(GLB_PATH) != String(technical.get("rebound_glb_sha256", "")):
         fail("rebound GLB identity mismatch")
         return
 
@@ -171,7 +165,7 @@ func _initialize() -> void:
     if error != OK:
         fail("GLTFDocument append_from_file failed: " + str(error))
         return
-    var generated = document.generate_scene(state)
+    var generated := document.generate_scene(state)
     if generated == null or not (generated is Node3D):
         fail("GLTFDocument generate_scene returned no Node3D")
         return
@@ -184,10 +178,10 @@ func _initialize() -> void:
     var lever0 := find_node(imported, "latch_0_lever")
     var lever1 := find_node(imported, "latch_1_lever")
     if lid == null or keeper0 == null or keeper1 == null or lever0 == null or lever1 == null:
-        fail("required rigid component nodes were not preserved by target import")
+        fail("required rigid component nodes missing")
         return
     if keeper0.get_parent() != lid or keeper1.get_parent() != lid:
-        fail("source-owned keepers are not direct lid children on target host")
+        fail("source-owned keepers are not direct lid children")
         return
     if lever0.get_parent() == lid or lever1.get_parent() == lid:
         fail("front-panel-owned lever imported under lid")
@@ -197,16 +191,16 @@ func _initialize() -> void:
         await process_frame
 
     var neutral_keeper_world := {
-        "latch_0_keeper": world_mesh_center(keeper0),
-        "latch_1_keeper": world_mesh_center(keeper1)
+        "latch_0_keeper": mesh_center(keeper0),
+        "latch_1_keeper": mesh_center(keeper1)
     }
     var neutral_keeper_local := {
         "latch_0_keeper": lid.to_local(neutral_keeper_world["latch_0_keeper"]),
         "latch_1_keeper": lid.to_local(neutral_keeper_world["latch_1_keeper"])
     }
     var neutral_lever_world := {
-        "latch_0_lever": world_mesh_center(lever0),
-        "latch_1_lever": world_mesh_center(lever1)
+        "latch_0_lever": mesh_center(lever0),
+        "latch_1_lever": mesh_center(lever1)
     }
 
     var rig_by_station := station_lookup(latch_rig.get("station_results", []))
@@ -218,7 +212,7 @@ func _initialize() -> void:
     var pivot_by_station := {}
     for station_id in sample0_stations.keys():
         if not rig_by_station.has(station_id):
-            fail("sequence station missing exact lower-lever rig row: " + String(station_id))
+            fail("missing lower-lever rig row: " + String(station_id))
             return
         var component := String(sample0_stations[station_id]["lever_component"])
         var lever := find_node(imported, component)
@@ -232,12 +226,11 @@ func _initialize() -> void:
         lever.reparent(pivot, true)
         pivot_by_station[station_id] = pivot
 
-    for _i in range(2):
-        await process_frame
-
+    await process_frame
+    await process_frame
     var neutral_wrapper_drift := maxf(
-        neutral_lever_world["latch_0_lever"].distance_to(world_mesh_center(lever0)),
-        neutral_lever_world["latch_1_lever"].distance_to(world_mesh_center(lever1))
+        neutral_lever_world["latch_0_lever"].distance_to(mesh_center(lever0)),
+        neutral_lever_world["latch_1_lever"].distance_to(mesh_center(lever1))
     )
     if neutral_wrapper_drift > EPS_M:
         fail("proof-local lower-lever pivot wrappers changed neutral geometry")
@@ -246,16 +239,16 @@ func _initialize() -> void:
     var animation := Animation.new()
     animation.length = float(sequence["duration_s"])
     animation.loop_mode = Animation.LOOP_NONE
-    var lid_track := add_discrete_rotation_track(animation, imported, lid, sequence["samples"], "lid_mathematical_rotation_deg", true)
+    var lid_track := add_discrete_track(animation, imported, lid, sequence["samples"], "lid_mathematical_rotation_deg")
     var latch_tracks := []
     for station_id in pivot_by_station.keys():
-        latch_tracks.append(add_discrete_rotation_track(animation, imported, pivot_by_station[station_id], sequence["samples"], "latch_lever_angle_deg", true))
+        latch_tracks.append(add_discrete_track(animation, imported, pivot_by_station[station_id], sequence["samples"], "latch_lever_angle_deg"))
     if animation.track_get_key_count(lid_track) != 101:
-        fail("lid track did not receive all 101 authored keys")
+        fail("lid track did not receive 101 keys")
         return
     for track in latch_tracks:
         if animation.track_get_key_count(track) != 101:
-            fail("lower-lever track did not receive all 101 authored keys")
+            fail("lower-lever track did not receive 101 keys")
             return
 
     var player := AnimationPlayer.new()
@@ -266,15 +259,14 @@ func _initialize() -> void:
     library.add_animation(MOTION_NAME, animation)
     player.add_animation_library("", library)
 
-    var reference_by_angle := keeper_reference_lookup(keeper_rig)
-    for required_angle in [0, 50, 100]:
-        if not reference_by_angle.has(str(required_angle)):
-            fail("keeper Rigging receipt missing required reference angle " + str(required_angle))
+    var refs := keeper_reference_lookup(keeper_rig)
+    for angle in [0, 50, 100]:
+        if not refs.has(str(angle)):
+            fail("keeper Rigging receipt missing reference angle " + str(angle))
             return
 
     player.play(MOTION_NAME)
     player.pause()
-
     var max_lid_error_deg := 0.0
     var max_latch_error_deg := 0.0
     var max_keeper_local_drift_m := 0.0
@@ -282,59 +274,52 @@ func _initialize() -> void:
     var reference_hits := {"0": 0, "50": 0, "100": 0}
     var peak_min_keeper_move_m := 1000.0
 
-    for sample_index in range(sequence["samples"].size()):
-        var row = sequence["samples"][sample_index]
+    for row in sequence["samples"]:
         player.seek(float(row["time_s"]), true)
         player.advance(0.0)
         await process_frame
 
-        var expected_lid := -float(row["lid_mathematical_rotation_deg"])
-        max_lid_error_deg = maxf(max_lid_error_deg, absf(lid.rotation_degrees.x - expected_lid))
+        max_lid_error_deg = maxf(max_lid_error_deg, absf(lid.rotation_degrees.x + float(row["lid_mathematical_rotation_deg"])))
         for station_id in pivot_by_station.keys():
-            var expected_latch := -float(row["latch_lever_angle_deg"])
             var pivot = pivot_by_station[station_id] as Node3D
-            max_latch_error_deg = maxf(max_latch_error_deg, absf(pivot.rotation_degrees.x - expected_latch))
+            max_latch_error_deg = maxf(max_latch_error_deg, absf(pivot.rotation_degrees.x + float(row["latch_lever_angle_deg"])))
 
-        max_keeper_local_drift_m = maxf(
-            max_keeper_local_drift_m,
-            keeper_local_drift(lid, keeper0, neutral_keeper_local["latch_0_keeper"]),
-            keeper_local_drift(lid, keeper1, neutral_keeper_local["latch_1_keeper"])
-        )
+        var drift0 := keeper_local_drift(lid, keeper0, neutral_keeper_local["latch_0_keeper"])
+        var drift1 := keeper_local_drift(lid, keeper1, neutral_keeper_local["latch_1_keeper"])
+        max_keeper_local_drift_m = maxf(max_keeper_local_drift_m, maxf(drift0, drift1))
 
         var open_angle := float(row["lid_open_angle_deg"])
-        var reference_angle := -1
+        var ref_angle := -1
         for candidate in [0, 50, 100]:
             if absf(open_angle - float(candidate)) <= 0.0000001:
-                reference_angle = candidate
+                ref_angle = candidate
                 break
-        if reference_angle >= 0:
-            var ref = reference_by_angle[str(reference_angle)] as Dictionary
-            var err0 := world_mesh_center(keeper0).distance_to(ref["latch_0_keeper"])
-            var err1 := world_mesh_center(keeper1).distance_to(ref["latch_1_keeper"])
-            max_rig_reference_center_error_m = maxf(max_rig_reference_center_error_m, err0, err1)
-            reference_hits[str(reference_angle)] = int(reference_hits[str(reference_angle)]) + 1
+        if ref_angle >= 0:
+            var ref = refs[str(ref_angle)] as Dictionary
+            var err0 := mesh_center(keeper0).distance_to(ref["latch_0_keeper"])
+            var err1 := mesh_center(keeper1).distance_to(ref["latch_1_keeper"])
+            max_rig_reference_center_error_m = maxf(max_rig_reference_center_error_m, maxf(err0, err1))
+            reference_hits[str(ref_angle)] = int(reference_hits[str(ref_angle)]) + 1
 
         if absf(open_angle - 100.0) <= 0.0000001:
-            peak_min_keeper_move_m = minf(
-                peak_min_keeper_move_m,
-                neutral_keeper_world["latch_0_keeper"].distance_to(world_mesh_center(keeper0)),
-                neutral_keeper_world["latch_1_keeper"].distance_to(world_mesh_center(keeper1))
-            )
+            var move0 := neutral_keeper_world["latch_0_keeper"].distance_to(mesh_center(keeper0))
+            var move1 := neutral_keeper_world["latch_1_keeper"].distance_to(mesh_center(keeper1))
+            peak_min_keeper_move_m = minf(peak_min_keeper_move_m, minf(move0, move1))
 
     if max_lid_error_deg > EPS_DEG or max_latch_error_deg > EPS_DEG:
-        fail("AnimationPlayer authored-sample target transform divergence")
+        fail("AnimationPlayer authored-sample transform divergence")
         return
     if max_keeper_local_drift_m > EPS_M:
         fail("lid-owned keeper local socket drift during authored motion")
         return
     if max_rig_reference_center_error_m > EPS_M:
-        fail("target-host keeper center diverged from exact Rigging 0/50/100 reference")
+        fail("target-host keeper center diverged from Rigging reference")
         return
     if int(reference_hits["0"]) < 2 or int(reference_hits["50"]) < 2 or int(reference_hits["100"]) < 2:
-        fail("insufficient exact 0/50/100 Rigging reference hits in unchanged sequence")
+        fail("insufficient exact 0/50/100 Rigging reference hits")
         return
     if peak_min_keeper_move_m < 0.03:
-        fail("keeper did not visibly leave neutral during exact 100-degree lid motion")
+        fail("keeper did not leave neutral during 100-degree lid motion")
         return
 
     player.seek(0.0, true)
@@ -347,36 +332,34 @@ func _initialize() -> void:
     while player.is_playing():
         await process_frame
         live_frames += 1
-        live_max_keeper_local_drift_m = maxf(
-            live_max_keeper_local_drift_m,
-            keeper_local_drift(lid, keeper0, neutral_keeper_local["latch_0_keeper"]),
-            keeper_local_drift(lid, keeper1, neutral_keeper_local["latch_1_keeper"])
-        )
+        var live_drift0 := keeper_local_drift(lid, keeper0, neutral_keeper_local["latch_0_keeper"])
+        var live_drift1 := keeper_local_drift(lid, keeper1, neutral_keeper_local["latch_1_keeper"])
+        live_max_keeper_local_drift_m = maxf(live_max_keeper_local_drift_m, maxf(live_drift0, live_drift1))
         live_max_lid_rotation_deg = maxf(live_max_lid_rotation_deg, absf(lid.rotation_degrees.x))
         if live_frames > 2000:
             fail("capture-free AnimationPlayer play-path guard exceeded")
             return
 
     if live_frames < 2 or live_max_lid_rotation_deg < 80.0:
-        fail("capture-free AnimationPlayer play path did not exercise meaningful lid motion")
+        fail("capture-free AnimationPlayer path did not exercise meaningful motion")
         return
     if live_max_keeper_local_drift_m > EPS_M:
-        fail("keeper local socket drift during capture-free AnimationPlayer play path")
+        fail("keeper local socket drift during capture-free play path")
         return
 
     player.seek(float(sequence["duration_s"]), true)
     player.advance(0.0)
     await process_frame
     var endpoint_keeper_world_drift_m := maxf(
-        neutral_keeper_world["latch_0_keeper"].distance_to(world_mesh_center(keeper0)),
-        neutral_keeper_world["latch_1_keeper"].distance_to(world_mesh_center(keeper1))
+        neutral_keeper_world["latch_0_keeper"].distance_to(mesh_center(keeper0)),
+        neutral_keeper_world["latch_1_keeper"].distance_to(mesh_center(keeper1))
     )
     var endpoint_lever_world_drift_m := maxf(
-        neutral_lever_world["latch_0_lever"].distance_to(world_mesh_center(lever0)),
-        neutral_lever_world["latch_1_lever"].distance_to(world_mesh_center(lever1))
+        neutral_lever_world["latch_0_lever"].distance_to(mesh_center(lever0)),
+        neutral_lever_world["latch_1_lever"].distance_to(mesh_center(lever1))
     )
     if endpoint_keeper_world_drift_m > EPS_M or endpoint_lever_world_drift_m > EPS_M:
-        fail("unchanged sequence failed neutral endpoint closure after keeper Rigging rebind")
+        fail("unchanged sequence failed neutral endpoint closure")
         return
 
     receipt["state"] = "PASS_TARGET_HOST_KEEPER_SOCKET_MOTION_REBIND_101_SAMPLES"
