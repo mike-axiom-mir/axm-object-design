@@ -1,0 +1,56 @@
+{
+  "schema": "axm.object-reactive-vfx/v0.1",
+  "effect_id": "lid-open-release-motes-001",
+  "asset_id": "modular-equipment-case-001",
+  "source_sha256": "49b1f9ed9865893d6de6f1ec8f069576732df694853fde4e3fcff366de32644a",
+  "animation_dependency": {
+    "repository": "mike-axiom-mir/axm-object-design",
+    "base_head": "07130d3481d69b5a4d8a399e86bd207d623dc87c",
+    "sequence_path": "assets/modular-equipment-case-001/lid-latch-motion-sequence-001.json",
+    "sequence_id": "lid-latch-open-hold-close-001",
+    "sample_rate_hz": 40,
+    "duration_s": 2.5,
+    "trigger_phase_id": "play_exact_lid_clip",
+    "trigger_time_s": 0.25,
+    "trigger_semantics": "EXACT_ANIMATION_PHASE_BOUNDARY_NOT_GAMEPLAY_EVENT"
+  },
+  "visual_source": {
+    "kind": "deterministic_analytic_motes",
+    "particle_count": 18,
+    "seed": 41027,
+    "emission_span_s": 0.10,
+    "lifetime_min_s": 0.30,
+    "lifetime_max_s": 0.44,
+    "size_min_m": 0.014,
+    "size_max_m": 0.026,
+    "vertical_speed_min_mps": 0.22,
+    "vertical_speed_max_mps": 0.34,
+    "camera_forward_speed_min_mps": 0.025,
+    "camera_forward_speed_max_mps": 0.075,
+    "lateral_speed_abs_max_mps": 0.055,
+    "gravity_visual_mps2": -0.10,
+    "color_srgb": [0.78, 0.72, 0.61],
+    "alpha_peak": 0.56,
+    "anchor": "CAMERA_FACING_LID_BODY_SEAM_DERIVED_FROM_IMPORTED_NEUTRAL_LID_AABB",
+    "source_label": "STYLIZED_VISUAL_RELEASE_MOTES_NOT_DUST_OR_FLUID_SIMULATION"
+  },
+  "verification": {
+    "pre_trigger_time_s": 0.20,
+    "active_times_s": [0.30, 0.40, 0.52],
+    "post_effect_time_s": 0.80,
+    "minimum_active_changed_pixels": 80,
+    "maximum_active_changed_frame_fraction": 0.08,
+    "inactive_changed_pixels_max": 0,
+    "negative_control": "TRIGGER_TIME_DRIFT_MUST_FAIL_BEFORE_RENDER"
+  },
+  "ownership": {
+    "vfx": "effect source, phase binding and visual evidence",
+    "animation": "sequence timing, easing and phase authority",
+    "rigging": "mechanical articulation authority",
+    "technical_art": "target transport authority",
+    "runtime": "performance and production particle implementation authority",
+    "art_qa": "perceptual acceptance authority",
+    "gameplay_physics": "unchanged and unclaimed"
+  },
+  "truth_boundary": "A PASS may prove only that this deterministic visual-only mote candidate is bound to the exact existing lid-motion phase boundary and is visibly localized in the exact retained Godot proof receiver without altering the object animation state. It does not prove dust, pressure, airflow, fluid dynamics, collision, damage, interaction, gameplay timing, production particle runtime, target-device performance, Art Direction acceptance, Visual QA acceptance, CANON or production readiness."
+}

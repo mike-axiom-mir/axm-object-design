@@ -1,0 +1,76 @@
+{
+  "schema": "axm.object-reactive-vfx/v0.1",
+  "effect_id": "lid-open-release-motes-001-irregularity-repair-candidate-v2",
+  "asset_id": "modular-equipment-case-001",
+  "source_sha256": "49b1f9ed9865893d6de6f1ec8f069576732df694853fde4e3fcff366de32644a",
+  "animation_dependency": {
+    "repository": "mike-axiom-mir/axm-object-design",
+    "base_head": "07130d3481d69b5a4d8a399e86bd207d623dc87c",
+    "sequence_path": "assets/modular-equipment-case-001/lid-latch-motion-sequence-001.json",
+    "sequence_id": "lid-latch-open-hold-close-001",
+    "sample_rate_hz": 40,
+    "duration_s": 2.5,
+    "trigger_phase_id": "play_exact_lid_clip",
+    "trigger_time_s": 0.25,
+    "trigger_semantics": "EXACT_ANIMATION_PHASE_BOUNDARY_NOT_GAMEPLAY_EVENT"
+  },
+  "visual_source": {
+    "kind": "deterministic_analytic_motes",
+    "particle_count": 18,
+    "seed": 41027,
+    "emission_span_s": 0.1,
+    "lifetime_min_s": 0.3,
+    "lifetime_max_s": 0.44,
+    "size_min_m": 0.014,
+    "size_max_m": 0.026,
+    "vertical_speed_min_mps": 0.22,
+    "vertical_speed_max_mps": 0.34,
+    "camera_forward_speed_min_mps": 0.025,
+    "camera_forward_speed_max_mps": 0.075,
+    "lateral_speed_abs_max_mps": 0.055,
+    "gravity_visual_mps2": -0.1,
+    "color_srgb": [0.78, 0.72, 0.61],
+    "alpha_peak": 0.56,
+    "anchor": "CAMERA_FACING_LID_BODY_SEAM_DERIVED_FROM_IMPORTED_NEUTRAL_LID_AABB",
+    "source_label": "STYLIZED_VISUAL_RELEASE_MOTES_NOT_DUST_OR_FLUID_SIMULATION",
+    "parameter_sampling": "DECORRELATED_INTEGER_MIX_V2_IRREGULAR_MARKS",
+    "parameter_sampling_semantics": "DETERMINISTIC_SAME_SEED_AND_OWNER_NUMERIC_RANGES__DECORRELATE_PARAMETER_DIMENSIONS_AND_BREAK_EQUAL_MARK_ALIGNMENT",
+    "repair_modulation": {
+      "billboard_aspect_min": 0.58,
+      "billboard_aspect_max": 1.0,
+      "alpha_scale_min": 0.55,
+      "alpha_scale_max": 1.0,
+      "vertical_spawn_jitter_abs_max_m": 0.012,
+      "curve_abs_max_m": 0.01,
+      "curve_vertical_ratio": 0.65,
+      "constraint": "NO_BRIGHTER_NO_LARGER_NO_LONGER_LIVED_NO_WIDER_OWNER_RANGE"
+    }
+  },
+  "verification": {
+    "pre_trigger_time_s": 0.2,
+    "active_times_s": [0.3, 0.4, 0.52],
+    "post_effect_time_s": 0.8,
+    "minimum_active_changed_pixels": 80,
+    "maximum_active_changed_frame_fraction": 0.08,
+    "inactive_changed_pixels_max": 0,
+    "negative_control": "TRIGGER_TIME_DRIFT_MUST_FAIL_BEFORE_RENDER"
+  },
+  "ownership": {
+    "vfx": "effect source, phase binding and visual evidence",
+    "animation": "sequence timing, easing and phase authority",
+    "rigging": "mechanical articulation authority",
+    "technical_art": "target transport authority",
+    "runtime": "performance and production particle implementation authority",
+    "art_qa": "perceptual acceptance authority",
+    "gameplay_physics": "unchanged and unclaimed"
+  },
+  "truth_boundary": "This is one VFX-owned successor visual repair candidate derived from owner seed 41027 after the decorrelation-only draft remained too line-like. A PASS may prove only that deterministic parameter decorrelation plus bounded subordinate mark irregularity is visible in the same retained proof contexts while preserving the owner trigger, seed, count, color, alpha ceiling, size ceiling, lifetime range, velocity ranges and inactive closure. It does not authorize owner replacement or prove physical dust, pressure, airflow, fluid dynamics, collision, damage, interaction, gameplay timing, production particle runtime, target-device performance, Art Direction acceptance, Visual QA acceptance, CANON or production readiness.",
+  "candidate_relationship": {
+    "owner_effect_id": "lid-open-release-motes-001",
+    "owner_seed": 41027,
+    "repair_scope": "DECORRELATE_PARAMETER_DIMENSIONS_AND_SUBORDINATE_MARK_REGULARITY",
+    "previous_candidate_head": "fd5f12c009f9a95b221091d75f37b3faa2b927b7",
+    "previous_candidate_result": "ENGINEERING_PASS__VISUAL_DIAGNOSTIC_HOLD_LINE_LIKE_ALIGNMENT_PERSISTS",
+    "not_adopted": true
+  }
+}
