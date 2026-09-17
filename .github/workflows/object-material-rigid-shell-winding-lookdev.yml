@@ -161,7 +161,7 @@ jobs:
           from pathlib import Path
           r=json.loads(Path('lookdev-proof/rigid-shell-winding-lookdev-runtime-receipt.json').read_text())
           assert r['state']=='PASS_EVIDENCE',r
-          assert r['two_sided_byte_identity_all_contexts'] is True,r
+          assert r['unshaded_two_sided_coverage_identity_all_contexts'] is True,r
           assert r['aggregate_owner_vs_host_reversed_back_gt1'] > 0,r
           print(json.dumps(r,indent=2))
           PY
