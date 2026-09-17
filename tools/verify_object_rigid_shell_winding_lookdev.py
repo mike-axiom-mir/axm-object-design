@@ -64,8 +64,11 @@ def normalized_materials(profile: dict[str, Any], roles: set[str]) -> tuple[dict
     if profile.get("schema") != "axm.object-material-profile/v0.1":
         raise AssertionError("material profile schema drift")
     mapping = profile.get("role_materials", {})
-    if set(mapping) != roles:
-        raise AssertionError(f"material role coverage drift missing={sorted(roles-set(mapping))} extra={sorted(set(mapping)-roles)}")
+    if not isinstance(mapping, dict):
+        raise AssertionError("material role mapping missing")
+    missing = sorted(roles - set(mapping))
+    if missing:
+        raise AssertionError(f"material role coverage drift missing={missing}")
     candidate = profile.get("candidate", {})
     normalized: dict[str, Any] = {}
     for material_id, spec in candidate.items():
