@@ -1,0 +1,38 @@
+{
+  "schema": "axm.object-service-module-standoff-reference/v0.1",
+  "policy_id": "utility-module-001-standoff-reference-001",
+  "host_asset_id": "modular-equipment-case-001",
+  "module_asset_id": "utility-module-001",
+  "units": "meters",
+  "source_bindings": {
+    "host_source_sha256": "49b1f9ed9865893d6de6f1ec8f069576732df694853fde4e3fcff366de32644a",
+    "module_source_sha256": "ffd7b42294d3af71e02aa172157beccefa08c6af2c1198f88836862d2a50fc2e"
+  },
+  "field_path": "interface.standoff_from_socket_origin_m",
+  "reference_feature": "module_nearest_host_facing_body_face",
+  "reference_feature_semantics": "The standoff value locates the module body's nearest host-facing local-X face. The body occupies local X from standoff through standoff + body.depth_m. It is not a body-center offset.",
+  "axis_semantics": "module local +X maps to each source socket outward normal",
+  "expected": {
+    "standoff_m": 0.03,
+    "body_depth_m": 0.095,
+    "body_local_x_interval_m": [0.03, 0.125],
+    "socket_plate_thickness_m": 0.012,
+    "physical_body_clearance_beyond_plate_m": 0.018,
+    "socket_names": ["left_service", "right_service"]
+  },
+  "forbidden_interpretations": [
+    "module_body_center",
+    "module_farthest_outward_face",
+    "unspecified_reference_feature"
+  ],
+  "authority": {
+    "source_reference_feature_owned_by_hard_surface": true,
+    "source_geometry_changed": false,
+    "module_source_changed": false,
+    "host_source_changed": false,
+    "downstream_rebind_authorized": false,
+    "fastener_or_tooling_geometry_authorized": false,
+    "runtime_attachment_authorized": false
+  },
+  "truth_boundary": "This policy makes the existing Object standoff anchor explicit without changing host/module source bytes or proof geometry. It proves only which existing module body face the scalar standoff locates and the already-established source-space clearance derived from that interpretation. It does not establish engineering tolerances, fastener/tool envelopes, retention, collision/physics, runtime attachment, gameplay, visual acceptance, CANON or production readiness."
+}
