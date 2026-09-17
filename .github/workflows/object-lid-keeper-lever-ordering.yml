@@ -114,7 +114,7 @@ jobs:
         run: |
           set -euo pipefail
           rm -rf evidence/lid-keeper-lever-ordering-001
-          python tools/verify_lid_keeper_lever_ordering.py \
+          python tools/run_lid_keeper_lever_ordering.py \
             --source assets/modular-equipment-case-001/source.json \
             --ownership assets/modular-equipment-case-001/front-latch-ownership-001.json \
             --lid-plan ../lid-rig-donor/assets/modular-equipment-case-001/articulation.json \
@@ -151,7 +151,7 @@ jobs:
           first['latch_lever_angle_deg']=0.0
           Path('/tmp/axm-lid-latch/mutated-early-lid-motion.json').write_text(json.dumps(data,indent=2,sort_keys=True)+'\n')
           PY
-          if python tools/verify_lid_keeper_lever_ordering.py \
+          if python tools/run_lid_keeper_lever_ordering.py \
             --source assets/modular-equipment-case-001/source.json \
             --ownership assets/modular-equipment-case-001/front-latch-ownership-001.json \
             --lid-plan ../lid-rig-donor/assets/modular-equipment-case-001/articulation.json \
