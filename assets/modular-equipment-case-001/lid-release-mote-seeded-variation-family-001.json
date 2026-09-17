@@ -1,0 +1,70 @@
+{
+  "schema": "axm.object-lid-release-mote-seeded-variation-family/v0.1",
+  "family_id": "object-lid-release-mote-seeded-variation-001",
+  "owner_vfx": {
+    "repository": "mike-axiom-mir/axm-object-design",
+    "exact_head": "7994d6f28050053f07dd355d8c54a983b0e8268b",
+    "effect_path": "assets/modular-equipment-case-001/lid-open-release-motes-001.json",
+    "effect_git_blob_sha": "83c41db21e16847ac0a69215facd8697853eeb4f",
+    "effect_id": "lid-open-release-motes-001",
+    "required_effect_schema": "axm.object-reactive-vfx/v0.1",
+    "required_source_label": "STYLIZED_VISUAL_RELEASE_MOTES_NOT_DUST_OR_FLUID_SIMULATION",
+    "required_anchor": "CAMERA_FACING_LID_BODY_SEAM_DERIVED_FROM_IMPORTED_NEUTRAL_LID_AABB",
+    "required_animation_phase": "play_exact_lid_clip",
+    "required_trigger_semantics": "EXACT_ANIMATION_PHASE_BOUNDARY_NOT_GAMEPLAY_EVENT"
+  },
+  "hash_contract": {
+    "id": "object-vfx-hash01-v0.1",
+    "expression": "(((seed + (index + 1) * 1103515245 + (salt + 1) * 12345) & 0x7fffffff) % 10000) / 9999.0",
+    "salts": {
+      "seam_x_t": 1,
+      "seam_z_t": 2,
+      "spawn_t": 3,
+      "lifetime_t": 4,
+      "size_t": 5,
+      "lateral_velocity_t": 6,
+      "vertical_velocity_t": 7,
+      "camera_forward_velocity_t": 8
+    }
+  },
+  "parameter_contract": {
+    "seed_only_variation": true,
+    "maximum_variants": 4,
+    "maximum_particles_per_variant": 64,
+    "seed_min": 0,
+    "seed_max": 2147483647,
+    "duplicate_seeds": "FORBIDDEN",
+    "owner_effect_parameter_override": "FORBIDDEN",
+    "owner_timing_override": "FORBIDDEN",
+    "owner_semantics_override": "FORBIDDEN",
+    "seam_bounds_inference": "FORBIDDEN_NORMALIZED_COORDINATES_ONLY",
+    "automatic_vfx_adoption": "FORBIDDEN",
+    "automatic_runtime_adoption": "FORBIDDEN",
+    "ordering": "CANONICAL_VARIANT_ID_FOR_DIGEST"
+  },
+  "variants": [
+    {"variant_id": "owner-seed-41027", "seed": 41027, "role": "EXACT_OWNER_BASELINE_SEED"},
+    {"variant_id": "review-seed-17489", "seed": 17489, "role": "PROCEDURAL_REVIEW_VARIATION_ONLY"},
+    {"variant_id": "review-seed-57203", "seed": 57203, "role": "PROCEDURAL_REVIEW_VARIATION_ONLY"},
+    {"variant_id": "review-seed-91811", "seed": 91811, "role": "PROCEDURAL_REVIEW_VARIATION_ONLY"}
+  ],
+  "failure_policy": "FAIL_CLOSED_EXACT_OWNER_EFFECT_AND_HASH_CONTRACT_ONLY_NO_PARAMETER_RETUNE_NO_SEAM_GUESSING_NO_ADOPTION",
+  "purpose": "Proceduralize only the repeated deterministic per-mote seed expansion already present in the VFX-owned lid-release effect. The family emits normalized seam coordinates plus owner-range scalar samples for several explicit seeds so variation can be tested without copying target-host scene logic, retuning VFX-owned ranges, or treating a review seed as an adopted effect.",
+  "truth_boundary": {
+    "procedural_seed_expansion_only": true,
+    "vfx_effect_ownership_preserved": true,
+    "animation_phase_ownership_preserved": true,
+    "owner_baseline_seed_changed": false,
+    "owner_effect_parameters_changed": false,
+    "seam_world_bounds_authored": false,
+    "target_host_rendered": false,
+    "vfx_visual_acceptance": false,
+    "runtime_particle_implementation": false,
+    "automatic_vfx_adoption": false,
+    "automatic_runtime_adoption": false,
+    "art_direction_or_visual_qa_acceptance": false,
+    "uc_or_profession_fabric_promotion": false,
+    "canon": false,
+    "production_readiness": false
+  }
+}
