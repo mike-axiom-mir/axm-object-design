@@ -312,7 +312,7 @@ func _initialize() -> void:
         max_front_uv_drift = maxf(max_front_uv_drift, front_uv_drift)
         max_lid_displacement = maxf(max_lid_displacement, lid_displacement)
 
-        csv.store_line("%d,%.9f,%.9f,%.9f,%.12g,%.12g,%.12g,%.12g,%.12g" % [sample_index, time_s, source_angle, target_angle, lid_error, front_drift, lid_uv_drift, front_uv_drift, lid_displacement])
+        csv.store_line("%d,%.9f,%.9f,%.9f,%.12f,%.12f,%.12f,%.12f,%.12f" % [sample_index, time_s, source_angle, target_angle, lid_error, front_drift, lid_uv_drift, front_uv_drift, lid_displacement])
         if representative_indices.has(sample_index):
             representative.append({
                 "sample_index": sample_index,
