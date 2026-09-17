@@ -1,0 +1,335 @@
+name: Object VFX seeded mote family target review
+
+on:
+  pull_request:
+    paths:
+      - 'assets/modular-equipment-case-001/lid-open-release-motes-001.json'
+      - 'animation-proof/observe_lid_release_motes.gd'
+      - '.github/workflows/object-vfx-lid-release-mote-seed-family-target-review.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  OWNER_VFX_HEAD: 7994d6f28050053f07dd355d8c54a983b0e8268b
+  OWNER_EFFECT_BLOB: 83c41db21e16847ac0a69215facd8697853eeb4f
+  PROCEDURAL_HEAD: 112dcf8fb900d74f68de997d4f3845ccddbb1955
+  BASELINE_ARTIFACT_ID: '10514900595'
+  BASELINE_ARTIFACT_SHA256: cf620d98c315189f1d5c4f3c8cea702aee969602eaef9a5ad7f5374daa894187
+
+jobs:
+  exact-seeded-family-target-review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout exact VFX receiving head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+
+      - name: Bind owner effect without retuning it
+        run: |
+          set -euo pipefail
+          echo "EXACT_REVIEW_HEAD=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
+          test "$(git rev-parse "${OWNER_VFX_HEAD}:assets/modular-equipment-case-001/lid-open-release-motes-001.json")" = "$OWNER_EFFECT_BLOB"
+          test "$(git rev-parse "HEAD:assets/modular-equipment-case-001/lid-open-release-motes-001.json")" = "$OWNER_EFFECT_BLOB"
+          git merge-base --is-ancestor "$OWNER_VFX_HEAD" HEAD
+
+      - name: Checkout exact Procedural seed-family donor
+        uses: actions/checkout@v4
+        with:
+          repository: mike-axiom-mir/axm-object-design
+          ref: ${{ env.PROCEDURAL_HEAD }}
+          path: .procedural
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Rebuild exact Procedural family against unchanged VFX owner effect
+        run: |
+          set -euo pipefail
+          test "$(git -C .procedural rev-parse HEAD)" = "$PROCEDURAL_HEAD"
+          rm -rf seed-family
+          mkdir -p seed-family/generated
+          python .procedural/tools/build_lid_release_mote_seeded_variation_family.py \
+            --profile .procedural/assets/modular-equipment-case-001/lid-release-mote-seeded-variation-family-001.json \
+            --owner-effect assets/modular-equipment-case-001/lid-open-release-motes-001.json \
+            --owner-head "$OWNER_VFX_HEAD" \
+            --output-dir seed-family/generated
+          cp .procedural/assets/modular-equipment-case-001/lid-release-mote-seeded-variation-family-001.json seed-family/family-profile.json
+          printf '%s\n' "$PROCEDURAL_HEAD" > seed-family/exact-procedural-head.txt
+          printf '%s\n' "$OWNER_VFX_HEAD" > seed-family/exact-vfx-owner-head.txt
+
+      - name: Validate exact family handoff and fail-closed review-only policy
+        run: |
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          root=Path('seed-family')
+          profile=json.loads((root/'family-profile.json').read_text())
+          summary=json.loads((root/'generated/summary.json').read_text())
+          effect=json.loads(Path('assets/modular-equipment-case-001/lid-open-release-motes-001.json').read_text())
+          assert profile['schema']=='axm.object-lid-release-mote-seeded-variation-family/v0.1',profile
+          assert profile['owner_vfx']['exact_head']==os.environ['OWNER_VFX_HEAD'],profile
+          assert profile['owner_vfx']['effect_git_blob_sha']==os.environ['OWNER_EFFECT_BLOB'],profile
+          assert summary['result']=='PASS_BOUNDED_LID_RELEASE_MOTE_SEEDED_VARIATION_FAMILY',summary
+          assert summary['owner_vfx_head']==os.environ['OWNER_VFX_HEAD'],summary
+          assert summary['owner_effect_git_blob_sha']==os.environ['OWNER_EFFECT_BLOB'],summary
+          assert summary['variant_count']==4 and summary['distinct_mote_table_digests']==4,summary
+          assert summary['particle_count_per_variant']==effect['visual_source']['particle_count']==18,summary
+          assert profile['parameter_contract']['seed_only_variation'] is True,profile
+          assert profile['parameter_contract']['owner_effect_parameter_override']=='FORBIDDEN',profile
+          assert profile['parameter_contract']['automatic_vfx_adoption']=='FORBIDDEN',profile
+          assert profile['parameter_contract']['automatic_runtime_adoption']=='FORBIDDEN',profile
+          assert effect['visual_source']['seed']==41027,effect
+          expected={row['variant_id']:row['seed'] for row in profile['variants']}
+          assert expected=={
+              'owner-seed-41027':41027,
+              'review-seed-17489':17489,
+              'review-seed-57203':57203,
+              'review-seed-91811':91811,
+          },expected
+          for variant_id,seed in expected.items():
+              row=json.loads((root/f'generated/{variant_id}.json').read_text())
+              assert row['variant_id']==variant_id and row['seed']==seed,row
+              assert row['owner_effect_id']==effect['effect_id'],row
+              assert row['owner_particle_count']==18 and len(row['motes'])==18,row
+              assert row['owner_trigger_time_s']==effect['animation_dependency']['trigger_time_s']==0.25,row
+          try:
+              assert 12345 in expected.values(), 'unlisted seed rejected'
+          except AssertionError:
+              negative_control=True
+          else:
+              negative_control=False
+          assert negative_control is True
+          (root/'review-handoff.json').write_text(json.dumps({
+              'result':'PASS_EXACT_PROCEDURAL_SEED_FAMILY_HANDOFF_TO_VFX_REVIEW',
+              'owner_effect_changed':False,
+              'seed_only_variation':True,
+              'unlisted_seed_negative_control_rejected':True,
+              'automatic_vfx_adoption':False,
+              'automatic_runtime_adoption':False,
+              'art_or_qa_acceptance':False,
+          },indent=2,sort_keys=True)+'\n')
+          print(summary['family_digest'])
+          PY
+
+      - name: Download exact green owner VFX receiver artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          rm -rf baseline-vfx
+          mkdir -p baseline-vfx
+          curl --fail --location --retry 3 --retry-delay 2 \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts/${BASELINE_ARTIFACT_ID}/zip" \
+            -o baseline-vfx.zip
+          echo "$BASELINE_ARTIFACT_SHA256  baseline-vfx.zip" | sha256sum --check --strict
+          unzip -q baseline-vfx.zip -d baseline-vfx
+          test -f baseline-vfx/animation-proof/vfx-lid-release-motes-receipt.json
+          test -f baseline-vfx/animation-proof/generated/object-rigid-components-rebound.glb
+          test -f baseline-vfx/animation-proof/generated/lid-latch-motion-evidence.json
+
+      - name: Reuse exact green receiver inputs, not its visual conclusion
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          r=json.loads(Path('baseline-vfx/animation-proof/vfx-lid-release-motes-receipt.json').read_text())
+          assert r['state']=='PASS_TARGET_HOST_PHASE_BOUND_LID_RELEASE_MOTES',r
+          assert r['effect_head']==os.environ['OWNER_VFX_HEAD'],r
+          assert r['trigger_time_s']==0.25,r
+          assert r['particle_count']==18,r
+          assert r['truth_boundary']['art_direction_acceptance'] is False,r
+          assert r['truth_boundary']['visual_qa_acceptance'] is False,r
+          PY
+          rm -rf animation-proof/generated animation-proof/seed-family-target
+          mkdir -p animation-proof/generated animation-proof/seed-family-target
+          cp baseline-vfx/animation-proof/generated/object-rigid-components-rebound.glb animation-proof/generated/
+          cp baseline-vfx/animation-proof/generated/uc-rigid-scene-handoff-receipt.json animation-proof/generated/
+          cp baseline-vfx/animation-proof/generated/lid-latch-motion-evidence.json animation-proof/generated/
+          cp baseline-vfx/animation-proof/generated/front-latch-articulation.receipt.json animation-proof/generated/
+          cp baseline-vfx/animation-proof/generated/lid-latch-motion-sequence-001.json animation-proof/generated/
+          cp assets/modular-equipment-case-001/lid-open-release-motes-001.json animation-proof/generated/lid-open-release-motes-owner.json
+          cp animation-proof/generated/lid-open-release-motes-owner.json animation-proof/generated/lid-open-release-motes-001.json
+          printf '%s\n' "$EXACT_REVIEW_HEAD" > animation-proof/generated/exact-vfx-head.txt
+
+      - name: Download pinned Godot 4.7.2
+        env:
+          GODOT_URL: https://github.com/godotengine/godot-builds/releases/download/4.7.2-stable/Godot_v4.7.2-stable_linux.x86_64.zip
+          GODOT_SHA256: cadd3204e728a35d3f13adb7fd0d7902636b79f6b95c40c265eb73b6c35329e4
+        run: |
+          set -euo pipefail
+          mkdir -p .godot-bin
+          curl --fail --location --retry 3 --retry-delay 2 "$GODOT_URL" --output .godot-bin/godot.zip
+          echo "$GODOT_SHA256  .godot-bin/godot.zip" | sha256sum --check --strict
+          unzip -q .godot-bin/godot.zip -d .godot-bin
+          chmod +x .godot-bin/Godot_v4.7.2-stable_linux.x86_64
+          .godot-bin/Godot_v4.7.2-stable_linux.x86_64 --version
+
+      - name: Install virtual display when needed
+        run: |
+          if ! command -v xvfb-run >/dev/null 2>&1; then
+            sudo apt-get update
+            sudo apt-get install -y xvfb
+          fi
+
+      - name: Exercise all four exact seed-family members in the real Godot receiver
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          profile=json.loads(Path('seed-family/family-profile.json').read_text())
+          Path('/tmp/seed-variants.tsv').write_text(''.join(f"{row['variant_id']}\t{row['seed']}\n" for row in profile['variants']))
+          PY
+          while IFS=$'\t' read -r variant_id seed; do
+            echo "Rendering $variant_id seed=$seed"
+            python - "$seed" <<'PY'
+          import json,sys
+          from pathlib import Path
+          seed=int(sys.argv[1])
+          source=Path('animation-proof/generated/lid-open-release-motes-owner.json')
+          effect=json.loads(source.read_text())
+          effect['visual_source']['seed']=seed
+          Path('animation-proof/generated/lid-open-release-motes-001.json').write_text(json.dumps(effect,indent=2)+'\n')
+          PY
+            rm -f animation-proof/vfx-lid-release-motes-receipt.json animation-proof/vfx-control-*.png animation-proof/vfx-candidate-*.png
+            xvfb-run --auto-servernum --server-args="-screen 0 1000x760x24" \
+              .godot-bin/Godot_v4.7.2-stable_linux.x86_64 \
+              --display-driver x11 \
+              --rendering-method gl_compatibility \
+              --path animation-proof \
+              --script observe_lid_release_motes.gd
+            out="animation-proof/seed-family-target/${variant_id}"
+            mkdir -p "$out"
+            mv animation-proof/vfx-lid-release-motes-receipt.json "$out/receipt.json"
+            mv animation-proof/vfx-control-*.png "$out/"
+            mv animation-proof/vfx-candidate-*.png "$out/"
+          done < /tmp/seed-variants.tsv
+          cp animation-proof/generated/lid-open-release-motes-owner.json animation-proof/generated/lid-open-release-motes-001.json
+
+      - name: Verify target-host family evidence without adopting a review seed
+        run: |
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          root=Path('animation-proof/seed-family-target')
+          baseline=json.loads(Path('baseline-vfx/animation-proof/vfx-lid-release-motes-receipt.json').read_text())
+          profile=json.loads(Path('seed-family/family-profile.json').read_text())
+          baseline_by={round(float(row['time_s']),2):row for row in baseline['observations']}
+          rows=[]
+          active_times=(0.30,0.40,0.52)
+          inactive_times=(0.20,0.80)
+          candidate_by_time={t:set() for t in active_times}
+          for variant in profile['variants']:
+              vid=variant['variant_id']; seed=variant['seed']
+              receipt=json.loads((root/vid/'receipt.json').read_text())
+              assert receipt['state']=='PASS_TARGET_HOST_PHASE_BOUND_LID_RELEASE_MOTES',receipt
+              assert receipt['effect_head']==os.environ['EXACT_REVIEW_HEAD'],receipt
+              assert receipt['trigger_time_s']==0.25 and receipt['trigger_phase_id']=='play_exact_lid_clip',receipt
+              assert receipt['particle_count']==18,receipt
+              by={round(float(row['time_s']),2):row for row in receipt['observations']}
+              for t in active_times:
+                  row=by[t]
+                  assert row['active_particle_count']>0,row
+                  assert row['diff']['changed_pixels']>=80,row
+                  assert row['diff']['changed_fraction']<=0.08,row
+                  assert row['control_sha256']==baseline_by[t]['control_sha256'],(vid,t,row,baseline_by[t])
+                  candidate_by_time[t].add(row['candidate_sha256'])
+              for t in inactive_times:
+                  row=by[t]
+                  assert row['active_particle_count']==0,row
+                  assert row['diff']['changed_pixels']==0,row
+                  assert row['control_sha256']==row['candidate_sha256']==baseline_by[t]['control_sha256'],(vid,t,row)
+              if vid=='owner-seed-41027':
+                  for t in (*inactive_times,*active_times):
+                      assert by[t]['control_sha256']==baseline_by[t]['control_sha256'],(t,by[t],baseline_by[t])
+                      assert by[t]['candidate_sha256']==baseline_by[t]['candidate_sha256'],(t,by[t],baseline_by[t])
+                      assert by[t]['active_particle_count']==baseline_by[t]['active_particle_count'],(t,by[t],baseline_by[t])
+                      assert by[t]['diff']['changed_pixels']==baseline_by[t]['diff']['changed_pixels'],(t,by[t],baseline_by[t])
+              tb=receipt['truth_boundary']
+              assert tb['animation_timing_or_easing_modified'] is False,tb
+              assert tb['vfx_changes_object_animation_state'] is False,tb
+              for key in ('production_particle_runtime','physical_dust_pressure_airflow_or_fluid_simulation','runtime_controller_or_gameplay_event','collision_damage_or_interaction','target_device_performance_acceptance','art_direction_acceptance','visual_qa_acceptance','canon_or_production_readiness'):
+                  assert tb[key] is False,(key,tb)
+              rows.append({
+                  'variant_id':vid,
+                  'seed':seed,
+                  'role':variant['role'],
+                  'active':{str(t):{
+                      'active_particle_count':by[t]['active_particle_count'],
+                      'changed_pixels':by[t]['diff']['changed_pixels'],
+                      'changed_fraction':by[t]['diff']['changed_fraction'],
+                      'bbox_half_open':by[t]['diff']['bbox_half_open'],
+                      'candidate_sha256':by[t]['candidate_sha256'],
+                  } for t in active_times},
+              })
+          assert all(len(candidate_by_time[t])==4 for t in active_times),candidate_by_time
+          summary={
+              'schema':'axm.object-reactive-vfx-seeded-family-target-review/v0.1',
+              'result':'PASS_TARGET_HOST_LID_RELEASE_MOTE_SEEDED_FAMILY_REVIEW_SURFACE',
+              'decision':'PASS_REVIEW_VARIATIONS_RENDERABLE__OWNER_SEED_REMAINS_AUTHORITATIVE__NO_AUTO_ADOPTION',
+              'exact_review_head':os.environ['EXACT_REVIEW_HEAD'],
+              'owner_vfx_head':os.environ['OWNER_VFX_HEAD'],
+              'procedural_head':os.environ['PROCEDURAL_HEAD'],
+              'baseline_artifact_id':int(os.environ['BASELINE_ARTIFACT_ID']),
+              'baseline_artifact_sha256':os.environ['BASELINE_ARTIFACT_SHA256'],
+              'variant_count':4,
+              'active_times_s':list(active_times),
+              'inactive_times_s':list(inactive_times),
+              'all_active_times_have_four_distinct_candidate_rasters':True,
+              'owner_seed_reproduces_exact_green_baseline_rasters_and_metrics':True,
+              'variants':rows,
+              'truth_boundary':{
+                  'real_godot_target_host_rendered':True,
+                  'seed_only_review_variation':True,
+                  'owner_effect_parameters_changed':False,
+                  'owner_baseline_seed_changed':False,
+                  'review_seed_adopted':False,
+                  'animation_timing_or_easing_modified':False,
+                  'gameplay_or_physics_claim':False,
+                  'production_particle_runtime':False,
+                  'target_device_performance_acceptance':False,
+                  'art_direction_acceptance':False,
+                  'visual_qa_acceptance':False,
+                  'canon_or_production_readiness':False,
+              },
+          }
+          (root/'summary.json').write_text(json.dumps(summary,indent=2,sort_keys=True)+'\n')
+          print(summary['result'])
+          for row in rows:
+              print(row['variant_id'], {t:row['active'][str(t)]['changed_pixels'] for t in active_times})
+          PY
+
+      - name: Retain exact seeded-family target review evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: object-vfx-lid-release-mote-seed-family-target-review-${{ github.event.pull_request.head.sha || github.sha }}
+          path: |
+            seed-family/family-profile.json
+            seed-family/generated/*.json
+            seed-family/review-handoff.json
+            seed-family/exact-procedural-head.txt
+            seed-family/exact-vfx-owner-head.txt
+            baseline-vfx/animation-proof/vfx-lid-release-motes-receipt.json
+            animation-proof/seed-family-target
+            animation-proof/generated/lid-open-release-motes-owner.json
+            animation-proof/generated/object-rigid-components-rebound.glb
+            animation-proof/generated/uc-rigid-scene-handoff-receipt.json
+            animation-proof/generated/lid-latch-motion-evidence.json
+            animation-proof/generated/front-latch-articulation.receipt.json
+            animation-proof/generated/lid-latch-motion-sequence-001.json
+            animation-proof/generated/exact-vfx-head.txt
+          if-no-files-found: warn
+          retention-days: 30
