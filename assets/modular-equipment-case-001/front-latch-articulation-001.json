@@ -1,0 +1,30 @@
+{
+  "schema": "axm.object-front-latch-articulation/v0.1",
+  "plan_id": "front-latch-articulation-001",
+  "asset_id": "modular-equipment-case-001",
+  "host_source_sha256": "49b1f9ed9865893d6de6f1ec8f069576732df694853fde4e3fcff366de32644a",
+  "ownership_contract_id": "front-latch-ownership-001",
+  "ownership_donor_head": "d3fa10a270faae7925811f44f03381fe5c5d0215",
+  "purpose": "derive one bilateral review-only +X latch-lever articulation from the exact existing lower lever and front-service-panel proof geometry, preserving source and ownership identity while measuring when the moving lever proof volume separates from the fixed lid-owned keeper proof volume",
+  "joint_axis": [1.0, 0.0, 0.0],
+  "pivot_rule": "source_x__panel_negative_y_face__lever_min_z",
+  "moving_role": "latch_lever",
+  "fixed_keeper_role": "latch_keeper",
+  "owner_component": "front_service_panel",
+  "pose_samples_deg": [0.0, 25.0, 50.0],
+  "review_angle_min_deg": 0.0,
+  "review_angle_max_deg": 50.0,
+  "minimum_terminal_keeper_axis_separation_m": 0.001,
+  "continuous_certificate": {
+    "separation_axis": "z",
+    "claim": "once the rotated lever maximum Z falls below the keeper minimum Z, the exact axis-aligned keeper and rigid rotated lever proof volumes stay Z-separated through the 50 degree review endpoint",
+    "not_claimed": "full physical latch release, hook/capture behavior, force, spring behavior, panel collision freedom or arbitrary-angle mechanism validity"
+  },
+  "failure_policy": "FAIL_CLOSED_NO_PIVOT_GUESS_OUTSIDE_RULE_NO_SOURCE_REWRITE_NO_ANIMATION_OR_RUNTIME_PROMOTION",
+  "truth_boundary": "PASS means only that this exact derived bilateral rigid-lever rig candidate preserves source/ownership identity, pivot fixation and rigid shape, reproduces the closed overlap at 0 degrees, and reaches continuous keeper proof-volume Z separation before the exact 50 degree review endpoint. It does not prove a real latch hook or retention mechanism, manufacturing, loads, wear, panel/fastener/full-mesh collision freedom, animation timing, controller/runtime behavior, gameplay or visual acceptance.",
+  "provenance": {
+    "method": "Rigging-owned derived articulation candidate over unchanged Object source and Hard-Surface ownership overlay",
+    "external_assets": [],
+    "external_geometry": false
+  }
+}
