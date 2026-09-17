@@ -150,7 +150,7 @@ class AnimationCaptureTimelineRebindTests(unittest.TestCase):
     def test_fails_closed_on_historical_z_aabb_capture_relabel(self) -> None:
         bad = copy.deepcopy(self.rig)
         bad["historical_interface_threshold_reclassified_as"] = "CAPTURE_THRESHOLD"
-        with self.assertRaisesRegex(AssertionError, "relabeled as capture"):
+        with self.assertRaisesRegex(AssertionError, "relabelled as capture"):
             self.verify(rig=bad)
 
     def test_fails_closed_on_motion_key_drift(self) -> None:
