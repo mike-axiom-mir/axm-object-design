@@ -1,0 +1,252 @@
+name: Object Technical Art selected roughness UC transport
+
+on:
+  push:
+    branches: [studio/technical-art-service-dark-uc-texture-transport-001]
+    paths:
+      - "tools/build_object_service_dark_selected_roughness_uc_transport.py"
+      - "tools/build_object_service_dark_uc_texture_transport.py"
+      - "tools/prove_object_service_dark_uc_godot_front_views.py"
+      - ".github/workflows/object-technical-art-service-dark-selected-roughness-uc-transport.yml"
+  pull_request:
+    paths:
+      - "tools/build_object_service_dark_selected_roughness_uc_transport.py"
+      - "tools/build_object_service_dark_uc_texture_transport.py"
+      - "tools/prove_object_service_dark_uc_godot_front_views.py"
+      - ".github/workflows/object-technical-art-service-dark-selected-roughness-uc-transport.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  object-regression:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.11', '3.13']
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Compile and run complete Object suite
+        run: |
+          python -m compileall -q tools tests
+          python -m unittest discover -s tests -v
+
+  exact-selected-roughness-transport:
+    runs-on: ubuntu-latest
+    timeout-minutes: 32
+    steps:
+      - name: Checkout exact Technical Art head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+
+      - name: Checkout exact merged Universal Creation main
+        uses: actions/checkout@v4
+        with:
+          repository: mike-axiom-mir/axm-universal-creation
+          ref: 8eb2fafb329369588198033ea4e14cca4451a6aa
+          path: _donor/axm-universal-creation
+          fetch-depth: 1
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Record exact receiving identities
+        run: |
+          set -euo pipefail
+          mkdir -p technical-art-proof _donor/base-ta _donor/materials
+          git rev-parse HEAD > technical-art-proof/technical-art-head.txt
+          git -C _donor/axm-universal-creation rev-parse HEAD > technical-art-proof/uc-head.txt
+          test "$(cat technical-art-proof/uc-head.txt)" = "8eb2fafb329369588198033ea4e14cca4451a6aa"
+
+      - name: Download and verify retained base Technical Art evidence
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          curl --fail --location --retry 3 \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/mike-axiom-mir/axm-object-design/actions/artifacts/10486764098/zip" \
+            --output _donor/base-ta.zip
+          echo "244a0bc3d0a9e6eeb66978d3fe4e96fde5f2fcb41d429dcb27ab217c482c1cb8  _donor/base-ta.zip" | sha256sum --check --strict
+          unzip -q _donor/base-ta.zip -d _donor/base-ta
+          test "$(cat _donor/base-ta/technical-art-proof/technical-art-head.txt)" = "cddf0a2f3ba89572e794579db1fcec2f0deecaf6"
+          sha256sum _donor/base-ta.zip > technical-art-proof/base-ta-archive-sha256.txt
+
+      - name: Download and verify retained Materials selected-field evidence
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          curl --fail --location --retry 3 \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/mike-axiom-mir/axm-object-design/actions/artifacts/10489059498/zip" \
+            --output _donor/materials.zip
+          echo "f272d2b55a336640a4271d067c4ee05a0fb8a7dc1402f13350f74a39f24ac99d  _donor/materials.zip" | sha256sum --check --strict
+          unzip -q _donor/materials.zip -d _donor/materials
+          test "$(cat _donor/materials/lookdev-proof/generated/service-dark-selected-roughness-exact-head.txt)" = "0515a2d5ad2c7a1eb545f2b7b327b7367530dfca"
+          sha256sum _donor/materials.zip > technical-art-proof/materials-archive-sha256.txt
+
+      - name: Build exact selected roughness through current UC
+        run: |
+          set -euo pipefail
+          PYTHONPATH="$GITHUB_WORKSPACE/_donor/axm-universal-creation/src" \
+            python tools/build_object_service_dark_selected_roughness_uc_transport.py \
+              --uc-root _donor/axm-universal-creation \
+              --base-artifact-dir _donor/base-ta \
+              --materials-artifact-dir _donor/materials \
+              --expected-uc-head 8eb2fafb329369588198033ea4e14cca4451a6aa \
+              --out creations/technical-art-proof/selected-roughness-generated \
+              > technical-art-proof/selected-roughness.log 2>&1
+          cat technical-art-proof/selected-roughness.log
+
+      - name: Validate exact selected roughness transport receipt
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          root=Path("creations/technical-art-proof/selected-roughness-generated")
+          r=json.loads((root/"technical-art-selected-roughness-uc-transport-receipt.json").read_text())
+          assert r["result"]=="PASS_OBJECT_SERVICE_DARK_SELECTED_ROUGHNESS_SCALAR_TO_CURRENT_UC_TEXTURED_GLB",r
+          assert r["technical_art_head"]==Path("technical-art-proof/technical-art-head.txt").read_text().strip(),r
+          assert r["materials_authority_head"]=="0515a2d5ad2c7a1eb545f2b7b327b7367530dfca",r
+          assert r["materials_artifact_id"]==10489059498,r
+          assert r["selected_scalar_r8_sha256"]=="b8d13c07f9b71278042b0d42d44b84579a3f327c6adf6723cae4c8c8f06dd38e",r
+          assert r["uc_head"]=="8eb2fafb329369588198033ea4e14cca4451a6aa",r
+          assert r["uc_product_modified"] is False,r
+          assert r["uc_bind_status"]=="PASS" and r["uc_bind_observation_status"]=="PASS",r
+          assert r["uc_quality_status"]=="PASS" and r["uc_quality_observation_status"]=="PASS",r
+          assert r["uc_uv_status"]=="MEASURED" and not r["uc_uv_findings"],r
+          assert r["glb_selected_roughness"]["all_primitives_exact_selected_scalar"] is True,r
+          assert len(r["glb_selected_roughness"]["primitives"])==2,r
+          for row in r["glb_selected_roughness"]["primitives"]:
+              assert row["orm_green_sha256"]==r["selected_scalar_r8_sha256"],row
+              assert [row["roughness_r8_min"],row["roughness_r8_max"],row["roughness_unique_r8_values"]]==[153,183,31],row
+              assert row["orm_texture_index"]==row["occlusion_texture_index"],row
+          assert r["truth_boundary"]["technical_art_exact_roughness_transport_accepted"] is True,r
+          assert r["truth_boundary"]["runtime_storage_adopted"] is False,r
+          assert r["truth_boundary"]["runtime_atlas_size_adopted"] is False,r
+          assert r["truth_boundary"]["final_art_direction_accepted"] is False,r
+          assert r["truth_boundary"]["final_visual_qa_accepted"] is False,r
+          print(json.dumps(r,indent=2))
+          PY
+
+      - name: Negative control rejects one-byte selected scalar drift
+        run: |
+          set -euo pipefail
+          set +e
+          PYTHONPATH="$GITHUB_WORKSPACE/_donor/axm-universal-creation/src" \
+            python tools/build_object_service_dark_selected_roughness_uc_transport.py \
+              --uc-root _donor/axm-universal-creation \
+              --base-artifact-dir _donor/base-ta \
+              --materials-artifact-dir _donor/materials \
+              --expected-uc-head 8eb2fafb329369588198033ea4e14cca4451a6aa \
+              --out creations/technical-art-proof/negative-selected-roughness \
+              --scalar-byte-delta 1 \
+              > technical-art-proof/negative-selected-roughness.log 2>&1
+          code=$?
+          set -e
+          test "$code" -ne 0
+          grep -q "selected roughness scalar identity drift before UC packing" technical-art-proof/negative-selected-roughness.log
+          echo "PASS_REJECTED_SELECTED_ROUGHNESS_SCALAR_IDENTITY_DRIFT"
+
+      - name: Download pinned Godot 4.7.2
+        env:
+          GODOT_URL: https://github.com/godotengine/godot-builds/releases/download/4.7.2-stable/Godot_v4.7.2-stable_linux.x86_64.zip
+          GODOT_SHA256: cadd3204e728a35d3f13adb7fd0d7902636b79f6b95c40c265eb73b6c35329e4
+        run: |
+          set -euo pipefail
+          mkdir -p .godot-bin
+          curl --fail --location --retry 3 --retry-delay 2 "$GODOT_URL" --output .godot-bin/godot.zip
+          echo "$GODOT_SHA256  .godot-bin/godot.zip" | sha256sum --check --strict
+          unzip -q .godot-bin/godot.zip -d .godot-bin
+          chmod +x .godot-bin/Godot_v4.7.2-stable_linux.x86_64
+          .godot-bin/Godot_v4.7.2-stable_linux.x86_64 --version
+
+      - name: Install virtual display when needed
+        run: |
+          if ! command -v xvfb-run >/dev/null 2>&1; then
+            sudo apt-get update
+            sudo apt-get install -y xvfb
+          fi
+
+      - name: Prove exact selected roughness GLB in real Godot front-side views
+        run: |
+          set -euo pipefail
+          xvfb-run --auto-servernum --server-args="-screen 0 1000x760x24" \
+            env AXM_GODOT="$GITHUB_WORKSPACE/.godot-bin/Godot_v4.7.2-stable_linux.x86_64" \
+            PYTHONPATH="$GITHUB_WORKSPACE/_donor/axm-universal-creation/src" \
+            python tools/prove_object_service_dark_uc_godot_front_views.py \
+              --uc-root _donor/axm-universal-creation \
+              --expected-uc-head 8eb2fafb329369588198033ea4e14cca4451a6aa \
+              --transport-dir creations/technical-art-proof/selected-roughness-generated \
+              --out creations/technical-art-proof/selected-roughness-godot-front-view-proof \
+              --expected-transport-result PASS_OBJECT_SERVICE_DARK_SELECTED_ROUGHNESS_SCALAR_TO_CURRENT_UC_TEXTURED_GLB \
+              --final-result PASS_OBJECT_SERVICE_DARK_SELECTED_ROUGHNESS_SCALAR_TO_CURRENT_UC_TEXTURED_GLB_TO_GODOT_FRONT_VIEWS \
+              --transport-receipt-name technical-art-selected-roughness-uc-transport-receipt.json \
+              --glb-name service-dark-selected-roughness-two-surface.glb \
+              > technical-art-proof/selected-roughness-godot-front-view.log 2>&1
+          cat technical-art-proof/selected-roughness-godot-front-view.log
+
+      - name: Validate real Godot selected roughness target receipt
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          root=Path("creations/technical-art-proof/selected-roughness-generated")
+          r=json.loads((root/"technical-art-selected-roughness-uc-transport-receipt.json").read_text())
+          target=Path("creations/technical-art-proof/selected-roughness-godot-front-view-proof")
+          g=json.loads((target/"technical-art-uc-godot-front-view-receipt.json").read_text())
+          assert g["result"]=="PASS_OBJECT_SERVICE_DARK_SELECTED_ROUGHNESS_SCALAR_TO_CURRENT_UC_TEXTURED_GLB_TO_GODOT_FRONT_VIEWS",g
+          assert g["technical_art_head"]==r["technical_art_head"],g
+          assert g["uc_head"]==r["uc_head"],g
+          assert g["glb_sha256"]==r["glb_sha256"],g
+          assert g["uc_product_modified"] is False,g
+          assert g["godot_status"]=="PASS" and g["godot_observation_status"]=="PASS",g
+          assert len(g["godot_images"])==2 and all(int(row["visible_pixels"])>0 for row in g["godot_images"]),g
+          checks={row["type"]: bool(row["passed"]) for row in g["godot_checks"]}
+          for required in ("actual-rendering-backend","exact-imported-source","native-target-geometry-agreement","target-texture-bindings-decoded","all-target-images-and-asset-masks"):
+              assert checks.get(required) is True,(required,checks)
+          for row in g["view_sidedness_evidence"]:
+              assert min(row["front_normal_dot_camera_direction"].values())>0.0,row
+          print(json.dumps(g,indent=2))
+          PY
+
+      - name: Retain exact cross-repo selected roughness Technical Art evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: object-service-dark-selected-roughness-uc-transport-${{ github.event.pull_request.head.sha || github.sha }}
+          path: |
+            technical-art-proof/technical-art-head.txt
+            technical-art-proof/uc-head.txt
+            technical-art-proof/base-ta-archive-sha256.txt
+            technical-art-proof/materials-archive-sha256.txt
+            technical-art-proof/selected-roughness.log
+            technical-art-proof/negative-selected-roughness.log
+            technical-art-proof/selected-roughness-godot-front-view.log
+            creations/technical-art-proof/selected-roughness-generated/**
+            creations/technical-art-proof/selected-roughness-godot-front-view-proof/**
+            _donor/materials/lookdev/service_dark_roughness_selected_field_001.json
+            _donor/materials/lookdev-proof/generated/object_service_dark_roughness_selected_field_payload.json
+            _donor/materials/lookdev-proof/generated/service-dark-selected-roughness-exact-head.txt
+            _donor/materials/lookdev-proof/service-dark-roughness-selected-field-runtime-receipt.json
+            _donor/materials/lookdev-proof/service-dark-roughness-selected-field.png
+            _donor/base-ta/technical-art-proof/technical-art-head.txt
+            _donor/base-ta/creations/technical-art-proof/generated/technical-art-uc-texture-transport-receipt.json
+            _donor/base-ta/creations/technical-art-proof/generated/service-dark-two-surface.surface.json
+            _donor/base-ta/creations/technical-art-proof/generated/service-dark-uc-bundle/game-material.json
+          if-no-files-found: warn
+          retention-days: 30
