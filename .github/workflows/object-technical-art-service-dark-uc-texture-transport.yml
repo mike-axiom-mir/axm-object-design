@@ -141,6 +141,7 @@ jobs:
       - name: Prove Materials atlas through current UC native textured GLB and real Godot target
         run: |
           set -euo pipefail
+          set +e
           xvfb-run --auto-servernum --server-args="-screen 0 1000x760x24" \
             env AXM_GODOT="$GITHUB_WORKSPACE/.godot-bin/Godot_v4.7.2-stable_linux.x86_64" \
             PYTHONPATH="$GITHUB_WORKSPACE/_donor/axm-universal-creation/src" \
@@ -148,7 +149,12 @@ jobs:
               --uc-root _donor/axm-universal-creation \
               --expected-materials-head 4c12a0a57f6aa8778cff41efad321e13567c6c91 \
               --expected-uc-head 6ad6ad51e6f40a3dc1d0cccd3af7f7c7ab28fb33 \
-              --run-godot
+              --run-godot \
+              > technical-art-proof/proof.log 2>&1
+          code=$?
+          set -e
+          cat technical-art-proof/proof.log
+          exit "$code"
 
       - name: Validate exact Technical Art transport receipt
         run: |
@@ -202,6 +208,7 @@ jobs:
           path: |
             technical-art-proof/technical-art-head.txt
             technical-art-proof/uc-head.txt
+            technical-art-proof/proof.log
             technical-art-proof/generated/**
             technical-art-proof/negative-one-texel.log
             lookdev/service_dark_atlas_pack_review_001.json
