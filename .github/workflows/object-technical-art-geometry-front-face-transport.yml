@@ -5,6 +5,7 @@ on:
     paths:
       - "tools/build_object_geometry_front_face_transport.py"
       - "rigid-proof/front_face_transport_observe.gd"
+      - "rigid-proof/front_face_index_observe.gd"
       - ".github/workflows/object-technical-art-geometry-front-face-transport.yml"
   workflow_dispatch:
 
@@ -141,35 +142,41 @@ jobs:
             sudo apt-get install -y xvfb
           fi
 
-      - name: Observe exact current-UC GLBs through real Godot front-face culling
+      - name: Observe exact current-UC GLBs through real Godot imported index arrays
         if: matrix.python-version == '3.11'
         run: |
-          rm -f rigid-proof/front-face-target-receipt.json rigid-proof/front-face-*.png
+          rm -f rigid-proof/front-face-index-target-receipt.json
           xvfb-run --auto-servernum --server-args="-screen 0 1000x760x24" \
             .godot-bin/Godot_v4.7.2-stable_linux.x86_64 \
             --display-driver x11 \
             --rendering-method gl_compatibility \
             --path rigid-proof \
-            --script front_face_transport_observe.gd
+            --script front_face_index_observe.gd
 
-      - name: Validate real target front-face result
+      - name: Validate real target imported-index parity result
         if: matrix.python-version == '3.11'
         run: |
           python - <<'PY'
           import json
           from pathlib import Path
-          p=Path("rigid-proof/front-face-target-receipt.json")
+          p=Path("rigid-proof/front-face-index-target-receipt.json")
           r=json.loads(p.read_text())
           assert r["state"]=="PASS_EVIDENCE",r
-          assert r["result"]=="PASS_OBJECT_GEOMETRY33_CURRENT_UC_GLTF_GODOT_FRONT_FACE_PARITY_ADAPTATION",r
-          assert r["two_sided_spatial_identity_all_contexts"] is True,r
-          assert r["corrected_cull_coherence_all_contexts"] is True,r
-          assert r["unadapted_negative_detected_all_contexts"] is True,r
-          assert r["aggregate_corrected_back_vs_two_sided_gt1"]<=48,r
-          assert r["aggregate_unadapted_back_vs_two_sided_gt1"]>r["aggregate_corrected_back_vs_two_sided_gt1"]+3000,r
-          assert r["aggregate_corrected_vs_unadapted_back_gt1"]>3000,r
-          assert r["truth_boundary"]["global_renderer_winding_rule_claimed"] is False,r
+          assert r["result"]=="PASS_OBJECT_GEOMETRY33_CURRENT_UC_GLTF_GODOT_IMPORTED_INDEX_PARITY_DISTINGUISHED",r
+          assert r["corrected"]["mesh_group_count"]==31,r
+          assert r["unadapted_negative"]["mesh_group_count"]==31,r
+          assert r["corrected"]["triangles"]==812,r
+          assert r["unadapted_negative"]["triangles"]==812,r
+          assert r["corrected"]["ambiguous_signed_volume_groups"]==0,r
+          assert r["unadapted_negative"]["ambiguous_signed_volume_groups"]==0,r
+          assert r["same_group_names"] is True,r
+          assert r["opposite_signed_volume_groups"]==31,r
+          assert r["matching_signed_volume_magnitude_groups"]==31,r
+          assert r["maximum_signed_volume_magnitude_delta_m3"]<=1e-10,r
+          assert r["truth_boundary"]["renderer_cull_silhouette_used_as_primary_oracle"] is False,r
+          assert r["truth_boundary"]["global_godot_front_face_rule_claimed"] is False,r
           assert r["truth_boundary"]["source_geometry_adopted"] is False,r
+          assert r["truth_boundary"]["uc_modified"] is False,r
           print(json.dumps(r,indent=2))
           PY
 
@@ -177,7 +184,7 @@ jobs:
         if: matrix.python-version == '3.11' && always()
         uses: actions/upload-artifact@v4
         with:
-          name: object-technical-art-front-face-transport-${{ github.event.pull_request.head.sha || github.sha }}
+          name: object-technical-art-front-face-index-transport-${{ github.event.pull_request.head.sha || github.sha }}
           path: |
             rigid-proof/front-face-generated/geometry33-orientation-candidate.obj
             rigid-proof/front-face-generated/geometry-orientation-receipt.json
@@ -190,7 +197,6 @@ jobs:
             rigid-proof/front-face-generated/exact-uc-head.txt
             rigid-proof/front-face-generated/exact-geometry-head.txt
             rigid-proof/front-face-generated/exact-hard-surface-head.txt
-            rigid-proof/front-face-target-receipt.json
-            rigid-proof/front-face-*.png
+            rigid-proof/front-face-index-target-receipt.json
           if-no-files-found: warn
           retention-days: 30
