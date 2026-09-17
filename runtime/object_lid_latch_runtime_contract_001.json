@@ -1,0 +1,62 @@
+{
+  "schema": "axm.object-lid-latch-runtime-contract/v0.1",
+  "asset_id": "modular-equipment-case-001",
+  "materials_receiving_base": {
+    "repository": "mike-axiom-mir/axm-object-design",
+    "commit": "c8b775d85f6007eab8d05fdb5e2ddc3e4ab871d4",
+    "representation": "Godot 4.7.2 GL Compatibility articulated material proof reconstructed from exact source component dimensions"
+  },
+  "animation_dependency": {
+    "repository": "mike-axiom-mir/axm-object-design",
+    "commit": "13069d6b6180e5d9e07009f6a263375ca16ddb60",
+    "sequence_path": "assets/modular-equipment-case-001/lid-latch-motion-sequence-001.json",
+    "sequence_builder_path": "tools/build_lid_latch_motion_evidence.py",
+    "sequence_id": "lid-latch-open-hold-close-001",
+    "base_clip_id": "lid-open-hold-close-001"
+  },
+  "lid_rig_dependency": {
+    "repository": "mike-axiom-mir/axm-object-design",
+    "commit": "4b72c9918c5fc1e89bd18a0be24fb4afac6e7775",
+    "path": "assets/modular-equipment-case-001/articulation.json",
+    "joint_id": "rear-lid-hinge-001",
+    "plan_digest": "0ad6dc2ca22676cf301579932e599a441eb7c4bccce31991d1b727aeb22ac422"
+  },
+  "latch_ownership_dependency": {
+    "repository": "mike-axiom-mir/axm-object-design",
+    "commit": "d3fa10a270faae7925811f44f03381fe5c5d0215",
+    "path": "assets/modular-equipment-case-001/front-latch-ownership-001.json",
+    "sha256": "0702e4180f858d29c42ff8c38a61eaa16278d6848c8ce6f3ecfae172969ca8ae"
+  },
+  "latch_rig_dependency": {
+    "repository": "mike-axiom-mir/axm-object-design",
+    "commit": "3b667ff5d30c46ec2fe7da7679518970f8610018",
+    "path": "assets/modular-equipment-case-001/front-latch-articulation-001.json",
+    "plan_sha256": "81c27ab7b73ed9a43cb3f554b56c3f4294b893712075e33d13f5b02e008455db",
+    "required_result": "PASS_BOUNDED_FRONT_LATCH_LEVER_ARTICULATION"
+  },
+  "control_mode": "rebuild_moving_parts_control",
+  "candidate_mode": "reuse_moving_parts_transform",
+  "stress_cycles": 19,
+  "capture_sample_indices": [0, 5, 10, 25, 40, 50, 60, 90, 95, 99],
+  "camera_contexts": ["three_quarter", "rear_hinge"],
+  "required_display_sample_count": 100,
+  "required_endpoint_inclusive_sample_count": 101,
+  "required_moving_component_count": 7,
+  "purpose": "rebind the proven moving-resource lifetime optimization to the exact current 2.5-second latch-release/lid-clip/latch-reengage choreography, measuring whether seven heterogeneous moving proof components can retain node/mesh/material identity while only their exact source-bound rigid transforms change",
+  "truth_boundary": {
+    "exact_authored_animation_samples_consumed": true,
+    "same_process_each_mode": true,
+    "synthetic_rebuild_control_not_product_path": true,
+    "candidate_changes_resource_lifecycle_only": true,
+    "latch_pivot_is_review_only_rig_candidate": true,
+    "materials_receiving_representation_not_exact_uc_glb": true,
+    "animationplayer_or_controller_acceptance": false,
+    "wall_clock_40hz_acceptance": false,
+    "target_device_fps_or_gpu_budget": false,
+    "collision_or_physics": false,
+    "physical_latch_mechanism": false,
+    "gameplay": false,
+    "final_art_direction": false,
+    "canon_or_production_readiness": false
+  }
+}
