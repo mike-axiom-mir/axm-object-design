@@ -1,17 +1,30 @@
 from __future__ import annotations
 
-"""Run the selected-roughness UC transport with container-independent scalar recovery.
+"""Run the selected-roughness UC transport across two explicit receiver boundaries.
 
-The Materials-owned identity is the exact base-level R8 scalar sequence. Its retained
-historical Godot PNG is an RGBA8 serialization whose RGB channels are equal and whose
-alpha is opaque; the container is evidence, not policy. The first Technical Art run
-correctly failed because it assumed that retained PNG was L8. This runner repairs only
-that receiving boundary: accept bounded L8 or grayscale-equivalent opaque RGBA8 and
-recover the same semantic scalar bytes before the existing transport proof executes.
+Materials owns the exact base-level R8 scalar sequence. Its retained historical Godot
+PNG is an RGBA8 serialization whose RGB channels are equal and whose alpha is opaque;
+the container is evidence, not policy. The first Technical Art run correctly failed
+because it assumed that retained PNG was L8.
+
+Current UC also has two station success shapes: ``bind-textured-asset`` publishes a
+validated deterministic GLB using ``truth_status`` + validation receipts, whereas
+observer/inspection stations expose ``status=PASS``. The second Technical Art run
+correctly failed because the proof incorrectly required the observer status field on
+the publisher result. This runner repairs only those receiving assumptions. It accepts
+bounded L8 or grayscale-equivalent opaque RGBA8 for the historical donor, and it maps
+UC's native publisher success contract to the proof's common PASS vocabulary only
+after the native publication and both validation receipts are explicitly green.
+
+No UC product code or Object/Materials domain semantics are changed.
 """
 
+import json
 import struct
+import sys
 import zlib
+from pathlib import Path
+from typing import Any
 
 import build_object_service_dark_selected_roughness_uc_transport as transport
 
@@ -120,13 +133,104 @@ def decode_selected_scalar_png(data: bytes) -> tuple[int, int, bytes, list[str]]
             offset = index * 4
             r, g, b, a = pixels[offset : offset + 4]
             if r != g or r != b or a != 255:
-                raise AssertionError("retained RGBA selected roughness PNG is not grayscale-equivalent opaque scalar evidence")
+                raise AssertionError(
+                    "retained RGBA selected roughness PNG is not grayscale-equivalent opaque scalar evidence"
+                )
             scalar_bytes[index] = r
         scalar = bytes(scalar_bytes)
 
     return width, height, scalar, ancillary
 
 
+def _arg_value(flag: str, default: str | None = None) -> str | None:
+    try:
+        index = sys.argv.index(flag)
+    except ValueError:
+        return default
+    if index + 1 >= len(sys.argv):
+        raise AssertionError(f"missing value for {flag}")
+    return sys.argv[index + 1]
+
+
+def _bind_native_success(result: dict[str, Any]) -> bool:
+    if result.get("truth_status") != "VALIDATED_DETERMINISTIC_GLB_ASSET":
+        return False
+    if result.get("published") is not True:
+        return False
+    for key in ("pre_publish_validation", "post_publish_validation"):
+        row = result.get(key)
+        if not isinstance(row, dict) or row.get("passed") is not True:
+            return False
+    return True
+
+
+def install_uc_station_adapter(uc_root: Path) -> tuple[dict[str, Any], Any]:
+    sys.path.insert(0, str(uc_root / "src"))
+    import axm_uc.material_pipeline as material_pipeline  # type: ignore
+
+    native_run_station = material_pipeline.run_station
+    retained: dict[str, Any] = {}
+
+    def normalized_run_station(root: Path, station: str, inputs: dict[str, Any]) -> dict[str, Any]:
+        result = native_run_station(root, station, inputs)
+        if station != "bind-textured-asset":
+            return result
+        retained["bind-textured-asset"] = result
+        if not _bind_native_success(result):
+            return result
+        normalized = dict(result)
+        normalized["status"] = "PASS"
+        normalized["technical_art_status_adapter"] = {
+            "schema": "axm.technical-art-uc-station-status-adapter/v0.1",
+            "native_truth_status": result.get("truth_status"),
+            "native_published": True,
+            "native_pre_publish_validation_passed": True,
+            "native_post_publish_validation_passed": True,
+            "normalized_status": "PASS",
+            "uc_product_modified": False,
+        }
+        return normalized
+
+    material_pipeline.run_station = normalized_run_station
+    return retained, native_run_station
+
+
+def write_station_adapter_receipt(out_dir: Path, retained: dict[str, Any]) -> None:
+    native = retained.get("bind-textured-asset")
+    if not isinstance(native, dict):
+        raise AssertionError("current UC bind-textured-asset native result was not retained")
+    if not _bind_native_success(native):
+        raise AssertionError("current UC bind-textured-asset native success contract is not green")
+    payload = {
+        "schema": "axm.technical-art-uc-station-status-adapter/v0.1",
+        "result": "PASS_NATIVE_UC_BIND_SUCCESS_CONTRACT_NORMALIZED_FOR_TECHNICAL_ART_EVIDENCE",
+        "native_contract": {
+            "truth_status": native.get("truth_status"),
+            "published": native.get("published"),
+            "pre_publish_validation": native.get("pre_publish_validation"),
+            "post_publish_validation": native.get("post_publish_validation"),
+        },
+        "normalized_status": "PASS",
+        "uc_product_modified": False,
+        "truth_boundary": {
+            "native_uc_result_rewritten": False,
+            "uc_product_modified": False,
+            "object_domain_semantics_added_to_uc": False,
+            "normalization_only": True,
+        },
+    }
+    (out_dir / "technical-art-uc-station-status-adapter-receipt.json").write_text(
+        json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+    )
+
+
 if __name__ == "__main__":
     transport.decode_l8_png = decode_selected_scalar_png
+    uc_arg = _arg_value("--uc-root")
+    if uc_arg is None:
+        raise AssertionError("--uc-root is required")
+    out_arg = _arg_value("--out", "creations/technical-art-proof/selected-roughness-generated")
+    assert out_arg is not None
+    retained, _native = install_uc_station_adapter(Path(uc_arg).resolve())
     transport.main()
+    write_station_adapter_receipt(Path(out_arg).resolve(), retained)
