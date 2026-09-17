@@ -30,13 +30,19 @@ func fail(message: String) -> void:
 func source_vec3(values: Array) -> Vector3:
     return Vector3(float(values[0]), float(values[2]), -float(values[1]))
 
-func make_material(material_id: String, cull_mode: int) -> StandardMaterial3D:
-    var spec: Dictionary = payload["materials"][material_id]
-    var rgba: Array = spec["albedo"]
+func make_material(material_id: String, cull_mode: int, unshaded: bool = false) -> StandardMaterial3D:
     var material := StandardMaterial3D.new()
-    material.albedo_color = Color(float(rgba[0]), float(rgba[1]), float(rgba[2]), float(rgba[3]))
-    material.metallic = float(spec["metallic"])
-    material.roughness = float(spec["roughness"])
+    if unshaded:
+        material.albedo_color = Color(0.75, 0.75, 0.75, 1.0)
+        material.metallic = 0.0
+        material.roughness = 1.0
+        material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+    else:
+        var spec: Dictionary = payload["materials"][material_id]
+        var rgba: Array = spec["albedo"]
+        material.albedo_color = Color(float(rgba[0]), float(rgba[1]), float(rgba[2]), float(rgba[3]))
+        material.metallic = float(spec["metallic"])
+        material.roughness = float(spec["roughness"])
     material.cull_mode = cull_mode as BaseMaterial3D.CullMode
     return material
 
@@ -50,7 +56,7 @@ func owner_face_normal(face: Array) -> Vector3:
         return Vector3.ZERO
     return n.normalized()
 
-func make_mesh(face_key: String, cull_mode: int) -> MeshInstance3D:
+func make_mesh(face_key: String, cull_mode: int, unshaded: bool = false) -> MeshInstance3D:
     var owner_faces: Array = payload["owner_faces"]
     var render_faces: Array = payload[face_key]
     if owner_faces.size() != render_faces.size():
@@ -76,7 +82,7 @@ func make_mesh(face_key: String, cull_mode: int) -> MeshInstance3D:
         arrays[Mesh.ARRAY_VERTEX] = positions
         arrays[Mesh.ARRAY_NORMAL] = normals
         mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
-        mesh.surface_set_material(mesh.get_surface_count() - 1, make_material(String(group["material_id"]), cull_mode))
+        mesh.surface_set_material(mesh.get_surface_count() - 1, make_material(String(group["material_id"]), cull_mode, unshaded))
     var node := MeshInstance3D.new()
     node.mesh = mesh
     return node
@@ -132,11 +138,11 @@ func make_viewport(context: String) -> Dictionary:
     configure_camera(camera, context)
     return {"viewport": viewport, "root": root3d}
 
-func capture(context: String, face_key: String, cull_mode: int, variant: String) -> Dictionary:
+func capture(context: String, face_key: String, cull_mode: int, variant: String, unshaded: bool = false) -> Dictionary:
     var setup := make_viewport(context)
     var viewport := setup["viewport"] as SubViewport
     var root3d := setup["root"] as Node3D
-    var object := make_mesh(face_key, cull_mode)
+    var object := make_mesh(face_key, cull_mode, unshaded)
     if object == null:
         viewport.queue_free()
         return {"state": "FAIL_MESH"}
@@ -154,6 +160,7 @@ func capture(context: String, face_key: String, cull_mode: int, variant: String)
     var meta := {
         "state": "PASS",
         "variant": variant,
+        "unshaded": unshaded,
         "width": image.get_width(),
         "height": image.get_height(),
         "png_bytes": FileAccess.get_file_as_bytes(path).size()
@@ -223,7 +230,7 @@ func _initialize() -> void:
         "aggregate_owner_order_back_vs_two_sided_gt1": 0,
         "aggregate_host_reversed_back_vs_two_sided_gt1": 0,
         "aggregate_owner_vs_host_reversed_back_gt1": 0,
-        "two_sided_byte_identity_all_contexts": true,
+        "unshaded_two_sided_coverage_identity_all_contexts": true,
         "promotion_effect": "NONE",
         "truth_boundary": payload["truth_boundary"]
     }
@@ -234,22 +241,26 @@ func _initialize() -> void:
         var owner_two := await capture(context, "owner_faces", BaseMaterial3D.CULL_DISABLED, "owner-order-two-sided")
         var reversed_back := await capture(context, "host_reversed_faces", BaseMaterial3D.CULL_BACK, "host-reversed-back")
         var reversed_two := await capture(context, "host_reversed_faces", BaseMaterial3D.CULL_DISABLED, "host-reversed-two-sided")
-        for item in [owner_back, owner_two, reversed_back, reversed_two]:
+        var owner_unshaded := await capture(context, "owner_faces", BaseMaterial3D.CULL_DISABLED, "owner-order-two-sided-unshaded", true)
+        var reversed_unshaded := await capture(context, "host_reversed_faces", BaseMaterial3D.CULL_DISABLED, "host-reversed-two-sided-unshaded", true)
+        for item in [owner_back, owner_two, reversed_back, reversed_two, owner_unshaded, reversed_unshaded]:
             if String(item.get("meta", {}).get("state", "")) != "PASS":
                 fail("capture failed for %s" % context)
                 return
 
-        var two_sided := image_diff(owner_two["image"], reversed_two["image"])
+        var unshaded_coverage := image_diff(owner_unshaded["image"], reversed_unshaded["image"])
+        var shaded_two_sided := image_diff(owner_two["image"], reversed_two["image"])
         var owner_vs_two := image_diff(owner_back["image"], owner_two["image"])
         var reversed_vs_two := image_diff(reversed_back["image"], reversed_two["image"])
         var owner_vs_reversed := image_diff(owner_back["image"], reversed_back["image"])
-        if int(two_sided["changed_pixels_raw"]) != 0:
-            receipt["two_sided_byte_identity_all_contexts"] = false
+        if int(unshaded_coverage["changed_pixels_raw"]) != 0:
+            receipt["unshaded_two_sided_coverage_identity_all_contexts"] = false
         receipt["aggregate_owner_order_back_vs_two_sided_gt1"] += int(owner_vs_two["changed_pixels_gt_1lsb"])
         receipt["aggregate_host_reversed_back_vs_two_sided_gt1"] += int(reversed_vs_two["changed_pixels_gt_1lsb"])
         receipt["aggregate_owner_vs_host_reversed_back_gt1"] += int(owner_vs_reversed["changed_pixels_gt_1lsb"])
         receipt["comparisons"][context] = {
-            "two_sided_owner_vs_host_reversed": two_sided,
+            "unshaded_two_sided_owner_vs_host_reversed": unshaded_coverage,
+            "shaded_two_sided_owner_vs_host_reversed": shaded_two_sided,
             "owner_order_back_vs_two_sided": owner_vs_two,
             "host_reversed_back_vs_two_sided": reversed_vs_two,
             "owner_order_back_vs_host_reversed_back": owner_vs_reversed,
@@ -257,12 +268,14 @@ func _initialize() -> void:
                 "owner_order_back": owner_back["meta"],
                 "owner_order_two_sided": owner_two["meta"],
                 "host_reversed_back": reversed_back["meta"],
-                "host_reversed_two_sided": reversed_two["meta"]
+                "host_reversed_two_sided": reversed_two["meta"],
+                "owner_order_two_sided_unshaded": owner_unshaded["meta"],
+                "host_reversed_two_sided_unshaded": reversed_unshaded["meta"]
             }
         }
 
-    if not bool(receipt["two_sided_byte_identity_all_contexts"]):
-        receipt["state"] = "FAIL_TWO_SIDED_WINDING_ONLY_CONTROL_NOT_IDENTICAL"
+    if not bool(receipt["unshaded_two_sided_coverage_identity_all_contexts"]):
+        receipt["state"] = "FAIL_UNSHADED_TWO_SIDED_COVERAGE_CONTROL_NOT_IDENTICAL"
         receipt["decision"] = "HOLD_RECEIVER_CONTROL_INVALID"
     elif int(receipt["aggregate_owner_vs_host_reversed_back_gt1"]) <= 0:
         receipt["state"] = "FAIL_CULLING_OBSERVER_INSENSITIVE"
