@@ -1,0 +1,229 @@
+name: Object animation capture-timeline rebind evidence
+
+on:
+  pull_request:
+    paths:
+      - 'assets/modular-equipment-case-001/latch-capture-timeline-rebind-003.json'
+      - 'tools/verify_animation_capture_timeline_rebind.py'
+      - 'tests/test_animation_capture_timeline_rebind.py'
+      - '.github/workflows/object-animation-capture-timeline-rebind.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CURRENT_RIG_HEAD: 3a17a02528918ec63a46e954e883179f752c8151
+  SOURCE_CAPTURE_HEAD: 56aaaecb45b520fdff9e08fe2d4ea42562f5690f
+  HISTORICAL_LATCH_RIG_HEAD: 3b667ff5d30c46ec2fe7da7679518970f8610018
+  HISTORICAL_OWNERSHIP_HEAD: d3fa10a270faae7925811f44f03381fe5c5d0215
+  LID_RIG_HEAD: 4b72c9918c5fc1e89bd18a0be24fb4afac6e7775
+  HISTORICAL_LATCH_RIG_PLAN_SHA256: 81c27ab7b73ed9a43cb3f554b56c3f4294b893712075e33d13f5b02e008455db
+  CAPTURE_POLICY_BLOB_SHA: b96df9c5469dffb20e674edd4b176941eda81b8e
+  CURRENT_RIG_BINDING_BLOB_SHA: 0331d30528f58d353fa9396d7ca129a020e8c6ce
+
+jobs:
+  exact-capture-timeline-rebind:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout exact Animation PR head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+      - name: Bind exact Animation head
+        run: echo "EXACT_HEAD_SHA=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
+      - name: Checkout exact current authority donors
+        uses: actions/checkout@v4
+        with:
+          repository: mike-axiom-mir/axm-object-design
+          ref: ${{ env.CURRENT_RIG_HEAD }}
+          path: .current-rig
+      - uses: actions/checkout@v4
+        with:
+          repository: mike-axiom-mir/axm-object-design
+          ref: ${{ env.SOURCE_CAPTURE_HEAD }}
+          path: .source-capture
+      - uses: actions/checkout@v4
+        with:
+          repository: mike-axiom-mir/axm-object-design
+          ref: ${{ env.HISTORICAL_LATCH_RIG_HEAD }}
+          path: .historical-rig
+      - uses: actions/checkout@v4
+        with:
+          repository: mike-axiom-mir/axm-object-design
+          ref: ${{ env.HISTORICAL_OWNERSHIP_HEAD }}
+          path: .ownership
+      - uses: actions/checkout@v4
+        with:
+          repository: mike-axiom-mir/axm-object-design
+          ref: ${{ env.LID_RIG_HEAD }}
+          path: .lid-rig
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Verify exact donor identities and current structural suite
+        run: |
+          set -euo pipefail
+          test "$(git -C .current-rig rev-parse HEAD)" = "$CURRENT_RIG_HEAD"
+          test "$(git -C .source-capture rev-parse HEAD)" = "$SOURCE_CAPTURE_HEAD"
+          test "$(git -C .historical-rig rev-parse HEAD)" = "$HISTORICAL_LATCH_RIG_HEAD"
+          test "$(git -C .ownership rev-parse HEAD)" = "$HISTORICAL_OWNERSHIP_HEAD"
+          test "$(git -C .lid-rig rev-parse HEAD)" = "$LID_RIG_HEAD"
+          test "$(git hash-object .current-rig/assets/modular-equipment-case-001/front-latch-source-rig-binding-003.json)" = "$CURRENT_RIG_BINDING_BLOB_SHA"
+          test "$(git hash-object .source-capture/assets/modular-equipment-case-001/front-latch-capture-envelope-001.json)" = "$CAPTURE_POLICY_BLOB_SHA"
+          python -m compileall -q tools tests
+          python -m unittest discover -s tests -v
+
+      - name: Rebuild unchanged exact 101-key Animation sequence
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/axm-capture-lid /tmp/axm-capture-historical-rig /tmp/axm-capture-sequence
+          python tools/build_lid_motion_evidence.py \
+            --source assets/modular-equipment-case-001/source.json \
+            --rig .lid-rig/assets/modular-equipment-case-001/articulation.json \
+            --clip assets/modular-equipment-case-001/lid-motion-clip.json \
+            --out /tmp/axm-capture-lid \
+            --exact-head "$EXACT_HEAD_SHA"
+          PYTHONPATH="$PWD/tools" python .historical-rig/tools/verify_front_latch_articulation.py \
+            --host assets/modular-equipment-case-001/source.json \
+            --ownership .ownership/assets/modular-equipment-case-001/front-latch-ownership-001.json \
+            --plan .historical-rig/assets/modular-equipment-case-001/front-latch-articulation-001.json \
+            --out /tmp/axm-capture-historical-rig
+          python tools/build_lid_latch_motion_evidence.py \
+            --source assets/modular-equipment-case-001/source.json \
+            --sequence assets/modular-equipment-case-001/lid-latch-motion-sequence-001.json \
+            --motion-evidence /tmp/axm-capture-lid/lid-motion-evidence.json \
+            --ownership .ownership/assets/modular-equipment-case-001/front-latch-ownership-001.json \
+            --rig-receipt /tmp/axm-capture-historical-rig/front-latch-articulation.receipt.json \
+            --rig-head "$HISTORICAL_LATCH_RIG_HEAD" \
+            --rig-plan-sha256 "$HISTORICAL_LATCH_RIG_PLAN_SHA256" \
+            --out /tmp/axm-capture-sequence \
+            --exact-head "$EXACT_HEAD_SHA"
+          grep -q '"sequence_digest": "0a3523cf792264f610881552fd2ebd438aabdfd05e30e92af9dbb33ded1fa2d3"' /tmp/axm-capture-sequence/lid-latch-motion-evidence.json
+          grep -q '"endpoint_inclusive_sample_count": 101' /tmp/axm-capture-sequence/lid-latch-motion-evidence.json
+
+      - name: Rebuild current source-owned capture and Rigging receipts
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/axm-source-capture /tmp/axm-current-rig
+          PYTHONPATH="$PWD/.source-capture/tools" python .source-capture/tools/verify_front_latch_capture_envelope.py \
+            --host assets/modular-equipment-case-001/source.json \
+            --interface .source-capture/assets/modular-equipment-case-001/front-latch-pivot-interface-001.json \
+            --policy .source-capture/assets/modular-equipment-case-001/front-latch-capture-envelope-001.json \
+            --out /tmp/axm-source-capture
+          PYTHONPATH="$PWD/.current-rig/tools" python .current-rig/tools/verify_front_latch_source_rig_binding.py \
+            --host assets/modular-equipment-case-001/source.json \
+            --ownership .current-rig/assets/modular-equipment-case-001/front-latch-ownership-001.json \
+            --interface .source-capture/assets/modular-equipment-case-001/front-latch-pivot-interface-001.json \
+            --historical-plan .historical-rig/assets/modular-equipment-case-001/front-latch-articulation-001.json \
+            --capture-policy .source-capture/assets/modular-equipment-case-001/front-latch-capture-envelope-001.json \
+            --capture-receipt /tmp/axm-source-capture/receipt.json \
+            --binding .current-rig/assets/modular-equipment-case-001/front-latch-source-rig-binding-003.json \
+            --out /tmp/axm-current-rig
+          grep -q 'PASS_SOURCE_OWNED_FRONT_LATCH_RIG_CAPTURE_ENVELOPE_REBIND' /tmp/axm-current-rig/front-latch-source-rig-binding-evidence.json
+          grep -q '"historical_interface_threshold_reclassified_as": "Z_AABB_BROAD_PHASE_ONLY_NOT_CAPTURE_THRESHOLD"' /tmp/axm-current-rig/front-latch-source-rig-binding-evidence.json
+
+      - name: Characterize corrected capture timeline without changing motion
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/axm-animation-capture-timeline
+          python tools/verify_animation_capture_timeline_rebind.py \
+            --contract assets/modular-equipment-case-001/latch-capture-timeline-rebind-003.json \
+            --sequence-evidence /tmp/axm-capture-sequence/lid-latch-motion-evidence.json \
+            --current-rig-receipt /tmp/axm-current-rig/front-latch-source-rig-binding-evidence.json \
+            --current-rig-binding .current-rig/assets/modular-equipment-case-001/front-latch-source-rig-binding-003.json \
+            --capture-policy .source-capture/assets/modular-equipment-case-001/front-latch-capture-envelope-001.json \
+            --current-rig-head "$CURRENT_RIG_HEAD" \
+            --source-authority-head "$SOURCE_CAPTURE_HEAD" \
+            --exact-head "$EXACT_HEAD_SHA" \
+            --out /tmp/axm-animation-capture-timeline
+          receipt=/tmp/axm-animation-capture-timeline/animation-capture-timeline-rebind-evidence.json
+          grep -q 'PASS_OBJECT_LATCH_PROOF_VOLUME_CAPTURE_TIMELINE_REBIND__NO_RETIME' "$receipt"
+          grep -q 'SOURCE_OWNED_PROOF_VOLUME_CONTACT_BOUNDARY_NOT_PHYSICAL_RETENTION' "$receipt"
+          grep -q 'Z_AABB_BROAD_PHASE_ONLY_NOT_CAPTURE_THRESHOLD' "$receipt"
+          grep -q '"runtime_controller_accepted": false' "$receipt"
+          grep -q '"gameplay_accepted": false' "$receipt"
+
+      - name: Negative controls fail closed
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/axm-capture-negative && mkdir -p /tmp/axm-capture-negative
+          cp /tmp/axm-current-rig/front-latch-source-rig-binding-evidence.json /tmp/axm-capture-negative/rig.json
+          cp /tmp/axm-capture-sequence/lid-latch-motion-evidence.json /tmp/axm-capture-negative/sequence.json
+          cp assets/modular-equipment-case-001/latch-capture-timeline-rebind-003.json /tmp/axm-capture-negative/contract.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('/tmp/axm-capture-negative/rig.json'); d=json.loads(p.read_text()); d['historical_interface_threshold_reclassified_as']='CAPTURE_THRESHOLD'; p.write_text(json.dumps(d,indent=2)+'\n')
+          p=Path('/tmp/axm-capture-negative/sequence.json'); d=json.loads(p.read_text()); d['samples'][3]['latch_lever_angle_deg'] += 0.25; p.write_text(json.dumps(d,indent=2)+'\n')
+          p=Path('/tmp/axm-capture-negative/contract.json'); d=json.loads(p.read_text()); d['truth_boundary']['runtime_controller_accepted']=True; p.write_text(json.dumps(d,indent=2)+'\n')
+          PY
+          base=(python tools/verify_animation_capture_timeline_rebind.py --contract assets/modular-equipment-case-001/latch-capture-timeline-rebind-003.json --sequence-evidence /tmp/axm-capture-sequence/lid-latch-motion-evidence.json --current-rig-receipt /tmp/axm-current-rig/front-latch-source-rig-binding-evidence.json --current-rig-binding .current-rig/assets/modular-equipment-case-001/front-latch-source-rig-binding-003.json --capture-policy .source-capture/assets/modular-equipment-case-001/front-latch-capture-envelope-001.json --current-rig-head "$CURRENT_RIG_HEAD" --source-authority-head "$SOURCE_CAPTURE_HEAD" --exact-head "$EXACT_HEAD_SHA")
+          set +e
+          ${base[@]} --current-rig-receipt /tmp/axm-capture-negative/rig.json --out /tmp/neg-rig >/tmp/neg-rig.out 2>/tmp/neg-rig.err
+          c1=$?
+          ${base[@]} --sequence-evidence /tmp/axm-capture-negative/sequence.json --out /tmp/neg-sequence >/tmp/neg-sequence.out 2>/tmp/neg-sequence.err
+          c2=$?
+          ${base[@]} --contract /tmp/axm-capture-negative/contract.json --out /tmp/neg-contract >/tmp/neg-contract.out 2>/tmp/neg-contract.err
+          c3=$?
+          set -e
+          test "$c1" -ne 0
+          test "$c2" -ne 0
+          test "$c3" -ne 0
+          grep -q 'relabeled as capture' /tmp/neg-rig.err
+          grep -q 'authored latch curve changed' /tmp/neg-sequence.err
+          grep -q 'authority inflation' /tmp/neg-contract.err
+          printf '%s\n' \
+            'PASS_FAILS_CLOSED_ON_FALSE_Z_AABB_CAPTURE_RELABEL' \
+            'PASS_FAILS_CLOSED_ON_AUTHORED_KEY_DRIFT' \
+            'PASS_FAILS_CLOSED_ON_RUNTIME_AUTHORITY_INFLATION' \
+            > /tmp/axm-animation-capture-timeline/negative-controls.txt
+
+      - name: Retain exact evidence packet
+        run: |
+          set -euo pipefail
+          out=evidence/animation-capture-timeline-rebind
+          rm -rf "$out" && mkdir -p "$out"
+          cp assets/modular-equipment-case-001/latch-capture-timeline-rebind-003.json "$out"/
+          cp /tmp/axm-capture-sequence/lid-latch-motion-evidence.json "$out"/
+          cp /tmp/axm-source-capture/receipt.json "$out/source-capture-envelope-receipt.json"
+          cp /tmp/axm-current-rig/front-latch-source-rig-binding-evidence.json "$out"/
+          cp .current-rig/assets/modular-equipment-case-001/front-latch-source-rig-binding-003.json "$out"/
+          cp .source-capture/assets/modular-equipment-case-001/front-latch-capture-envelope-001.json "$out"/
+          cp /tmp/axm-animation-capture-timeline/animation-capture-timeline-rebind-evidence.json "$out"/
+          cp /tmp/axm-animation-capture-timeline/negative-controls.txt "$out"/
+          printf '%s\n' "$EXACT_HEAD_SHA" > "$out/exact-animation-head.txt"
+          printf '%s\n' "$CURRENT_RIG_HEAD" > "$out/current-rigging-head.txt"
+          printf '%s\n' "$SOURCE_CAPTURE_HEAD" > "$out/source-capture-authority-head.txt"
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('evidence/animation-capture-timeline-rebind/animation-capture-timeline-rebind-evidence.json')
+          d=json.loads(p.read_text())
+          summary={
+            'result': d['result'],
+            'exact_animation_head': d['exact_animation_head'],
+            'capture_transition_deg': d['source_capture_transition_deg'],
+            'z_aabb_only_transition_deg': d['z_aabb_only_transition_deg'],
+            'release_capture_crossing_s': d['release_timeline']['proof_volume_contact_to_separation_crossing_time_s'],
+            'release_z_aabb_crossing_s': d['release_timeline']['z_aabb_broad_phase_crossing_time_s'],
+            'reengage_z_aabb_crossing_s': d['reengagement_timeline']['z_aabb_broad_phase_reentry_time_s'],
+            'reengage_capture_crossing_s': d['reengagement_timeline']['proof_volume_contact_reentry_time_s'],
+            'motion_preservation': d['motion_preservation'],
+            'runtime_controller_accepted': d['runtime_controller_accepted'],
+            'gameplay_accepted': d['gameplay_accepted'],
+          }
+          Path('evidence/animation-capture-timeline-rebind/SUMMARY.json').write_text(json.dumps(summary,indent=2,sort_keys=True)+'\n')
+          print(json.dumps(summary,indent=2,sort_keys=True))
+          PY
+
+      - name: Upload retained exact-head evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: modular-equipment-case-001-animation-capture-timeline-${{ env.EXACT_HEAD_SHA }}
+          path: evidence/animation-capture-timeline-rebind
+          if-no-files-found: error
+          retention-days: 30
