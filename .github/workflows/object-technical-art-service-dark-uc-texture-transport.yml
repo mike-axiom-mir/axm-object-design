@@ -1,0 +1,232 @@
+name: Object Technical Art service-dark UC texture transport
+
+on:
+  push:
+    branches: [studio/technical-art-service-dark-uc-texture-transport-001]
+    paths:
+      - "tools/build_object_service_dark_uc_texture_transport.py"
+      - "lookdev-proof/service_dark_atlas_uc_rgb_adapter.gd"
+      - ".github/workflows/object-technical-art-service-dark-uc-texture-transport.yml"
+      - "lookdev/**"
+      - "lookdev-proof/**"
+      - "assets/modular-equipment-case-001/**"
+      - "tools/build_object_material_lookdev_evidence.py"
+      - "tools/build_object_material_articulation_evidence.py"
+      - "tools/build_object_inner_lid_material_evidence.py"
+      - "tools/build_object_service_dark_uv_density_family_evidence.py"
+      - "tools/build_object_service_dark_atlas_pack_evidence.py"
+  pull_request:
+    paths:
+      - "tools/build_object_service_dark_uc_texture_transport.py"
+      - "lookdev-proof/service_dark_atlas_uc_rgb_adapter.gd"
+      - ".github/workflows/object-technical-art-service-dark-uc-texture-transport.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  object-regression:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.11', '3.13']
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Compile and run complete Object suite
+        run: |
+          python -m compileall -q tools tests
+          python -m unittest discover -s tests -v
+
+  exact-uc-texture-transport:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout exact Technical Art head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+
+      - name: Checkout exact current Universal Creation
+        uses: actions/checkout@v4
+        with:
+          repository: mike-axiom-mir/axm-universal-creation
+          ref: 6ad6ad51e6f40a3dc1d0cccd3af7f7c7ab28fb33
+          path: _donor/axm-universal-creation
+          fetch-depth: 1
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Record exact receiving identities
+        run: |
+          set -euo pipefail
+          mkdir -p technical-art-proof/generated lookdev-proof/generated
+          git rev-parse HEAD > technical-art-proof/technical-art-head.txt
+          git -C _donor/axm-universal-creation rev-parse HEAD > technical-art-proof/uc-head.txt
+          test "$(cat technical-art-proof/uc-head.txt)" = "6ad6ad51e6f40a3dc1d0cccd3af7f7c7ab28fb33"
+          git merge-base --is-ancestor 4c12a0a57f6aa8778cff41efad321e13567c6c91 HEAD
+
+      - name: Rebuild exact Materials base payload
+        run: python tools/build_object_material_lookdev_evidence.py
+
+      - name: Materialize exact Animation, Rigging and latch-ownership donors
+        env:
+          ANIMATION_COMMIT: 12a350fc38f67348f342cd0e53ed6b16383b789d
+          RIG_COMMIT: 4b72c9918c5fc1e89bd18a0be24fb4afac6e7775
+          LATCH_OWNERSHIP_COMMIT: d3fa10a270faae7925811f44f03381fe5c5d0215
+        run: |
+          set -euo pipefail
+          git fetch --no-tags origin \
+            studio/animation-object-lid-open-close-001 \
+            studio/rigging-object-lid-articulation-001 \
+            studio/hard-surface-front-latch-ownership-001
+          git cat-file -e "$ANIMATION_COMMIT^{commit}"
+          git cat-file -e "$RIG_COMMIT^{commit}"
+          git cat-file -e "$LATCH_OWNERSHIP_COMMIT^{commit}"
+          git show "$ANIMATION_COMMIT:assets/modular-equipment-case-001/lid-motion-clip.json" > lookdev-proof/generated/lid-motion-clip.json
+          git show "$RIG_COMMIT:assets/modular-equipment-case-001/articulation.json" > lookdev-proof/generated/articulation.json
+          git show "$LATCH_OWNERSHIP_COMMIT:assets/modular-equipment-case-001/front-latch-ownership-001.json" > lookdev-proof/generated/front-latch-ownership-001.json
+
+      - name: Rebuild owner-bound and source-surface Materials chain
+        run: |
+          python tools/build_object_material_articulation_evidence.py
+          git fetch --no-tags origin e67353416209604aa50ad3ba57f71336f4384349 --depth=1
+          test "$(git rev-parse e67353416209604aa50ad3ba57f71336f4384349:assets/modular-equipment-case-001/lid-inner-surface-identity-001.json)" = "873c03a73042213255c65df63cdff49edcf10a6c"
+          git show e67353416209604aa50ad3ba57f71336f4384349:assets/modular-equipment-case-001/lid-inner-surface-identity-001.json > lookdev-proof/generated/lid-inner-surface-identity-001.json
+          python tools/build_object_inner_lid_material_evidence.py \
+            --source-surface-identity lookdev-proof/generated/lid-inner-surface-identity-001.json
+          python tools/build_object_service_dark_uv_density_family_evidence.py \
+            --exact-head "$(git rev-parse HEAD)"
+          python tools/build_object_service_dark_atlas_pack_evidence.py \
+            --exact-head "$(git rev-parse HEAD)"
+
+      - name: Download pinned Godot 4.7.2
+        env:
+          GODOT_URL: https://github.com/godotengine/godot-builds/releases/download/4.7.2-stable/Godot_v4.7.2-stable_linux.x86_64.zip
+          GODOT_SHA256: cadd3204e728a35d3f13adb7fd0d7902636b79f6b95c40c265eb73b6c35329e4
+        run: |
+          set -euo pipefail
+          mkdir -p .godot-bin
+          curl --fail --location --retry 3 --retry-delay 2 "$GODOT_URL" --output .godot-bin/godot.zip
+          echo "$GODOT_SHA256  .godot-bin/godot.zip" | sha256sum --check --strict
+          unzip -q .godot-bin/godot.zip -d .godot-bin
+          chmod +x .godot-bin/Godot_v4.7.2-stable_linux.x86_64
+          .godot-bin/Godot_v4.7.2-stable_linux.x86_64 --version
+
+      - name: Install virtual display when needed
+        run: |
+          if ! command -v xvfb-run >/dev/null 2>&1; then
+            sudo apt-get update
+            sudo apt-get install -y xvfb
+          fi
+
+      - name: Reproduce exact Materials padded-atlas target-host prerequisite
+        run: |
+          set -euo pipefail
+          rm -f lookdev-proof/service-dark-atlas-pack-runtime-receipt.json lookdev-proof/service-dark-atlas-*.png
+          xvfb-run --auto-servernum --server-args="-screen 0 1000x760x24" \
+            .godot-bin/Godot_v4.7.2-stable_linux.x86_64 \
+            --display-driver x11 \
+            --rendering-method gl_compatibility \
+            --path lookdev-proof \
+            --script service_dark_atlas_pack_observe.gd
+
+      - name: Produce exact RGB transport derivative without changing Materials source
+        run: |
+          set -euo pipefail
+          .godot-bin/Godot_v4.7.2-stable_linux.x86_64 \
+            --headless \
+            --path lookdev-proof \
+            --script service_dark_atlas_uc_rgb_adapter.gd
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          r=json.loads(Path("lookdev-proof/generated/service-dark-atlas-uc-rgb-receipt.json").read_text())
+          assert r["state"]=="PASS_EXACT_RGBA_TO_RGB_TRANSPORT_DERIVATIVE",r
+          assert r["max_rgb_channel_delta"]==0,r
+          assert r["min_source_alpha"]==255 and r["max_source_alpha"]==255,r
+          print(json.dumps(r,indent=2))
+          PY
+
+      - name: Prove Materials atlas through current UC native textured GLB and real Godot target
+        run: |
+          set -euo pipefail
+          xvfb-run --auto-servernum --server-args="-screen 0 1000x760x24" \
+            env AXM_GODOT="$GITHUB_WORKSPACE/.godot-bin/Godot_v4.7.2-stable_linux.x86_64" \
+            PYTHONPATH="$GITHUB_WORKSPACE/_donor/axm-universal-creation/src" \
+            python tools/build_object_service_dark_uc_texture_transport.py \
+              --uc-root _donor/axm-universal-creation \
+              --expected-materials-head 4c12a0a57f6aa8778cff41efad321e13567c6c91 \
+              --expected-uc-head 6ad6ad51e6f40a3dc1d0cccd3af7f7c7ab28fb33 \
+              --run-godot
+
+      - name: Validate exact Technical Art transport receipt
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          root=Path("technical-art-proof/generated")
+          r=json.loads((root/"technical-art-uc-texture-transport-receipt.json").read_text())
+          assert r["result"]=="PASS_OBJECT_SERVICE_DARK_EXACT_ATLAS_RGB_TO_CURRENT_UC_TEXTURED_GLB_TO_GODOT",r
+          assert r["technical_art_head"]==Path("technical-art-proof/technical-art-head.txt").read_text().strip(),r
+          assert r["materials_authority_head"]=="4c12a0a57f6aa8778cff41efad321e13567c6c91",r
+          assert r["uc_head"]=="6ad6ad51e6f40a3dc1d0cccd3af7f7c7ab28fb33",r
+          assert r["uc_product_modified"] is False,r
+          assert r["uc_quality_status"]=="PASS" and r["uc_uv_status"]=="MEASURED",r
+          assert r["godot_target_status"]=="PASS" and r["godot_target_observation_status"]=="PASS",r
+          assert set(r["measured_center_sample_texels_per_m"])=={
+              "lid_inner_service_surface","front_service_panel_outer_service_surface"},r
+          assert min(r["measured_center_sample_texels_per_m"].values())>480.0,r
+          assert r["truth_boundary"]["production_uv_adopted"] is False,r
+          assert r["truth_boundary"]["production_texture_authored"] is False,r
+          assert r["truth_boundary"]["neutral_companion_maps_are_transport_shims"] is True,r
+          print(json.dumps(r,indent=2))
+          PY
+
+      - name: Negative control rejects one-texel UV transport drift
+        run: |
+          set -euo pipefail
+          set +e
+          PYTHONPATH="$GITHUB_WORKSPACE/_donor/axm-universal-creation/src" \
+            python tools/build_object_service_dark_uc_texture_transport.py \
+              --uc-root _donor/axm-universal-creation \
+              --expected-materials-head 4c12a0a57f6aa8778cff41efad321e13567c6c91 \
+              --expected-uc-head 6ad6ad51e6f40a3dc1d0cccd3af7f7c7ab28fb33 \
+              --out technical-art-proof/negative-one-texel \
+              --uv-delta-px 1 \
+              > technical-art-proof/negative-one-texel.log 2>&1
+          code=$?
+          set -e
+          test "$code" -ne 0
+          grep -q "UC transported texel-density drift" technical-art-proof/negative-one-texel.log
+          echo "PASS_REJECTED_ONE_TEXEL_UV_TRANSPORT_DRIFT"
+
+      - name: Retain exact cross-repo Technical Art evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: object-service-dark-current-uc-texture-transport-${{ github.event.pull_request.head.sha || github.sha }}
+          path: |
+            technical-art-proof/technical-art-head.txt
+            technical-art-proof/uc-head.txt
+            technical-art-proof/generated/**
+            technical-art-proof/negative-one-texel.log
+            lookdev/service_dark_atlas_pack_review_001.json
+            lookdev/service_dark_uv_density_family_001.json
+            lookdev-proof/generated/object_service_dark_atlas_pack_payload.json
+            lookdev-proof/generated/service_dark_atlas_pack_build_receipt.json
+            lookdev-proof/service-dark-atlas-pack-runtime-receipt.json
+            lookdev-proof/service-dark-atlas-padded.png
+            lookdev-proof/generated/service-dark-atlas-uc-rgb.png
+            lookdev-proof/generated/service-dark-atlas-uc-rgb-receipt.json
+          if-no-files-found: warn
+          retention-days: 30
