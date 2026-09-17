@@ -1,0 +1,80 @@
+{
+  "schema": "axm.object-front-service-panel-uv-source-identity-rebind/v0.1",
+  "asset_id": "modular-equipment-case-001",
+  "intent": "bind the already-rendered Materials UV-density/orientation candidate to the exact source-owned front service-panel outer-surface identity supplied later by Hard Surface, without rewriting the historical selector-only review or adopting production UVs/material slots",
+  "materials_review": {
+    "repository": "mike-axiom-mir/axm-object-design",
+    "pull_request": 6,
+    "head": "04c521a5a7e31bef54093c818108fd6c2080ca0e",
+    "path": "lookdev/front_service_panel_uv_review_001.json",
+    "git_blob_sha": "c473d20a466b97ea2e7d513a4efe78533245de77",
+    "schema": "axm.object-front-service-panel-uv-review/v0.1",
+    "historical_selector_only": true
+  },
+  "surface_owner": {
+    "repository": "mike-axiom-mir/axm-object-design",
+    "pull_request": 26,
+    "head": "fcae744a8bdbcb765c32758e9da03fe54ffe4dbc",
+    "path": "assets/modular-equipment-case-001/front-service-panel-outer-surface-identity-001.json",
+    "git_blob_sha": "503b0179f20351a66668cbad3122e5dea26957b9",
+    "contract_sha256": "031352b65fd497f6d62f20bc61236a78196819d74383b52c607d05ba5601a908",
+    "schema": "axm.object-hard-surface-surface-identity/v0.1",
+    "surface_id": "front_service_panel_outer_service_surface",
+    "surface_semantics": "exterior_service_surface",
+    "selector": "source_local_min_y_face",
+    "expected_triangle_count": 2,
+    "expected_unique_vertex_count": 4
+  },
+  "binding": {
+    "component_name": "front_service_panel",
+    "component_role": "service_panel",
+    "component_kind": "box",
+    "source_surface_id": "front_service_panel_outer_service_surface",
+    "review_surface_selector": "source_local_min_y_face",
+    "material_id": "service_dark",
+    "uv_candidate_basis": "SOURCE_LOCAL_X_TO_U__SOURCE_LOCAL_Z_TO_V",
+    "meters_per_uv_unit_u": 0.05,
+    "meters_per_uv_unit_v": 0.05,
+    "binding_policy": "EXACT_SOURCE_OWNED_SURFACE_IDENTITY__MATERIALS_REVIEW_CANDIDATE_ONLY__NO_PRODUCTION_UV_ADOPTION"
+  },
+  "authority": {
+    "source_surface_identity_owner": "Hard Surface",
+    "materials_authors_surface_identity": false,
+    "hard_surface_assigns_material": false,
+    "hard_surface_authors_uv": false,
+    "source_material_assignment": "UNASSIGNED",
+    "source_uv_assignment": "UNASSIGNED",
+    "materials_owns_review_uv_candidate": true,
+    "production_uv_adopted": false,
+    "material_scalars_changed": false
+  },
+  "renderer_recheck": {
+    "renderer": "Godot 4.7.2 GL Compatibility / X11",
+    "reuse_existing_observer": true,
+    "contexts": [
+      "front_service",
+      "three_quarter",
+      "grazing_service"
+    ],
+    "purpose": "rerun the already-proven isotropic candidate and anisotropic negative on the exact Materials successor head so source-identity rebinding and visible UV evidence are retained together"
+  },
+  "truth_boundary": {
+    "historical_review_rewritten": false,
+    "source_geometry_changed": false,
+    "source_surface_identity_rebound": true,
+    "materials_authors_surface_identity": false,
+    "source_material_slot_authored": false,
+    "production_uv_authored": false,
+    "production_uv_adopted": false,
+    "texture_asset_authored": false,
+    "decal_art_authored": false,
+    "material_scalars_changed": false,
+    "final_texel_density_accepted": false,
+    "target_import_transport_accepted": false,
+    "runtime_cost_accepted": false,
+    "art_direction_accepted": false,
+    "visual_qa_accepted": false,
+    "canon": false,
+    "production_ready": false
+  }
+}
