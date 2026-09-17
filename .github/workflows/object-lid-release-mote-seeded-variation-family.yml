@@ -1,0 +1,142 @@
+name: Object lid-release mote seeded variation family evidence
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  procedural:
+    strategy:
+      matrix:
+        python-version: ['3.11', '3.13']
+    runs-on: ubuntu-latest
+    env:
+      AXM_STICKER_FABRIC_ROOT: _donor/axm-sticker-fabric
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+
+      - name: Checkout exact Sticker Fabric dependency for inherited Procedural tests
+        uses: actions/checkout@v4
+        with:
+          repository: mike-axiom-mir/axm-sticker-fabric
+          ref: 3aa93b0132eea9becefb20c716c6ec1a023ad28b
+          path: _donor/axm-sticker-fabric
+
+      - name: Checkout exact VFX owner donor
+        uses: actions/checkout@v4
+        with:
+          repository: mike-axiom-mir/axm-object-design
+          ref: 7994d6f28050053f07dd355d8c54a983b0e8268b
+          path: _donor/object-vfx
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Compile
+        run: python -m compileall tools tests
+
+      - name: Test full repository suite
+        run: python -m unittest discover -s tests -v
+
+      - name: Verify exact VFX owner identity
+        if: matrix.python-version == '3.11'
+        run: |
+          set -euo pipefail
+          test "$(git -C _donor/object-vfx rev-parse HEAD)" = "7994d6f28050053f07dd355d8c54a983b0e8268b"
+          test "$(git -C _donor/object-vfx rev-parse HEAD:assets/modular-equipment-case-001/lid-open-release-motes-001.json)" = "83c41db21e16847ac0a69215facd8697853eeb4f"
+
+      - name: Build exact bounded seeded mote variation family
+        if: matrix.python-version == '3.11'
+        run: |
+          set -euo pipefail
+          mkdir -p evidence/lid-release-mote-seeded-variation-family
+          python tools/build_lid_release_mote_seeded_variation_family.py \
+            --profile assets/modular-equipment-case-001/lid-release-mote-seeded-variation-family-001.json \
+            --owner-effect _donor/object-vfx/assets/modular-equipment-case-001/lid-open-release-motes-001.json \
+            --owner-head "$(git -C _donor/object-vfx rev-parse HEAD)" \
+            --output-dir evidence/lid-release-mote-seeded-variation-family/generated
+          cp assets/modular-equipment-case-001/lid-release-mote-seeded-variation-family-001.json evidence/lid-release-mote-seeded-variation-family/family-profile.json
+          cp _donor/object-vfx/assets/modular-equipment-case-001/lid-open-release-motes-001.json evidence/lid-release-mote-seeded-variation-family/vfx-owner-effect.json
+          cp _donor/object-vfx/animation-proof/observe_lid_release_motes.gd evidence/lid-release-mote-seeded-variation-family/vfx-owner-observer.gd
+          git rev-parse HEAD > evidence/lid-release-mote-seeded-variation-family/exact-procedural-head.txt
+          git -C _donor/object-vfx rev-parse HEAD > evidence/lid-release-mote-seeded-variation-family/exact-vfx-owner-head.txt
+
+      - name: Assert variation pressure and fail-closed controls
+        if: matrix.python-version == '3.11'
+        run: |
+          python - <<'PY'
+          import copy
+          import json
+          import tempfile
+          from pathlib import Path
+          from tools import build_lid_release_mote_seeded_variation_family as m
+
+          root = Path('evidence/lid-release-mote-seeded-variation-family')
+          generated = root / 'generated'
+          summary = json.loads((generated / 'summary.json').read_text())
+          assert summary['result'] == 'PASS_BOUNDED_LID_RELEASE_MOTE_SEEDED_VARIATION_FAMILY', summary
+          assert summary['decision'] == 'PASS_DERIVED_SEEDED_MOTE_PARAMETER_FAMILY_ONLY__NO_VFX_RUNTIME_OR_VISUAL_ADOPTION'
+          assert summary['variant_count'] == 4
+          assert summary['particle_count_per_variant'] == 18
+          assert summary['distinct_mote_table_digests'] == 4
+          assert len(summary['pairwise_material_difference']) == 6
+          assert all(row['changed_mote_parameter_rows'] == 18 for row in summary['pairwise_material_difference'])
+          assert summary['owner_vfx_head'] == '7994d6f28050053f07dd355d8c54a983b0e8268b'
+          assert summary['owner_effect_git_blob_sha'] == '83c41db21e16847ac0a69215facd8697853eeb4f'
+          assert summary['truth_boundary']['vfx_visual_acceptance'] is False
+          assert summary['truth_boundary']['runtime_particle_implementation'] is False
+          assert summary['truth_boundary']['automatic_vfx_adoption'] is False
+
+          profile = json.loads((root / 'family-profile.json').read_text())
+          effect_path = root / 'vfx-owner-effect.json'
+          effect = json.loads(effect_path.read_text())
+
+          controls = []
+          def hold(name, fn):
+              try:
+                  fn()
+              except AssertionError as exc:
+                  controls.append({'name': name, 'result': m.HOLD, 'failure': str(exc)})
+              else:
+                  raise AssertionError(f'negative control unexpectedly passed: {name}')
+
+          hold('owner_head_drift', lambda: m.validate_owner_effect(profile, effect, effect_path=effect_path, owner_head='0' * 40))
+          duplicate = copy.deepcopy(profile)
+          duplicate['variants'][1]['seed'] = duplicate['variants'][0]['seed']
+          hold('duplicate_seed', lambda: m.validate_profile(duplicate))
+          adoption = copy.deepcopy(profile)
+          adoption['parameter_contract']['automatic_vfx_adoption'] = 'ALLOWED'
+          hold('automatic_vfx_adoption', lambda: m.validate_profile(adoption))
+          retune = copy.deepcopy(profile)
+          retune['parameter_contract']['owner_effect_parameter_override'] = 'ALLOWED'
+          hold('owner_parameter_retune', lambda: m.validate_profile(retune))
+          salt_drift = copy.deepcopy(profile)
+          salt_drift['hash_contract']['salts']['size_t'] = 99
+          hold('hash_salt_drift', lambda: m.validate_profile(salt_drift))
+          with tempfile.TemporaryDirectory() as td:
+              drifted = copy.deepcopy(effect)
+              drifted['visual_source']['particle_count'] = 19
+              path = Path(td) / 'effect.json'
+              path.write_text(json.dumps(drifted, indent=2) + '\n')
+              hold('owner_effect_blob_drift', lambda: m.validate_owner_effect(profile, drifted, effect_path=path, owner_head=profile['owner_vfx']['exact_head']))
+
+          assert len(controls) == 6
+          (root / 'negative-controls.json').write_text(json.dumps(controls, indent=2, sort_keys=True) + '\n')
+          print(summary['result'])
+          print(summary['family_digest'])
+          PY
+
+      - name: Upload retained evidence
+        if: matrix.python-version == '3.11'
+        uses: actions/upload-artifact@v4
+        with:
+          name: object-lid-release-mote-seeded-variation-family-001-evidence
+          path: evidence/lid-release-mote-seeded-variation-family
+          if-no-files-found: error
