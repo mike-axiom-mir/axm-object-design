@@ -234,13 +234,15 @@ def verify_runtime(path: Path) -> dict[str, Any]:
     comparisons = receipt.get("comparisons", {})
     if set(comparisons) != {"front_service", "three_quarter", "rear_hinge"}:
         raise AssertionError("runtime camera set drift")
+    if receipt.get("unshaded_two_sided_coverage_identity_all_contexts") is not True:
+        raise AssertionError("unshaded cull-disabled winding coverage control is not identical")
     owner_total = 0
     reversed_total = 0
     winding_visible = 0
     for context, row in comparisons.items():
-        two = row["two_sided_owner_vs_host_reversed"]
-        if int(two["changed_pixels_raw"]) != 0 or int(two["changed_pixels_gt_1lsb"]) != 0:
-            raise AssertionError(f"two-sided winding-only control changed pixels in {context}: {two}")
+        coverage = row["unshaded_two_sided_owner_vs_host_reversed"]
+        if int(coverage["changed_pixels_raw"]) != 0 or int(coverage["changed_pixels_gt_1lsb"]) != 0:
+            raise AssertionError(f"unshaded coverage control changed pixels in {context}: {coverage}")
         owner = row["owner_order_back_vs_two_sided"]
         reversed_row = row["host_reversed_back_vs_two_sided"]
         winding = row["owner_order_back_vs_host_reversed_back"]
