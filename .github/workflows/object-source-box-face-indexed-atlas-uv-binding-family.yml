@@ -1,0 +1,225 @@
+name: Object source box-face indexed atlas UV binding family evidence
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  procedural:
+    strategy:
+      matrix:
+        python-version: ['3.11', '3.13']
+    runs-on: ubuntu-latest
+    env:
+      AXM_STICKER_FABRIC_ROOT: _donor/axm-sticker-fabric
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+
+      - name: Checkout exact Sticker Fabric dependency for inherited Procedural tests
+        uses: actions/checkout@v4
+        with:
+          repository: mike-axiom-mir/axm-sticker-fabric
+          ref: 3aa93b0132eea9becefb20c716c6ec1a023ad28b
+          path: _donor/axm-sticker-fabric
+
+      - name: Checkout exact Hard-Surface source-face authority donor
+        uses: actions/checkout@v4
+        with:
+          repository: mike-axiom-mir/axm-object-design
+          ref: fcae744a8bdbcb765c32758e9da03fe54ffe4dbc
+          path: _donor/object-hard-surface-face
+
+      - name: Checkout exact Hard-Surface source-frame authority donor
+        uses: actions/checkout@v4
+        with:
+          repository: mike-axiom-mir/axm-object-design
+          ref: 6a9593b942e7cda4befe8106bfb8cc260e3e6b5f
+          path: _donor/object-hard-surface-frames
+
+      - name: Checkout exact Hard-Surface metric-domain authority donor
+        uses: actions/checkout@v4
+        with:
+          repository: mike-axiom-mir/axm-object-design
+          ref: f7c64d08e4e2a0d6954291d8b4e064d7345ab658
+          path: _donor/object-hard-surface-metric
+
+      - name: Checkout exact Materials review-UV donor
+        uses: actions/checkout@v4
+        with:
+          repository: mike-axiom-mir/axm-object-design
+          ref: ad2378f18be55efa1f8e6dba9d8823c6b5d500e1
+          path: _donor/object-materials-uv
+
+      - name: Checkout exact Materials atlas-layout donor
+        uses: actions/checkout@v4
+        with:
+          repository: mike-axiom-mir/axm-object-design
+          ref: 4c12a0a57f6aa8778cff41efad321e13567c6c91
+          path: _donor/object-materials-atlas
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Compile
+        run: python -m compileall tools tests
+
+      - name: Test full repository suite
+        run: python -m unittest discover -s tests -v
+
+      - name: Materialize exact review inputs for source-face prerequisite
+        if: matrix.python-version == '3.11'
+        run: |
+          set -euo pipefail
+          mkdir -p evidence/source-box-face-indexed-atlas-uv-binding/source-faces
+          git fetch origin 8e92324648d837a92b7c3e0b1107df1f58f9aa61 --depth=1
+          test "$(git rev-parse 8e92324648d837a92b7c3e0b1107df1f58f9aa61:lookdev/inner_lid_surface_review_001.json)" = "cc90cd2c4c0f8eaf6b93d190436bc278c0fa1c83"
+          git show 8e92324648d837a92b7c3e0b1107df1f58f9aa61:lookdev/inner_lid_surface_review_001.json > /tmp/inner_lid_surface_review_001.json
+          git fetch origin 04c521a5a7e31bef54093c818108fd6c2080ca0e --depth=1
+          test "$(git rev-parse 04c521a5a7e31bef54093c818108fd6c2080ca0e:lookdev/front_service_panel_uv_review_001.json)" = "c473d20a466b97ea2e7d513a4efe78533245de77"
+          git show 04c521a5a7e31bef54093c818108fd6c2080ca0e:lookdev/front_service_panel_uv_review_001.json > /tmp/front_service_panel_uv_review_001.json
+
+      - name: Rebuild exact source-owned face prerequisite
+        if: matrix.python-version == '3.11'
+        run: |
+          python tools/build_source_box_face_extraction_family.py \
+            --family assets/modular-equipment-case-001/source-box-face-extraction-family-001.json \
+            --hard-surface-root _donor/object-hard-surface-face \
+            --review lid_inner_service_surface=/tmp/inner_lid_surface_review_001.json \
+            --review front_service_panel_outer_service_surface=/tmp/front_service_panel_uv_review_001.json \
+            --out evidence/source-box-face-indexed-atlas-uv-binding/source-faces
+
+      - name: Rebuild exact review UV prerequisite
+        if: matrix.python-version == '3.11'
+        run: |
+          mkdir -p evidence/source-box-face-indexed-atlas-uv-binding/previous-uv-family
+          python tools/build_source_box_face_uv_projection_family.py \
+            --family assets/modular-equipment-case-001/source-box-face-uv-projection-family-001.json \
+            --materials-root _donor/object-materials-uv \
+            --face-root evidence/source-box-face-indexed-atlas-uv-binding/source-faces \
+            --out evidence/source-box-face-indexed-atlas-uv-binding/previous-uv-family
+
+      - name: Rebuild exact source-frame rebound UV prerequisite
+        if: matrix.python-version == '3.11'
+        run: |
+          mkdir -p evidence/source-box-face-indexed-atlas-uv-binding/source-frame-family
+          python tools/build_source_box_face_uv_source_frame_rebind_family.py \
+            --family assets/modular-equipment-case-001/source-box-face-uv-source-frame-rebind-family-001.json \
+            --materials-root _donor/object-materials-uv \
+            --face-root evidence/source-box-face-indexed-atlas-uv-binding/source-faces \
+            --hard-surface-frame-root _donor/object-hard-surface-frames \
+            --previous-summary evidence/source-box-face-indexed-atlas-uv-binding/previous-uv-family/summary.json \
+            --out evidence/source-box-face-indexed-atlas-uv-binding/source-frame-family
+
+      - name: Rebuild exact metric-domain rebound UV prerequisite
+        if: matrix.python-version == '3.11'
+        run: |
+          mkdir -p evidence/source-box-face-indexed-atlas-uv-binding/metric-family
+          python tools/build_source_box_face_uv_metric_domain_rebind_family.py \
+            --family assets/modular-equipment-case-001/source-box-face-uv-metric-domain-rebind-family-001.json \
+            --previous-root evidence/source-box-face-indexed-atlas-uv-binding/source-frame-family \
+            --hard-surface-metric-root _donor/object-hard-surface-metric \
+            --out evidence/source-box-face-indexed-atlas-uv-binding/metric-family
+
+      - name: Rebuild exact source-indexed review UV prerequisite
+        if: matrix.python-version == '3.11'
+        run: |
+          mkdir -p evidence/source-box-face-indexed-atlas-uv-binding/indexed-family
+          python tools/build_source_box_face_indexed_uv_binding_family.py \
+            --family assets/modular-equipment-case-001/source-box-face-indexed-uv-binding-family-001.json \
+            --face-root evidence/source-box-face-indexed-atlas-uv-binding/source-faces \
+            --source-frame-root evidence/source-box-face-indexed-atlas-uv-binding/source-frame-family \
+            --metric-root evidence/source-box-face-indexed-atlas-uv-binding/metric-family \
+            --out evidence/source-box-face-indexed-atlas-uv-binding/indexed-family
+
+      - name: Rebuild exact declared atlas-layout prerequisite
+        if: matrix.python-version == '3.11'
+        run: |
+          mkdir -p evidence/source-box-face-indexed-atlas-uv-binding/atlas-family
+          python tools/build_source_box_face_atlas_layout_family.py \
+            --family assets/modular-equipment-case-001/source-box-face-atlas-layout-family-001.json \
+            --materials-root _donor/object-materials-atlas \
+            --uv-root evidence/source-box-face-indexed-atlas-uv-binding/previous-uv-family \
+            --out evidence/source-box-face-indexed-atlas-uv-binding/atlas-family
+
+      - name: Build exact source-indexed declared-atlas UV binding family
+        if: matrix.python-version == '3.11'
+        run: |
+          mkdir -p evidence/source-box-face-indexed-atlas-uv-binding/indexed-atlas-family
+          python tools/build_source_box_face_indexed_atlas_uv_binding_family.py \
+            --family assets/modular-equipment-case-001/source-box-face-indexed-atlas-uv-binding-family-001.json \
+            --indexed-root evidence/source-box-face-indexed-atlas-uv-binding/indexed-family \
+            --atlas-root evidence/source-box-face-indexed-atlas-uv-binding/atlas-family \
+            --out evidence/source-box-face-indexed-atlas-uv-binding/indexed-atlas-family
+          cp assets/modular-equipment-case-001/source-box-face-indexed-atlas-uv-binding-family-001.json evidence/source-box-face-indexed-atlas-uv-binding/family-profile.json
+          cp assets/modular-equipment-case-001/source-box-face-indexed-uv-binding-family-001.json evidence/source-box-face-indexed-atlas-uv-binding/indexed-uv-family-profile.json
+          cp assets/modular-equipment-case-001/source-box-face-atlas-layout-family-001.json evidence/source-box-face-indexed-atlas-uv-binding/atlas-layout-family-profile.json
+          cp _donor/object-materials-atlas/lookdev/service_dark_atlas_pack_review_001.json evidence/source-box-face-indexed-atlas-uv-binding/materials-atlas-contract.json
+          git rev-parse HEAD > evidence/source-box-face-indexed-atlas-uv-binding/exact-head.txt
+          git -C _donor/object-hard-surface-face rev-parse HEAD > evidence/source-box-face-indexed-atlas-uv-binding/hard-surface-face-head.txt
+          git -C _donor/object-hard-surface-frames rev-parse HEAD > evidence/source-box-face-indexed-atlas-uv-binding/hard-surface-frame-head.txt
+          git -C _donor/object-hard-surface-metric rev-parse HEAD > evidence/source-box-face-indexed-atlas-uv-binding/hard-surface-metric-head.txt
+          git -C _donor/object-materials-uv rev-parse HEAD > evidence/source-box-face-indexed-atlas-uv-binding/materials-review-uv-head.txt
+          git -C _donor/object-materials-atlas rev-parse HEAD > evidence/source-box-face-indexed-atlas-uv-binding/materials-atlas-head.txt
+
+      - name: Assert exact source-index-to-atlas variation and failure bounds
+        if: matrix.python-version == '3.11'
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          root = Path('evidence/source-box-face-indexed-atlas-uv-binding/indexed-atlas-family')
+          summary = json.loads((root / 'summary.json').read_text())
+          assert summary['result'] == 'PASS_BOUNDED_SOURCE_BOX_FACE_INDEXED_ATLAS_UV_BINDING_FAMILY', summary
+          assert summary['decision'] == 'PASS_DERIVED_SOURCE_INDEXED_ATLAS_UV_BINDING_FAMILY_ONLY__NO_SOURCE_OR_CURRENT_WORLD_UV0_ADOPTION'
+          assert summary['surface_count'] == 2
+          assert summary['output_count'] == 2
+          assert summary['total_selected_source_triangle_count'] == 4
+          assert summary['distinct_source_segmentation_count'] == 2
+          assert summary['distinct_basis_plane_count'] == 2
+          assert summary['distinct_declared_atlas_rect_count'] == 2
+          assert summary['distinct_indexed_atlas_binding_count'] == 2
+          assert summary['distinct_output_count'] == 2
+          assert summary['maximum_review_uv_reconstruction_residual'] <= 1e-12
+          assert summary['maximum_atlas_uv_reconstruction_residual'] <= 1e-12
+          assert summary['canonical_family_digest'] == summary['reversed_generation_family_digest']
+          assert len(summary['negative_controls']) == 7
+          assert all(row['result'] == 'HOLD_INVALID_SOURCE_BOX_FACE_INDEXED_ATLAS_UV_BINDING_FAMILY' for row in summary['negative_controls'])
+          by_id = {row['surface_id']: row for row in summary['outputs']}
+          assert by_id['lid_inner_service_surface']['source_global_face_indices'] == [12, 13]
+          assert by_id['lid_inner_service_surface']['source_global_vertex_indices'] == [8, 9, 10, 11]
+          assert by_id['lid_inner_service_surface']['pixel_size'] == [390, 240]
+          assert by_id['lid_inner_service_surface']['rect_px'] == [16, 16, 390, 240]
+          assert by_id['front_service_panel_outer_service_surface']['source_global_face_indices'] == [28, 29]
+          assert by_id['front_service_panel_outer_service_surface']['source_global_vertex_indices'] == [16, 17, 20, 21]
+          assert by_id['front_service_panel_outer_service_surface']['pixel_size'] == [234, 78]
+          assert by_id['front_service_panel_outer_service_surface']['rect_px'] == [16, 288, 234, 78]
+          assert summary['truth_boundary']['source_global_index_to_declared_atlas_uv_binding_emitted'] is True
+          assert summary['truth_boundary']['source_uv_authored'] is False
+          assert summary['truth_boundary']['current_world_uv0_authored'] is False
+          assert summary['truth_boundary']['current_world_uv0_adopted'] is False
+          for row in summary['outputs']:
+              payload = json.loads((root / row['file']).read_text())
+              assert len(payload['source_vertex_atlas_uv_bindings']) == 4
+              assert len(payload['triangle_corner_atlas_uv_bindings']) == 2
+              assert all(len(face['corners']) == 3 for face in payload['triangle_corner_atlas_uv_bindings'])
+              assert all(0.0 <= value <= 1.0 for vertex in payload['source_vertex_atlas_uv_bindings'] for value in vertex['atlas_uv'])
+          print('PASS_OBJECT_SOURCE_BOX_FACE_INDEXED_ATLAS_UV_BINDING_FAMILY')
+          print(summary['canonical_family_digest'])
+          print(summary['summary_digest'])
+          PY
+
+      - name: Upload retained evidence
+        if: matrix.python-version == '3.11'
+        uses: actions/upload-artifact@v4
+        with:
+          name: object-source-box-face-indexed-atlas-uv-binding-family-001-evidence
+          path: evidence/source-box-face-indexed-atlas-uv-binding
+          if-no-files-found: error
+          retention-days: 30
