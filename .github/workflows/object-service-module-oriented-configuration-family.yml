@@ -1,0 +1,116 @@
+name: Object service-module oriented configuration family evidence
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  procedural:
+    strategy:
+      matrix:
+        python-version: ['3.11', '3.13']
+    runs-on: ubuntu-latest
+    env:
+      AXM_STICKER_FABRIC_ROOT: _donor/axm-sticker-fabric
+      AXM_GEOMETRY_ORIENTATION_ROOT: _donor/object-geometry-orientation
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+      - name: Checkout exact Sticker Fabric shared placement owner
+        uses: actions/checkout@v4
+        with:
+          repository: mike-axiom-mir/axm-sticker-fabric
+          ref: 3aa93b0132eea9becefb20c716c6ec1a023ad28b
+          path: _donor/axm-sticker-fabric
+      - name: Checkout exact Geometry rigid-shell orientation owner
+        uses: actions/checkout@v4
+        with:
+          repository: mike-axiom-mir/axm-object-design
+          ref: 606d8189a3bf4502141d8038f08d35d421829dde
+          path: _donor/object-geometry-orientation
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Compile
+        run: python -m compileall tools tests
+      - name: Test full repository suite
+        run: python -m unittest discover -s tests -v
+      - name: Build exact oriented configuration successor evidence
+        if: matrix.python-version == '3.11'
+        run: |
+          python tools/build_service_module_oriented_configuration_family.py \
+            --host assets/modular-equipment-case-001/source.json \
+            --module assets/modular-equipment-case-001/utility-module-001.json \
+            --registration assets/modular-equipment-case-001/utility-module-registration-key-001.json \
+            --profile assets/modular-equipment-case-001/service-module-configuration-family-001.json \
+            --contract assets/modular-equipment-case-001/service-module-oriented-configuration-family-001.json \
+            --sticker-root _donor/axm-sticker-fabric \
+            --geometry-root _donor/object-geometry-orientation \
+            --out evidence/service-module-oriented-configuration-family
+          cp assets/modular-equipment-case-001/source.json evidence/service-module-oriented-configuration-family/host-source.json
+          cp assets/modular-equipment-case-001/utility-module-001.json evidence/service-module-oriented-configuration-family/module-source.json
+          cp assets/modular-equipment-case-001/utility-module-registration-key-001.json evidence/service-module-oriented-configuration-family/registration-source.json
+          cp assets/modular-equipment-case-001/service-module-configuration-family-001.json evidence/service-module-oriented-configuration-family/predecessor-family-profile.json
+          cp assets/modular-equipment-case-001/service-module-oriented-configuration-family-001.json evidence/service-module-oriented-configuration-family/oriented-family-contract.json
+          cp tools/build_service_module_configuration_family.py evidence/service-module-oriented-configuration-family/predecessor-generator.py
+          cp _donor/object-geometry-orientation/tools/verify_rigid_shell_orientation.py evidence/service-module-oriented-configuration-family/geometry-owner-orientation-helper.py
+          git rev-parse HEAD > evidence/service-module-oriented-configuration-family/exact-head.txt
+          git -C _donor/object-geometry-orientation rev-parse HEAD > evidence/service-module-oriented-configuration-family/geometry-owner-head.txt
+          git -C _donor/axm-sticker-fabric rev-parse HEAD > evidence/service-module-oriented-configuration-family/sticker-fabric-head.txt
+      - name: Truth-gate retained family variation and bounds
+        if: matrix.python-version == '3.11'
+        run: |
+          python - <<'PY'
+          import json
+          import math
+          from pathlib import Path
+
+          root = Path('evidence/service-module-oriented-configuration-family')
+          summary = json.loads((root / 'summary.json').read_text())
+          assert summary['result'] == 'PASS_BOUNDED_SERVICE_MODULE_ORIENTED_CONFIGURATION_SUCCESSOR'
+          assert summary['decision'] == 'PASS_WINDING_ONLY_GENERATED_SHELL_REBIND__NO_SOURCE_OR_DOWNSTREAM_ADOPTION'
+          assert summary['generation_order_independent'] is True
+          assert summary['family_digest'] == summary['reverse_generation_family_digest']
+          assert summary['retained_configuration_count'] == 4
+          assert summary['distinct_candidate_mesh_digest_count'] == 4
+          assert summary['distinct_oriented_configuration_digest_count'] == 4
+          assert summary['nonempty_configuration_count'] == 3
+          assert summary['total_generated_module_instances'] == 4
+          assert summary['total_flipped_faces'] == 48
+          assert summary['predecessor_outputs_retained_unchanged'] is True
+          assert summary['external_identity']['predecessor_procedural_head'] == '4aa6dedd0ab5c5477e8175bc28cb200d59df901a'
+          assert summary['external_identity']['predecessor_generator_git_blob'] == '4537ee3354a0d2750aa7231cd92bb4be28aecf9a'
+          assert summary['external_identity']['geometry_orientation_owner_head'] == '606d8189a3bf4502141d8038f08d35d421829dde'
+          assert summary['external_identity']['geometry_orientation_owner_helper_git_blob'] == '0588598b65bb54891a3a29a058650bde334b4974'
+          assert len(summary['negative_controls']) == 4
+
+          by_id = {row['configuration_id']: row for row in summary['configurations']}
+          expected_ids = {'empty', 'left-only', 'right-only', 'bilateral'}
+          assert set(by_id) == expected_ids
+          assert by_id['empty']['predecessor_mesh_digest'] == by_id['empty']['candidate_mesh_digest']
+          for config_id in ('left-only', 'right-only', 'bilateral'):
+              row = by_id[config_id]
+              assert row['predecessor_mesh_digest'] != row['candidate_mesh_digest']
+              for group in row['groups']:
+                  assert group['source_orientation_conflict_edges'] == 0
+                  assert group['candidate_orientation_conflict_edges'] == 0
+                  assert group['boundary_edges'] == 0
+                  assert group['nonmanifold_edges'] == 0
+                  assert group['flipped_faces'] == 12
+                  assert math.isclose(group['source_signed_volume_m3'], -0.00080028, rel_tol=0.0, abs_tol=1e-12)
+                  assert math.isclose(group['candidate_signed_volume_m3'], 0.00080028, rel_tol=0.0, abs_tol=1e-12)
+          print('PASS_OBJECT_SERVICE_MODULE_ORIENTED_CONFIGURATION_TRUTH_GATE')
+          PY
+      - name: Upload retained evidence
+        if: matrix.python-version == '3.11'
+        uses: actions/upload-artifact@v4
+        with:
+          name: object-service-module-oriented-configuration-family-001-evidence
+          path: evidence/service-module-oriented-configuration-family
+          if-no-files-found: error
+          retention-days: 30
