@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-"""Run the selected-roughness UC transport across two explicit receiver boundaries.
+"""Run selected-roughness UC transport across explicit receiver boundaries.
 
 Materials owns the exact base-level R8 scalar sequence. Its retained historical Godot
 PNG is an RGBA8 serialization whose RGB channels are equal and whose alpha is opaque;
@@ -11,10 +11,13 @@ Current UC also has two station success shapes: ``bind-textured-asset`` publishe
 validated deterministic GLB using ``truth_status`` + validation receipts, whereas
 observer/inspection stations expose ``status=PASS``. The second Technical Art run
 correctly failed because the proof incorrectly required the observer status field on
-the publisher result. This runner repairs only those receiving assumptions. It accepts
-bounded L8 or grayscale-equivalent opaque RGBA8 for the historical donor, and it maps
-UC's native publisher success contract to the proof's common PASS vocabulary only
-after the native publication and both validation receipts are explicitly green.
+the publisher result.
+
+The generic UC publisher also preserves the two Object source surfaces as two GLB
+meshes with one primitive each. The third Technical Art run correctly failed because
+the first roughness observer assumed one mesh containing two primitives. This runner
+observes the complete primitive set across all emitted meshes without rewriting the
+producer's source-surface structure.
 
 No UC product code or Object/Materials domain semantics are changed.
 """
@@ -142,6 +145,71 @@ def decode_selected_scalar_png(data: bytes) -> tuple[int, int, bytes, list[str]]
     return width, height, scalar, ancillary
 
 
+def verify_complete_glb_selected_roughness(glb_path: Path, *, material_textures) -> dict[str, Any]:
+    document, binary = transport.read_glb(glb_path)
+    materials = document.get("materials", [])
+    meshes = document.get("meshes", [])
+    if not isinstance(materials, list) or not materials or not isinstance(meshes, list) or not meshes:
+        raise AssertionError("transported GLB material/mesh structure missing")
+
+    rows: list[dict[str, Any]] = []
+    for mesh_index, mesh in enumerate(meshes):
+        primitives = mesh.get("primitives", []) if isinstance(mesh, dict) else []
+        if not isinstance(primitives, list) or not primitives:
+            raise AssertionError("transported GLB mesh has no bounded primitive")
+        for primitive_index, primitive in enumerate(primitives):
+            if not isinstance(primitive, dict):
+                raise AssertionError("transported GLB primitive row invalid")
+            material_id = primitive.get("material")
+            if type(material_id) is not int or not 0 <= material_id < len(materials):
+                raise AssertionError("transported GLB primitive material binding invalid")
+            material = materials[material_id]
+            pbr = material.get("pbrMetallicRoughness", {})
+            orm_info = pbr.get("metallicRoughnessTexture")
+            ao_info = material.get("occlusionTexture")
+            if not isinstance(orm_info, dict) or not isinstance(ao_info, dict):
+                raise AssertionError("transported GLB ORM/AO bindings missing")
+            if orm_info.get("index") != ao_info.get("index"):
+                raise AssertionError("transported GLB no longer shares ORM texture with occlusion")
+            decoded = material_textures(document, binary, material, build_mips=False)
+            if "orm" not in decoded:
+                raise AssertionError("UC GLB observer did not decode ORM texture")
+            width, height, pixels = decoded["orm"]["texture"].levels[0]
+            green = bytes(pixels[1::3])
+            row = {
+                "mesh_index": mesh_index,
+                "mesh_name": mesh.get("name"),
+                "primitive_index": primitive_index,
+                "material_index": material_id,
+                "width": width,
+                "height": height,
+                "orm_green_sha256": transport.sha256_bytes(green),
+                "roughness_r8_min": min(green),
+                "roughness_r8_max": max(green),
+                "roughness_unique_r8_values": len(set(green)),
+                "orm_texture_index": orm_info.get("index"),
+                "occlusion_texture_index": ao_info.get("index"),
+            }
+            if (width, height) != (512, 512):
+                raise AssertionError("transported GLB ORM dimensions drift")
+            if row["orm_green_sha256"] != transport.SELECTED_SCALAR_SHA256:
+                raise AssertionError("transported GLB roughness scalar identity drift")
+            if [row["roughness_r8_min"], row["roughness_r8_max"], row["roughness_unique_r8_values"]] != [153, 183, 31]:
+                raise AssertionError("transported GLB roughness R8 statistics drift")
+            rows.append(row)
+
+    if len(rows) != 2:
+        raise AssertionError(f"transported GLB must retain exactly two bounded source-surface primitives; got {len(rows)}")
+    if len(meshes) != 2 or any(len(mesh.get("primitives", [])) != 1 for mesh in meshes):
+        raise AssertionError("current bounded Object proof expects UC to preserve two one-primitive source-surface meshes")
+    return {
+        "meshes": len(meshes),
+        "primitives": rows,
+        "all_primitives_exact_selected_scalar": True,
+        "source_surface_structure_preserved": True,
+    }
+
+
 def _arg_value(flag: str, default: str | None = None) -> str | None:
     try:
         index = sys.argv.index(flag)
@@ -226,6 +294,7 @@ def write_station_adapter_receipt(out_dir: Path, retained: dict[str, Any]) -> No
 
 if __name__ == "__main__":
     transport.decode_l8_png = decode_selected_scalar_png
+    transport.verify_glb_selected_roughness = verify_complete_glb_selected_roughness
     uc_arg = _arg_value("--uc-root")
     if uc_arg is None:
         raise AssertionError("--uc-root is required")
