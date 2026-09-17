@@ -74,10 +74,12 @@ jobs:
           assert r['technical_art_transport_accepted'] is False,r
           assert r['runtime_representation_accepted'] is False,r
           by_id={row['surface_id']:row for row in r['domains']}
-          assert by_id['lid_inner_service_surface']['primary_bounds_m']==[-0.39,0.39],r
-          assert by_id['lid_inner_service_surface']['secondary_bounds_m']==[-0.24,0.24],r
-          assert by_id['front_service_panel_outer_service_surface']['primary_bounds_m']==[-0.234,0.234],r
-          assert by_id['front_service_panel_outer_service_surface']['secondary_bounds_m']==[-0.078,0.078],r
+          def near_vec(actual, expected):
+              return len(actual)==len(expected) and all(abs(float(a)-float(b))<=1e-12 for a,b in zip(actual,expected))
+          assert near_vec(by_id['lid_inner_service_surface']['primary_bounds_m'],[-0.39,0.39]),r
+          assert near_vec(by_id['lid_inner_service_surface']['secondary_bounds_m'],[-0.24,0.24]),r
+          assert near_vec(by_id['front_service_panel_outer_service_surface']['primary_bounds_m'],[-0.234,0.234]),r
+          assert near_vec(by_id['front_service_panel_outer_service_surface']['secondary_bounds_m'],[-0.078,0.078]),r
           print(json.dumps(r,indent=2,sort_keys=True))
           PY
       - name: Upload retained evidence
