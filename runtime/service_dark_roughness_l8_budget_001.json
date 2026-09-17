@@ -1,0 +1,64 @@
+{
+  "schema": "axm.object-service-dark-roughness-scalar-texture-budget/v0.1",
+  "asset_id": "modular-equipment-case-001",
+  "material_id": "service_dark",
+  "intent": "measure whether the exact self-generated service_dark roughness field can use one-channel L8 storage instead of redundant RGBA8 while preserving dimensions, UVs, roughness samples, filtering, mipmaps and material semantics",
+  "upstream": {
+    "materials_head": "83f8d8fc99f7c832711f7f30fbcac72938550fc2",
+    "roughness_review_path": "lookdev/service_dark_roughness_microvariation_review_001.json",
+    "roughness_observer_path": "lookdev-proof/service_dark_roughness_microvariation_observe.gd"
+  },
+  "control": {
+    "mode": "rgba8_control",
+    "image_format": "RGBA8",
+    "bytes_per_texel": 4,
+    "sample_channel": "R"
+  },
+  "candidate": {
+    "mode": "l8_candidate",
+    "image_format": "L8",
+    "bytes_per_texel": 1,
+    "sample_channel": "R"
+  },
+  "preserve": {
+    "width_px": 512,
+    "height_px": 512,
+    "pixels_per_meter": 500,
+    "padding_px": 16,
+    "filtering": "LINEAR_MIPMAP_ANISOTROPIC",
+    "repeat": false,
+    "candidate_roughness_amplitude": 0.06,
+    "candidate_roughness_range": [0.60, 0.72],
+    "base_roughness": 0.66,
+    "surface_rectangles_unchanged": true,
+    "roughness_generator_unchanged": true,
+    "uvs_unchanged": true,
+    "shader_sample_semantics_unchanged": true,
+    "mipmaps_enabled": true
+  },
+  "acceptance": {
+    "candidate_source_scalar_samples_must_match_control": true,
+    "candidate_texture_memory_must_be_lower_on_proof_host": true,
+    "draw_calls_must_not_increase": true,
+    "objects_must_not_increase": true,
+    "primitives_must_not_increase": true,
+    "buffer_memory_must_not_increase": true,
+    "visual_tradeoff_requires_art_qa_review": true
+  },
+  "truth_boundary": {
+    "source_geometry_changed": false,
+    "source_surface_identities_changed": false,
+    "source_uv_changed": false,
+    "base_color_atlas_changed": false,
+    "roughness_field_changed": false,
+    "material_scalars_changed": false,
+    "materials_adoption_requested": false,
+    "technical_art_transport_accepted": false,
+    "target_device_accepted": false,
+    "art_direction_final_accepted": false,
+    "visual_qa_final_accepted": false,
+    "uc_changed": false,
+    "canon": false,
+    "production_ready": false
+  }
+}
