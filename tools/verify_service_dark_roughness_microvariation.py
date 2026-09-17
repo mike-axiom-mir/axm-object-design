@@ -57,24 +57,17 @@ def verify(contract: dict, atlas_payload: dict) -> dict:
     ]
     if any(truth.get(k) is not False for k in required_false) or truth.get("roughness_texture_self_generated") is not True:
         raise AssertionError("truth boundary drift")
-    return {
+    payload = dict(atlas_payload)
+    payload.update({
         "schema": PAYLOAD_SCHEMA,
         "result": "PASS_OBJECT_SERVICE_DARK_ROUGHNESS_MICROVARIATION_PAYLOAD",
-        "asset_id": contract["asset_id"],
         "materials_parent_head": contract["materials_parent_head"],
         "contract_sha256": canonical_sha(contract),
         "atlas_payload_sha256": canonical_sha(atlas_payload),
         "review": contract,
-        "atlas_pack_review": atlas_payload["atlas_pack_review"],
-        "materials": atlas_payload["materials"],
-        "poses": atlas_payload["poses"],
-        "camera_contexts": atlas_payload["camera_contexts"],
-        "components": atlas_payload["components"],
-        "hinge_origin_m": atlas_payload["hinge_origin_m"],
-        "direct_moving_component_roles": atlas_payload["direct_moving_component_roles"],
-        "rigid_owner_follow_component_names": atlas_payload["rigid_owner_follow_component_names"],
         "truth_boundary": truth,
-    }
+    })
+    return payload
 
 def main():
     ap=argparse.ArgumentParser()
