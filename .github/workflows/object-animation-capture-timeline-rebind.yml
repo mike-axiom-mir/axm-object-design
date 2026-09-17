@@ -32,39 +32,50 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
           fetch-depth: 0
+
       - name: Bind exact Animation head
         run: echo "EXACT_HEAD_SHA=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
-      - name: Checkout exact current authority donors
+
+      - name: Checkout current Rigging authority
         uses: actions/checkout@v4
         with:
           repository: mike-axiom-mir/axm-object-design
           ref: ${{ env.CURRENT_RIG_HEAD }}
           path: .current-rig
-      - uses: actions/checkout@v4
+
+      - name: Checkout source capture authority
+        uses: actions/checkout@v4
         with:
           repository: mike-axiom-mir/axm-object-design
           ref: ${{ env.SOURCE_CAPTURE_HEAD }}
           path: .source-capture
-      - uses: actions/checkout@v4
+
+      - name: Checkout historical latch rig donor
+        uses: actions/checkout@v4
         with:
           repository: mike-axiom-mir/axm-object-design
           ref: ${{ env.HISTORICAL_LATCH_RIG_HEAD }}
           path: .historical-rig
-      - uses: actions/checkout@v4
+
+      - name: Checkout historical ownership donor
+        uses: actions/checkout@v4
         with:
           repository: mike-axiom-mir/axm-object-design
           ref: ${{ env.HISTORICAL_OWNERSHIP_HEAD }}
           path: .ownership
-      - uses: actions/checkout@v4
+
+      - name: Checkout lid-rig donor
+        uses: actions/checkout@v4
         with:
           repository: mike-axiom-mir/axm-object-design
           ref: ${{ env.LID_RIG_HEAD }}
           path: .lid-rig
+
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
-      - name: Verify exact donor identities and current structural suite
+      - name: Verify exact donors and structural suite
         run: |
           set -euo pipefail
           test "$(git -C .current-rig rev-parse HEAD)" = "$CURRENT_RIG_HEAD"
@@ -77,7 +88,7 @@ jobs:
           python -m compileall -q tools tests
           python -m unittest discover -s tests -v
 
-      - name: Rebuild unchanged exact 101-key Animation sequence
+      - name: Rebuild unchanged 101-key Animation motion
         run: |
           set -euo pipefail
           rm -rf /tmp/axm-capture-lid /tmp/axm-capture-historical-rig /tmp/axm-capture-sequence
@@ -105,7 +116,7 @@ jobs:
           grep -q '"sequence_digest": "0a3523cf792264f610881552fd2ebd438aabdfd05e30e92af9dbb33ded1fa2d3"' /tmp/axm-capture-sequence/lid-latch-motion-evidence.json
           grep -q '"endpoint_inclusive_sample_count": 101' /tmp/axm-capture-sequence/lid-latch-motion-evidence.json
 
-      - name: Rebuild current source-owned capture and Rigging receipts
+      - name: Rebuild current source capture and Rigging evidence
         run: |
           set -euo pipefail
           rm -rf /tmp/axm-source-capture /tmp/axm-current-rig
@@ -126,7 +137,7 @@ jobs:
           grep -q 'PASS_SOURCE_OWNED_FRONT_LATCH_RIG_CAPTURE_ENVELOPE_REBIND' /tmp/axm-current-rig/front-latch-source-rig-binding-evidence.json
           grep -q '"historical_interface_threshold_reclassified_as": "Z_AABB_BROAD_PHASE_ONLY_NOT_CAPTURE_THRESHOLD"' /tmp/axm-current-rig/front-latch-source-rig-binding-evidence.json
 
-      - name: Characterize corrected capture timeline without changing motion
+      - name: Characterize corrected capture timeline without retime
         run: |
           set -euo pipefail
           rm -rf /tmp/axm-animation-capture-timeline
@@ -173,7 +184,7 @@ jobs:
           test "$c1" -ne 0
           test "$c2" -ne 0
           test "$c3" -ne 0
-          grep -q 'relabeled as capture' /tmp/neg-rig.err
+          grep -q 'relabelled as capture' /tmp/neg-rig.err
           grep -q 'authored latch curve changed' /tmp/neg-sequence.err
           grep -q 'authority inflation' /tmp/neg-contract.err
           printf '%s\n' \
