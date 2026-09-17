@@ -1,0 +1,206 @@
+name: Object VFX owner-mote wall-clock presentation
+
+on:
+  pull_request:
+    paths:
+      - 'animation-proof/observe_lid_release_motes_wallclock.gd'
+      - '.github/workflows/object-vfx-lid-release-motes-wallclock.yml'
+      - 'assets/modular-equipment-case-001/lid-open-release-motes-001.json'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  OWNER_VFX_HEAD: 7994d6f28050053f07dd355d8c54a983b0e8268b
+  OWNER_EFFECT_SHA256: f7a038c488405cdd8341368d155db325093907090ddbb74d557139cadf6ba813
+  OWNER_ARTIFACT_ID: '10514900595'
+  OWNER_ARTIFACT_SHA256: cf620d98c315189f1d5c4f3c8cea702aee969602eaef9a5ad7f5374daa894187
+  OWNER_ARTIFACT_NAME: object-vfx-lid-release-motes-7994d6f28050053f07dd355d8c54a983b0e8268b
+
+jobs:
+  owner-wallclock-two-context-presentation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout exact VFX presentation head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+
+      - name: Bind exact owner effect and presentation identities
+        run: |
+          set -euo pipefail
+          PRESENTATION_HEAD="$(git rev-parse HEAD)"
+          echo "PRESENTATION_HEAD=$PRESENTATION_HEAD" >> "$GITHUB_ENV"
+          git merge-base --is-ancestor "$OWNER_VFX_HEAD" HEAD
+          test "$(git show "${OWNER_VFX_HEAD}:assets/modular-equipment-case-001/lid-open-release-motes-001.json" | sha256sum | cut -d' ' -f1)" = "$OWNER_EFFECT_SHA256"
+          test "$(sha256sum assets/modular-equipment-case-001/lid-open-release-motes-001.json | cut -d' ' -f1)" = "$OWNER_EFFECT_SHA256"
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          fx=json.loads(Path('assets/modular-equipment-case-001/lid-open-release-motes-001.json').read_text())
+          assert fx['visual_source']['seed']==41027,fx
+          assert fx['visual_source']['particle_count']==18,fx
+          assert fx['animation_dependency']['trigger_time_s']==0.25,fx
+          assert fx['animation_dependency']['trigger_semantics']=='EXACT_ANIMATION_PHASE_BOUNDARY_NOT_GAMEPLAY_EVENT',fx
+          assert fx['visual_source']['source_label']=='STYLIZED_VISUAL_RELEASE_MOTES_NOT_DUST_OR_FLUID_SIMULATION',fx
+          print('frozen owner effect identity PASS')
+          PY
+
+      - name: Set up Python 3.11 and run Object regression suite
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: |
+          python -m compileall -q tools tests
+          python -m unittest discover -s tests -v
+
+      - name: Download and verify exact green owner VFX receiver artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          rm -rf .owner-evidence /tmp/object-vfx-owner.zip
+          mkdir -p .owner-evidence
+          meta_digest="$(gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/${OWNER_ARTIFACT_ID}" --jq '.digest')"
+          meta_name="$(gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/${OWNER_ARTIFACT_ID}" --jq '.name')"
+          test "$meta_digest" = "sha256:${OWNER_ARTIFACT_SHA256}"
+          test "$meta_name" = "$OWNER_ARTIFACT_NAME"
+          gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/${OWNER_ARTIFACT_ID}/zip" > /tmp/object-vfx-owner.zip
+          echo "${OWNER_ARTIFACT_SHA256}  /tmp/object-vfx-owner.zip" | sha256sum -c -
+          unzip -q /tmp/object-vfx-owner.zip -d .owner-evidence
+          test "$(cat .owner-evidence/animation-proof/generated/exact-vfx-head.txt)" = "$OWNER_VFX_HEAD"
+          test "$(sha256sum .owner-evidence/animation-proof/generated/lid-open-release-motes-001.json | cut -d' ' -f1)" = "$OWNER_EFFECT_SHA256"
+          test "$(sha256sum .owner-evidence/assets/modular-equipment-case-001/lid-open-release-motes-001.json | cut -d' ' -f1)" = "$OWNER_EFFECT_SHA256"
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          r=json.loads(Path('.owner-evidence/animation-proof/vfx-lid-release-motes-receipt.json').read_text())
+          assert r['state']=='PASS_TARGET_HOST_PHASE_BOUND_LID_RELEASE_MOTES',r
+          assert r['effect_head']=='7994d6f28050053f07dd355d8c54a983b0e8268b',r
+          assert r['particle_count']==18,r
+          assert r['trigger_time_s']==0.25,r
+          print('exact historical owner target-host receiver PASS')
+          PY
+
+      - name: Assemble exact frozen owner receiver for wall-clock presentation
+        run: |
+          set -euo pipefail
+          rm -rf animation-proof/generated
+          mkdir -p animation-proof/generated
+          cp .owner-evidence/animation-proof/generated/object-rigid-components-rebound.glb animation-proof/generated/
+          cp .owner-evidence/animation-proof/generated/uc-rigid-scene-handoff-receipt.json animation-proof/generated/
+          cp .owner-evidence/animation-proof/generated/lid-latch-motion-evidence.json animation-proof/generated/
+          cp .owner-evidence/animation-proof/generated/front-latch-articulation.receipt.json animation-proof/generated/
+          cp .owner-evidence/animation-proof/generated/lid-latch-motion-sequence-001.json animation-proof/generated/
+          cp .owner-evidence/animation-proof/generated/lid-open-release-motes-001.json animation-proof/generated/
+          cp .owner-evidence/animation-proof/generated/exact-animation-parent.txt animation-proof/generated/
+          cp .owner-evidence/animation-proof/generated/exact-technical-art-head.txt animation-proof/generated/
+          cp .owner-evidence/animation-proof/generated/exact-uc-head.txt animation-proof/generated/
+          cp .owner-evidence/animation-proof/generated/exact-vfx-head.txt animation-proof/generated/
+          printf '%s\n' "$PRESENTATION_HEAD" > animation-proof/generated/exact-presentation-head.txt
+          cmp --silent assets/modular-equipment-case-001/lid-open-release-motes-001.json animation-proof/generated/lid-open-release-motes-001.json
+
+      - name: Download pinned Godot 4.7.2
+        env:
+          GODOT_URL: https://github.com/godotengine/godot-builds/releases/download/4.7.2-stable/Godot_v4.7.2-stable_linux.x86_64.zip
+          GODOT_SHA256: cadd3204e728a35d3f13adb7fd0d7902636b79f6b95c40c265eb73b6c35329e4
+        run: |
+          set -euo pipefail
+          mkdir -p .godot-bin
+          curl --fail --location --retry 3 --retry-delay 2 "$GODOT_URL" --output .godot-bin/godot.zip
+          echo "$GODOT_SHA256  .godot-bin/godot.zip" | sha256sum --check --strict
+          unzip -q .godot-bin/godot.zip -d .godot-bin
+          chmod +x .godot-bin/Godot_v4.7.2-stable_linux.x86_64
+          .godot-bin/Godot_v4.7.2-stable_linux.x86_64 --version
+
+      - name: Install virtual display when needed
+        run: |
+          if ! command -v xvfb-run >/dev/null 2>&1; then
+            sudo apt-get update
+            sudo apt-get install -y xvfb
+          fi
+
+      - name: Exercise frozen owner effect through real wall-clock playback
+        run: |
+          set -euo pipefail
+          rm -f animation-proof/vfx-lid-release-motes-wallclock-receipt.json \
+                animation-proof/vfx-lid-release-motes-wallclock-trace.json \
+                animation-proof/wallclock-*.png \
+                animation-proof/static-*.png
+          xvfb-run --auto-servernum --server-args="-screen 0 1000x760x24" \
+            .godot-bin/Godot_v4.7.2-stable_linux.x86_64 \
+            --display-driver x11 \
+            --rendering-method gl_compatibility \
+            --path animation-proof \
+            --script observe_lid_release_motes_wallclock.gd
+
+      - name: Validate wall-clock two-context presentation receipt
+        run: |
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          root=Path('animation-proof')
+          r=json.loads((root/'vfx-lid-release-motes-wallclock-receipt.json').read_text())
+          assert r['state']=='PASS_TARGET_HOST_OWNER_SEED_WALLCLOCK_TWO_CONTEXT_PRESENTATION',r
+          assert r['decision']=='PASS_OWNER_41027_REAL_PLAYBACK_PRESENTATION_SURFACE__HOLD_FINAL_ART_QA_AND_TARGET_DEVICE',r
+          assert r['presentation_head']==os.environ['PRESENTATION_HEAD'],r
+          assert r['owner_vfx_head']==os.environ['OWNER_VFX_HEAD'],r
+          assert r['owner_seed']==41027,r
+          assert r['effect_sha256']==os.environ['OWNER_EFFECT_SHA256'],r
+          t=r['timing_trace_summary']
+          assert t['mode']=='REAL_ANIMATIONPLAYER_PLAY_CAPTURE_FREE_TIMING_TRACE',t
+          assert t['viewport_image_readbacks_inside_timed_loop']==0,t
+          assert t['disk_writes_inside_timed_loop']==0,t
+          assert t['sample_count']>=10,t
+          assert t['pre_trigger_inactive_seen'] and t['active_window_seen'] and t['post_effect_inactive_seen'],t
+          contexts=r['capture_contexts']
+          assert [c['context']['id'] for c in contexts]==['continuity_three_quarter','left_oblique_seam'],contexts
+          for c in contexts:
+              assert c['mode']=='INSTRUMENTED_REAL_PLAYBACK_VISUAL_CAPTURE_NOT_TIMING_AUTHORITY',c
+              assert c['frame_count']>=5,c
+              assert c['active_frame_count']>=2,c
+          checks={(x['context_id'],round(float(x['time_s']),2)):x for x in r['static_context_checks']}
+          for cid in ('continuity_three_quarter','left_oblique_seam'):
+              assert checks[(cid,0.20)]['active_particle_count']==0 and checks[(cid,0.20)]['diff']['changed_pixels']==0,checks[(cid,0.20)]
+              assert checks[(cid,0.80)]['active_particle_count']==0 and checks[(cid,0.80)]['diff']['changed_pixels']==0,checks[(cid,0.80)]
+              assert checks[(cid,0.40)]['active_particle_count']>0 and checks[(cid,0.40)]['diff']['changed_pixels']>=80,checks[(cid,0.40)]
+          tb=r['truth_boundary']
+          assert tb['real_animationplayer_play_path_exercised'] is True,tb
+          assert tb['timed_trace_has_viewport_readback_or_disk_write'] is False,tb
+          assert tb['owner_effect_parameters_modified'] is False and tb['owner_seed_changed'] is False,tb
+          for key in ('gameplay_event_semantics_claimed','physical_dust_pressure_airflow_or_fluid_simulation','collision_damage_or_interaction','production_particle_runtime','target_device_performance_acceptance','art_direction_final_acceptance','visual_qa_final_acceptance','canon_or_production_readiness'):
+              assert tb[key] is False,(key,tb)
+          trace=json.loads((root/'vfx-lid-release-motes-wallclock-trace.json').read_text())
+          assert trace['viewport_image_readbacks_inside_timed_loop']==0 and trace['disk_writes_inside_timed_loop']==0,trace
+          pngs=list(root.glob('wallclock-*.png'))+list(root.glob('static-*.png'))
+          assert len(pngs)>=18,len(pngs)
+          print(json.dumps(r,indent=2))
+          PY
+
+      - name: Retain exact owner wall-clock presentation evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: object-vfx-owner-wallclock-two-context-${{ github.event.pull_request.head.sha || github.sha }}
+          path: |
+            assets/modular-equipment-case-001/lid-open-release-motes-001.json
+            animation-proof/observe_lid_release_motes_wallclock.gd
+            animation-proof/generated/exact-vfx-head.txt
+            animation-proof/generated/exact-presentation-head.txt
+            animation-proof/generated/exact-animation-parent.txt
+            animation-proof/generated/exact-technical-art-head.txt
+            animation-proof/generated/exact-uc-head.txt
+            animation-proof/generated/uc-rigid-scene-handoff-receipt.json
+            animation-proof/generated/lid-latch-motion-evidence.json
+            animation-proof/generated/front-latch-articulation.receipt.json
+            animation-proof/generated/lid-latch-motion-sequence-001.json
+            animation-proof/generated/lid-open-release-motes-001.json
+            animation-proof/vfx-lid-release-motes-wallclock-receipt.json
+            animation-proof/vfx-lid-release-motes-wallclock-trace.json
+            animation-proof/wallclock-*.png
+            animation-proof/static-*.png
+          if-no-files-found: warn
