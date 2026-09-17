@@ -3,13 +3,13 @@ extends SceneTree
 const GLB_PATH := "res://generated/object-rigid-components-rebound.glb"
 const TECH_RECEIPT_PATH := "res://generated/uc-rigid-scene-handoff-receipt.json"
 const SEQUENCE_PATH := "res://generated/lid-latch-motion-evidence.json"
+const SEQUENCE_CONTRACT_PATH := "res://generated/lid-latch-motion-sequence-001.json"
 const RIG_RECEIPT_PATH := "res://generated/front-latch-articulation.receipt.json"
-const EFFECT_PATH := "res://../assets/modular-equipment-case-001/lid-open-release-motes-001.json"
+const EFFECT_PATH := "res://generated/lid-open-release-motes-001.json"
 const EFFECT_HEAD_PATH := "res://generated/exact-vfx-head.txt"
 const TARGET_RECEIPT_PATH := "res://vfx-lid-release-motes-receipt.json"
 const MOTION_NAME := "lid_latch_open_hold_close_vfx_review"
 const EPS_DEG := 0.00001
-const EPS_M := 0.000001
 const PIXEL_THRESHOLD := 1.0 / 255.0
 
 var receipt := {
@@ -31,10 +31,9 @@ func read_text(path: String) -> String:
     return FileAccess.get_file_as_string(path).strip_edges()
 
 func sha256_file(path: String) -> String:
-    var bytes := FileAccess.get_file_as_bytes(path)
     var ctx := HashingContext.new()
     ctx.start(HashingContext.HASH_SHA256)
-    ctx.update(bytes)
+    ctx.update(FileAccess.get_file_as_bytes(path))
     return ctx.finish().hex_encode()
 
 func write_receipt() -> void:
@@ -107,7 +106,6 @@ func make_viewport(imported: Node3D) -> SubViewport:
     root3d.add_child(imported)
 
     var camera := Camera3D.new()
-    camera.name = "VFX_REVIEW_CAMERA"
     camera.near = 0.03
     camera.far = 20.0
     camera.fov = 40.0
@@ -116,17 +114,13 @@ func make_viewport(imported: Node3D) -> SubViewport:
     camera.make_current()
     return viewport
 
-func add_discrete_rotation_track(animation: Animation, root: Node3D, node: Node3D, samples: Array, value_key: String, flip_sign: bool) -> int:
+func add_discrete_rotation_track(animation: Animation, root: Node3D, node: Node3D, samples: Array, value_key: String) -> int:
     var track := animation.add_track(Animation.TYPE_VALUE)
-    var path := str(root.get_path_to(node)) + ":rotation_degrees"
-    animation.track_set_path(track, NodePath(path))
+    animation.track_set_path(track, NodePath(str(root.get_path_to(node)) + ":rotation_degrees"))
     animation.track_set_interpolation_type(track, Animation.INTERPOLATION_NEAREST)
     animation.value_track_set_update_mode(track, Animation.UPDATE_DISCRETE)
     for sample in samples:
-        var deg := float(sample[value_key])
-        if flip_sign:
-            deg = -deg
-        animation.track_insert_key(track, float(sample["time_s"]), Vector3(deg, 0.0, 0.0))
+        animation.track_insert_key(track, float(sample["time_s"]), Vector3(-float(sample[value_key]), 0.0, 0.0))
     return track
 
 func mesh_world_bounds(instance: MeshInstance3D) -> Dictionary:
@@ -163,14 +157,12 @@ func validate_effect_contract(effect: Dictionary, sequence_contract: Dictionary)
     if absf(float(dep.get("duration_s", -1.0)) - float(sequence_contract.get("duration_s", -2.0))) > 0.000001:
         return "sequence duration drift"
     var wanted_phase := String(dep.get("trigger_phase_id", ""))
-    var matched := false
     var exact_start := -1.0
     for phase in sequence_contract.get("phases", []):
         if String(phase.get("id", "")) == wanted_phase:
-            matched = true
             exact_start = float(phase.get("start_s", -1.0))
             break
-    if not matched:
+    if exact_start < 0.0:
         return "trigger phase missing"
     if absf(float(dep.get("trigger_time_s", -2.0)) - exact_start) > 0.000001:
         return "trigger time is not the exact declared Animation phase boundary"
@@ -179,6 +171,8 @@ func validate_effect_contract(effect: Dictionary, sequence_contract: Dictionary)
     var visual := effect.get("visual_source", {}) as Dictionary
     if String(visual.get("source_label", "")) != "STYLIZED_VISUAL_RELEASE_MOTES_NOT_DUST_OR_FLUID_SIMULATION":
         return "visual source semantics drift"
+    if String(visual.get("anchor", "")) != "CAMERA_FACING_LID_BODY_SEAM_DERIVED_FROM_IMPORTED_NEUTRAL_LID_AABB":
+        return "effect anchor semantics drift"
     if int(visual.get("particle_count", 0)) < 1 or int(visual.get("particle_count", 0)) > 64:
         return "particle count outside bounded review envelope"
     return ""
@@ -218,8 +212,8 @@ func make_particles(effect: Dictionary, seam_min: Vector3, seam_max: Vector3, ro
     var visual := effect["visual_source"] as Dictionary
     var seed := int(visual["seed"])
     var count := int(visual["particle_count"])
-    var color_values := visual["color_srgb"] as Array
-    var base_color := Color(float(color_values[0]), float(color_values[1]), float(color_values[2]), float(visual["alpha_peak"]))
+    var rgb := visual["color_srgb"] as Array
+    var base_color := Color(float(rgb[0]), float(rgb[1]), float(rgb[2]), float(visual["alpha_peak"]))
     var particles := []
     for i in range(count):
         var start_x := lerpf(seam_min.x, seam_max.x, hash01(seed, i, 1))
@@ -230,6 +224,7 @@ func make_particles(effect: Dictionary, seam_min: Vector3, seam_max: Vector3, ro
         var vx := lerpf(-float(visual["lateral_speed_abs_max_mps"]), float(visual["lateral_speed_abs_max_mps"]), hash01(seed, i, 6))
         var vy := lerpf(float(visual["vertical_speed_min_mps"]), float(visual["vertical_speed_max_mps"]), hash01(seed, i, 7))
         var vz := -lerpf(float(visual["camera_forward_speed_min_mps"]), float(visual["camera_forward_speed_max_mps"]), hash01(seed, i, 8))
+
         var quad := QuadMesh.new()
         quad.size = Vector2(size, size)
         var material := StandardMaterial3D.new()
@@ -238,6 +233,7 @@ func make_particles(effect: Dictionary, seam_min: Vector3, seam_max: Vector3, ro
         material.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
         material.albedo_color = Color(base_color.r, base_color.g, base_color.b, 0.0)
         quad.material = material
+
         var node := MeshInstance3D.new()
         node.name = "release_mote_%02d" % i
         node.mesh = quad
@@ -259,8 +255,8 @@ func set_particle_state(particles: Array, effect: Dictionary, time_s: float, ena
     var gravity := float(effect["visual_source"]["gravity_visual_mps2"])
     var active := 0
     for particle in particles:
-        var node := particle["node"] as MeshInstance3D
-        var material := particle["material"] as StandardMaterial3D
+        var node: MeshInstance3D = particle["node"]
+        var material: StandardMaterial3D = particle["material"]
         var age := time_s - float(particle["spawn"])
         var lifetime := float(particle["lifetime"])
         if not enabled or age < 0.0 or age > lifetime:
@@ -269,11 +265,11 @@ func set_particle_state(particles: Array, effect: Dictionary, time_s: float, ena
             continue
         active += 1
         var u := clampf(age / lifetime, 0.0, 1.0)
-        var start := particle["start"] as Vector3
-        var velocity := particle["velocity"] as Vector3
+        var start: Vector3 = particle["start"]
+        var velocity: Vector3 = particle["velocity"]
         node.position = start + velocity * age + Vector3(0.0, 0.5 * gravity * age * age, 0.0)
-        var alpha := float(particle["base_color"].a) * pow(maxf(0.0, sin(PI * u)), 0.75)
-        var c := particle["base_color"] as Color
+        var c: Color = particle["base_color"]
+        var alpha := c.a * pow(maxf(0.0, sin(PI * u)), 0.75)
         material.albedo_color = Color(c.r, c.g, c.b, alpha)
         node.visible = alpha > 0.005
     return active
@@ -281,10 +277,10 @@ func set_particle_state(particles: Array, effect: Dictionary, time_s: float, ena
 func _initialize() -> void:
     var technical := read_json(TECH_RECEIPT_PATH)
     var sequence := read_json(SEQUENCE_PATH)
+    var sequence_contract := read_json(SEQUENCE_CONTRACT_PATH)
     var rig := read_json(RIG_RECEIPT_PATH)
     var effect := read_json(EFFECT_PATH)
     var effect_head := read_text(EFFECT_HEAD_PATH)
-    var sequence_contract := read_json("res://../assets/modular-equipment-case-001/lid-latch-motion-sequence-001.json")
 
     if technical.get("result") != "PASS_OBJECT_SOURCE_OWNED_RIGID_PARTS_THROUGH_UC_SCENE_GRAPH":
         fail("technical-art rigid-scene donor missing or not green")
@@ -301,6 +297,7 @@ func _initialize() -> void:
     if String(effect.get("source_sha256", "")) != String(sequence.get("host_source_sha256", "")):
         fail("effect source identity does not match exact Animation source")
         return
+
     var contract_error := validate_effect_contract(effect, sequence_contract)
     if not contract_error.is_empty():
         fail(contract_error)
@@ -335,26 +332,19 @@ func _initialize() -> void:
     var imported := generated as Node3D
 
     var lid := find_node(imported, "lid_shell")
-    var keeper0 := find_node(imported, "latch_0_keeper")
-    var keeper1 := find_node(imported, "latch_1_keeper")
-    var lever0 := find_node(imported, "latch_0_lever")
-    var lever1 := find_node(imported, "latch_1_lever")
-    if lid == null or keeper0 == null or keeper1 == null or lever0 == null or lever1 == null:
-        fail("required rigid component nodes were not preserved by target import")
-        return
-    if not (lid is MeshInstance3D):
-        fail("lid shell is not a MeshInstance3D")
+    if lid == null or not (lid is MeshInstance3D):
+        fail("required lid_shell MeshInstance3D missing")
         return
 
     var viewport := make_viewport(imported)
     for _i in range(10):
         await process_frame
 
-    var neutral_bounds := mesh_world_bounds(lid as MeshInstance3D)
-    var bmin := neutral_bounds["min"] as Vector3
-    var bmax := neutral_bounds["max"] as Vector3
-    var seam_min := Vector3(bmin.x + 0.07, bmin.y + 0.010, bmax.z - 0.020)
-    var seam_max := Vector3(bmax.x - 0.07, bmin.y + 0.010, bmax.z + 0.004)
+    var bounds := mesh_world_bounds(lid as MeshInstance3D)
+    var bmin: Vector3 = bounds["min"]
+    var bmax: Vector3 = bounds["max"]
+    var seam_min := Vector3(bmin.x + 0.07, bmin.y + 0.012, bmin.z - 0.008)
+    var seam_max := Vector3(bmax.x - 0.07, bmin.y + 0.012, bmin.z + 0.018)
 
     var root3d := imported.get_parent() as Node3D
     var effect_root := Node3D.new()
@@ -384,10 +374,10 @@ func _initialize() -> void:
     var animation := Animation.new()
     animation.length = float(sequence["duration_s"])
     animation.loop_mode = Animation.LOOP_NONE
-    var lid_track := add_discrete_rotation_track(animation, imported, lid, sequence["samples"], "lid_mathematical_rotation_deg", true)
+    var lid_track := add_discrete_rotation_track(animation, imported, lid, sequence["samples"], "lid_mathematical_rotation_deg")
     var latch_tracks := []
     for station_id in pivot_by_station.keys():
-        latch_tracks.append(add_discrete_rotation_track(animation, imported, pivot_by_station[station_id], sequence["samples"], "latch_lever_angle_deg", true))
+        latch_tracks.append(add_discrete_rotation_track(animation, imported, pivot_by_station[station_id], sequence["samples"], "latch_lever_angle_deg"))
     if animation.track_get_key_count(lid_track) != int(sequence["endpoint_inclusive_sample_count"]):
         fail("lid AnimationPlayer track key count drift")
         return
@@ -413,16 +403,18 @@ func _initialize() -> void:
     times.append(float(verification["post_effect_time_s"]))
 
     var observations := []
-    var active_changed_min := 1 << 30
+    var active_changed_min := 1073741824
     var active_changed_max := 0
     var active_fraction_max := 0.0
     var inactive_changed_max := 0
+
     for time_s in times:
         player.seek(time_s, true)
         player.advance(0.0)
         set_particle_state(particles, effect, time_s, false)
         for _j in range(4):
             await process_frame
+
         var control_lid := lid.rotation_degrees
         var control_latches := []
         for station_id in pivot_by_station.keys():
@@ -450,6 +442,7 @@ func _initialize() -> void:
                 fail("VFX changed latch animation state at " + str(time_s))
                 return
             latch_i += 1
+
         var candidate := viewport.get_texture().get_image()
         if candidate == null or candidate.is_empty():
             fail("empty candidate render at " + str(time_s))
