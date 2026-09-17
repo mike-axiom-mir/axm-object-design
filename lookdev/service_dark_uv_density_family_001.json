@@ -1,0 +1,75 @@
+{
+  "schema": "axm.object-service-dark-uv-density-family-review/v0.1",
+  "asset_id": "modular-equipment-case-001",
+  "intent": "extend the already-rendered 0.05 m/UV isotropic service_dark UV candidate from the source-owned front_service_panel_outer_service_surface to the source-owned lid_inner_service_surface as a shared physical-density review family, without source UV/material adoption, texture assets, decals or scalar retuning",
+  "family": {
+    "material_id": "service_dark",
+    "meters_per_uv_unit_u": 0.05,
+    "meters_per_uv_unit_v": 0.05,
+    "policy": "PHYSICAL_ISOTROPIC_DENSITY_PER_SOURCE_LOCAL_SURFACE_AXES__REVIEW_ONLY",
+    "diagnostic_pattern": "PROCEDURAL_CHECKER_FROM_UV_NO_TEXTURE_ASSET"
+  },
+  "front_service_panel_reference": {
+    "path": "lookdev/front_service_panel_uv_source_identity_rebind_001.json",
+    "schema": "axm.object-front-service-panel-uv-source-identity-rebind/v0.1",
+    "source_surface_id": "front_service_panel_outer_service_surface",
+    "surface_semantics": "exterior_service_surface",
+    "component_name": "front_service_panel",
+    "material_id": "service_dark",
+    "basis": "SOURCE_LOCAL_X_TO_U__SOURCE_LOCAL_Z_TO_V",
+    "meters_per_uv_unit_u": 0.05,
+    "meters_per_uv_unit_v": 0.05,
+    "historical_materials_head": "d41442af978dd73fc8c2f1dfa50dad59f04f9cf5"
+  },
+  "inner_lid_target": {
+    "base_review_path": "lookdev/inner_lid_surface_review_001.json",
+    "source_surface_id": "lid_inner_service_surface",
+    "surface_semantics": "interior_service_surface",
+    "component_name": "lid_shell",
+    "component_role": "lid_shell",
+    "component_kind": "box",
+    "selector": "source_local_min_z_face",
+    "material_id": "service_dark",
+    "basis": "SOURCE_LOCAL_X_TO_U__SOURCE_LOCAL_Y_TO_V",
+    "origin": "SOURCE_FACE_MIN_X_MIN_Y",
+    "pose_ids": [
+      "mid_open",
+      "peak_open"
+    ],
+    "camera_contexts": [
+      "three_quarter",
+      "front_interior"
+    ]
+  },
+  "negative_control": {
+    "id": "three_x_v_density_stretch_inner_lid",
+    "meters_per_uv_unit_u": 0.05,
+    "meters_per_uv_unit_v": 0.016666666666666666,
+    "purpose": "prove the target-host observer distinguishes a surface-family density/anisotropy break from the shared isotropic review candidate"
+  },
+  "provenance": {
+    "method": "self-authored deterministic source-local planar UV review candidate reusing a previously rendered physical-density scale",
+    "external_textures": [],
+    "external_material_assets": []
+  },
+  "truth_boundary": {
+    "source_geometry_changed": false,
+    "source_surface_identities_owned": true,
+    "source_material_slots_authored": false,
+    "production_uv_authored": false,
+    "production_uv_adopted": false,
+    "texture_asset_authored": false,
+    "decal_art_authored": false,
+    "wear_authored": false,
+    "normal_or_ao_map_authored": false,
+    "material_scalars_changed": false,
+    "arbitrary_surface_unwrap_proven": false,
+    "final_texel_density_accepted": false,
+    "target_import_transport_accepted": false,
+    "runtime_cost_accepted": false,
+    "art_direction_accepted": false,
+    "visual_qa_accepted": false,
+    "canon": false,
+    "production_ready": false
+  }
+}
