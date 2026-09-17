@@ -1,0 +1,135 @@
+name: Object front-latch capture-envelope evidence
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  SOURCE_HARD_SURFACE_HEAD: 56aaaecb45b520fdff9e08fe2d4ea42562f5690f
+  PRIOR_HARD_SURFACE_HEAD: 8a23c32ebc6b4e1188d2961c878d9dc365bb6da7
+  HOST_SOURCE_SHA256: 49b1f9ed9865893d6de6f1ec8f069576732df694853fde4e3fcff366de32644a
+  PIVOT_INTERFACE_SHA256: bcbbe098371eb702bc9289a97370744093105925202eda6036bdced6e25e34d3
+
+jobs:
+  regression:
+    strategy:
+      matrix:
+        python-version: ['3.11', '3.13']
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Compile and run full Object regression suite
+        run: |
+          python -m compileall -q tools tests
+          python -m unittest discover -s tests -v
+
+  capture-envelope:
+    needs: regression
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout exact receiving head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Bind exact source authority and receiving content
+        run: |
+          set -euo pipefail
+          git fetch --no-tags origin "$SOURCE_HARD_SURFACE_HEAD"
+          git merge-base --is-ancestor "$PRIOR_HARD_SURFACE_HEAD" "$SOURCE_HARD_SURFACE_HEAD"
+
+          receiving_head="$(git rev-parse HEAD)"
+          test "$receiving_head" = "${{ github.event.pull_request.head.sha || github.sha }}"
+
+          git show "$SOURCE_HARD_SURFACE_HEAD:assets/modular-equipment-case-001/source.json" > /tmp/source-owner.json
+          git show "$SOURCE_HARD_SURFACE_HEAD:assets/modular-equipment-case-001/front-latch-pivot-interface-001.json" > /tmp/pivot-owner.json
+          git show "$SOURCE_HARD_SURFACE_HEAD:assets/modular-equipment-case-001/front-latch-capture-envelope-001.json" > /tmp/capture-owner.json
+
+          cmp --silent assets/modular-equipment-case-001/source.json /tmp/source-owner.json
+          cmp --silent assets/modular-equipment-case-001/front-latch-pivot-interface-001.json /tmp/pivot-owner.json
+          cmp --silent assets/modular-equipment-case-001/front-latch-capture-envelope-001.json /tmp/capture-owner.json
+
+          test "$(sha256sum assets/modular-equipment-case-001/source.json | awk '{print $1}')" = "$HOST_SOURCE_SHA256"
+          test "$(sha256sum assets/modular-equipment-case-001/front-latch-pivot-interface-001.json | awk '{print $1}')" = "$PIVOT_INTERFACE_SHA256"
+
+          printf '%s\n' "$receiving_head" > /tmp/exact-receiving-head.txt
+          printf '%s\n' "$SOURCE_HARD_SURFACE_HEAD" > /tmp/source-authority-head.txt
+
+      - name: Build exact source-owned capture-envelope evidence
+        run: |
+          set -euo pipefail
+          rm -rf evidence/front-latch-capture-envelope-001
+          python tools/verify_front_latch_capture_envelope.py \
+            --host assets/modular-equipment-case-001/source.json \
+            --interface assets/modular-equipment-case-001/front-latch-pivot-interface-001.json \
+            --policy assets/modular-equipment-case-001/front-latch-capture-envelope-001.json \
+            --out evidence/front-latch-capture-envelope-001
+          cp assets/modular-equipment-case-001/front-latch-capture-envelope-001.json evidence/front-latch-capture-envelope-001/policy.json
+          cp assets/modular-equipment-case-001/front-latch-pivot-interface-001.json evidence/front-latch-capture-envelope-001/pivot-interface.json
+          cp /tmp/exact-receiving-head.txt evidence/front-latch-capture-envelope-001/exact-receiving-head.txt
+          cp /tmp/source-authority-head.txt evidence/front-latch-capture-envelope-001/source-authority-head.txt
+
+      - name: Prove Z-AABB broad phase cannot be relabelled capture truth
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          source = Path('assets/modular-equipment-case-001/front-latch-capture-envelope-001.json')
+          bad = json.loads(source.read_text())
+          bad['contact_model']['intersection_method'] = 'Z_AABB_ONLY'
+          Path('/tmp/bad-capture-envelope.json').write_text(json.dumps(bad, indent=2) + '\n')
+          PY
+          set +e
+          python tools/verify_front_latch_capture_envelope.py \
+            --host assets/modular-equipment-case-001/source.json \
+            --interface assets/modular-equipment-case-001/front-latch-pivot-interface-001.json \
+            --policy /tmp/bad-capture-envelope.json \
+            --out /tmp/bad-capture-evidence \
+            > /tmp/capture-negative.stdout 2> /tmp/capture-negative.stderr
+          code=$?
+          set -e
+          if [ "$code" -eq 0 ]; then
+            echo 'negative control unexpectedly passed' >&2
+            exit 1
+          fi
+          grep -q 'CONTACT_MODEL_DRIFT' /tmp/capture-negative.stderr
+          printf '%s\n' 'PASS_FAILS_CLOSED_ON_Z_AABB_AS_CAPTURE_MODEL' > evidence/front-latch-capture-envelope-001/negative-control.txt
+          cp /tmp/capture-negative.stderr evidence/front-latch-capture-envelope-001/negative-control.stderr.txt
+
+      - name: Assert bounded result and authority boundary
+        run: |
+          set -euo pipefail
+          receipt=evidence/front-latch-capture-envelope-001/receipt.json
+          grep -q 'PASS_SOURCE_OWNED_FRONT_LATCH_CAPTURE_TO_CLEARANCE_ENVELOPE' "$receipt"
+          grep -q '"z_aabb_only_is_not_capture_threshold": true' "$receipt"
+          grep -q '"physical_latch_capture_or_retention_proven": false' "$receipt"
+          grep -q '"continuous_full_assembly_collision_freedom_proven": false' "$receipt"
+          grep -q '"animation_timing_owned": false' "$receipt"
+          grep -q '"runtime_controller_owned": false' "$receipt"
+          grep -q 'PASS_FAILS_CLOSED_ON_Z_AABB_AS_CAPTURE_MODEL' evidence/front-latch-capture-envelope-001/negative-control.txt
+          test "$(cat evidence/front-latch-capture-envelope-001/source-authority-head.txt)" = "$SOURCE_HARD_SURFACE_HEAD"
+          test "$(cat evidence/front-latch-capture-envelope-001/exact-receiving-head.txt)" = "${{ github.event.pull_request.head.sha || github.sha }}"
+
+      - name: Upload exact Hard-Surface evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: object-front-latch-capture-envelope-${{ github.event.pull_request.head.sha || github.sha }}
+          path: evidence/front-latch-capture-envelope-001
+          if-no-files-found: error
+          retention-days: 30
