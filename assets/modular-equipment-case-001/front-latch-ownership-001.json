@@ -1,0 +1,44 @@
+{
+  "schema": "axm.object-front-latch-ownership/v0.1",
+  "contract_id": "front-latch-ownership-001",
+  "asset_id": "modular-equipment-case-001",
+  "host_source_sha256": "49b1f9ed9865893d6de6f1ec8f069576732df694853fde4e3fcff366de32644a",
+  "purpose": "make the existing front latch construction ownership explicit without changing the equipment-case source geometry: each upper keeper is lid-owned, each lower lever is front-service-panel-owned, and the exact closed proof volumes retain a bilateral overlap relation for later rigging/animation handoff",
+  "stations": [
+    {
+      "id": "front-latch-left",
+      "source_index": 0,
+      "source_x_m": -0.22,
+      "keeper_component": "latch_0_keeper",
+      "keeper_role": "latch_keeper",
+      "keeper_owner_component": "lid_shell",
+      "lever_component": "latch_0_lever",
+      "lever_role": "latch_lever",
+      "lever_owner_component": "front_service_panel"
+    },
+    {
+      "id": "front-latch-right",
+      "source_index": 1,
+      "source_x_m": 0.22,
+      "keeper_component": "latch_1_keeper",
+      "keeper_role": "latch_keeper",
+      "keeper_owner_component": "lid_shell",
+      "lever_component": "latch_1_lever",
+      "lever_role": "latch_lever",
+      "lever_owner_component": "front_service_panel"
+    }
+  ],
+  "closed_relation": {
+    "require_positive_keeper_lever_aabb_overlap": true,
+    "keeper_lid_front_face_max_gap_m": 1e-09,
+    "require_positive_lever_panel_aabb_overlap": true,
+    "semantics": "static_source_proof_volume_relationship_only_not_retention_or_motion"
+  },
+  "failure_policy": "FAIL_CLOSED_NO_OWNER_INFERENCE_NO_GEOMETRY_REWRITE_NO_RUNTIME_PROMOTION",
+  "truth_boundary": "This contract proves only exact source-component ownership and static closed-state proof-volume relationships for the existing latch boxes. It does not prove a latch pivot, hook geometry, retention force, release path, articulated collision clearance, animation timing, controller behavior, manufacturing, loads, tolerances, gameplay or visual acceptance.",
+  "provenance": {
+    "method": "Object-owned semantic overlay over unchanged deterministic source geometry",
+    "external_assets": [],
+    "external_geometry": false
+  }
+}
