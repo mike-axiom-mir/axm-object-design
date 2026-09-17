@@ -1,0 +1,246 @@
+name: Object Runtime service-dark roughness scalar texture budget
+
+on:
+  push:
+    branches: [studio/runtime-object-service-dark-roughness-l8-budget-001]
+    paths:
+      - "runtime/service_dark_roughness_l8_budget_001.json"
+      - "tools/build_object_service_dark_runtime_roughness_format_budget_evidence.py"
+      - "tools/compare_object_service_dark_runtime_roughness_format_budget.py"
+      - "lookdev-proof/service_dark_roughness_runtime_format_budget_observe.gd"
+      - ".github/workflows/object-runtime-service-dark-roughness-format-budget.yml"
+  pull_request:
+    paths:
+      - "runtime/service_dark_roughness_l8_budget_001.json"
+      - "tools/build_object_service_dark_runtime_roughness_format_budget_evidence.py"
+      - "tools/compare_object_service_dark_runtime_roughness_format_budget.py"
+      - "lookdev-proof/service_dark_roughness_runtime_format_budget_observe.gd"
+      - ".github/workflows/object-runtime-service-dark-roughness-format-budget.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  MATERIALS_HEAD: 83f8d8fc99f7c832711f7f30fbcac72938550fc2
+  ROUGHNESS_REVIEW_PATH: lookdev/service_dark_roughness_microvariation_review_001.json
+  ROUGHNESS_REVIEW_BLOB: a4b7ff0e454a62e20ac5c3ed14f9af01092b2c56
+  ROUGHNESS_OBSERVER_PATH: lookdev-proof/service_dark_roughness_microvariation_observe.gd
+  ROUGHNESS_OBSERVER_BLOB: 4549a086f2f61f42f852daf6337c9d444980432c
+  ROUGHNESS_VERIFIER_PATH: tools/verify_service_dark_roughness_microvariation.py
+  ROUGHNESS_VERIFIER_BLOB: 350d66560997f88d6f6285c0e56fba90339bd70b
+
+jobs:
+  exact-runtime-roughness-scalar-texture-budget:
+    runs-on: ubuntu-latest
+    timeout-minutes: 32
+    steps:
+      - name: Checkout exact Runtime head
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Bind exact Runtime and Materials identities
+        run: |
+          set -euo pipefail
+          mkdir -p runtime-proof/generated lookdev-proof/generated
+          git rev-parse HEAD > runtime-proof/generated/exact-runtime-head.txt
+          echo "EXACT_RUNTIME_HEAD=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
+          git cat-file -e "$MATERIALS_HEAD^{commit}"
+          git merge-base --is-ancestor "$MATERIALS_HEAD" HEAD
+          test "$(git rev-parse "$MATERIALS_HEAD:$ROUGHNESS_REVIEW_PATH")" = "$ROUGHNESS_REVIEW_BLOB"
+          test "$(git rev-parse "$MATERIALS_HEAD:$ROUGHNESS_OBSERVER_PATH")" = "$ROUGHNESS_OBSERVER_BLOB"
+          test "$(git rev-parse "$MATERIALS_HEAD:$ROUGHNESS_VERIFIER_PATH")" = "$ROUGHNESS_VERIFIER_BLOB"
+          test "$(git rev-parse "HEAD:$ROUGHNESS_REVIEW_PATH")" = "$ROUGHNESS_REVIEW_BLOB"
+          test "$(git rev-parse "HEAD:$ROUGHNESS_OBSERVER_PATH")" = "$ROUGHNESS_OBSERVER_BLOB"
+          test "$(git rev-parse "HEAD:$ROUGHNESS_VERIFIER_PATH")" = "$ROUGHNESS_VERIFIER_BLOB"
+          printf '%s\n' "$MATERIALS_HEAD" > runtime-proof/generated/exact-materials-head.txt
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Compile and run complete Object suite
+        run: |
+          python -m compileall -q tools tests
+          python -m unittest discover -s tests -v
+
+      - name: Rebuild exact base material payload
+        run: python tools/build_object_material_lookdev_evidence.py
+
+      - name: Materialize exact Animation, Rigging and latch-ownership donors
+        env:
+          ANIMATION_COMMIT: 12a350fc38f67348f342cd0e53ed6b16383b789d
+          RIG_COMMIT: 4b72c9918c5fc1e89bd18a0be24fb4afac6e7775
+          LATCH_OWNERSHIP_COMMIT: d3fa10a270faae7925811f44f03381fe5c5d0215
+        run: |
+          set -euo pipefail
+          git fetch --no-tags origin \
+            studio/animation-object-lid-open-close-001 \
+            studio/rigging-object-lid-articulation-001 \
+            studio/hard-surface-front-latch-ownership-001
+          git cat-file -e "$ANIMATION_COMMIT^{commit}"
+          git cat-file -e "$RIG_COMMIT^{commit}"
+          git cat-file -e "$LATCH_OWNERSHIP_COMMIT^{commit}"
+          git show "$ANIMATION_COMMIT:assets/modular-equipment-case-001/lid-motion-clip.json" > lookdev-proof/generated/lid-motion-clip.json
+          git show "$RIG_COMMIT:assets/modular-equipment-case-001/articulation.json" > lookdev-proof/generated/articulation.json
+          git show "$LATCH_OWNERSHIP_COMMIT:assets/modular-equipment-case-001/front-latch-ownership-001.json" > lookdev-proof/generated/front-latch-ownership-001.json
+
+      - name: Rebuild exact owner-bound articulation payload
+        run: python tools/build_object_material_articulation_evidence.py
+
+      - name: Materialize exact source-owned inner-lid surface identity
+        env:
+          SOURCE_SURFACE_COMMIT: e67353416209604aa50ad3ba57f71336f4384349
+          SOURCE_SURFACE_PATH: assets/modular-equipment-case-001/lid-inner-surface-identity-001.json
+          SOURCE_SURFACE_BLOB: 873c03a73042213255c65df63cdff49edcf10a6c
+        run: |
+          set -euo pipefail
+          git fetch --no-tags origin "$SOURCE_SURFACE_COMMIT" --depth=1
+          observed_blob="$(git rev-parse "$SOURCE_SURFACE_COMMIT:$SOURCE_SURFACE_PATH")"
+          test "$observed_blob" = "$SOURCE_SURFACE_BLOB"
+          git show "$SOURCE_SURFACE_COMMIT:$SOURCE_SURFACE_PATH" > lookdev-proof/generated/lid-inner-surface-identity-001.json
+
+      - name: Rebuild exact Materials roughness payload
+        run: |
+          python tools/build_object_inner_lid_material_evidence.py \
+            --source-surface-identity lookdev-proof/generated/lid-inner-surface-identity-001.json
+          python tools/build_object_service_dark_uv_density_family_evidence.py \
+            --exact-head "$MATERIALS_HEAD"
+          python tools/build_object_service_dark_atlas_pack_evidence.py \
+            --exact-head "$MATERIALS_HEAD"
+          python tools/verify_service_dark_roughness_microvariation.py
+          python tools/build_object_service_dark_runtime_roughness_format_budget_evidence.py \
+            --exact-head "$EXACT_RUNTIME_HEAD"
+
+      - name: Validate modeled one-channel budget
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          b=json.loads(Path('runtime-proof/generated/service_dark_roughness_l8_budget_build_receipt.json').read_text())
+          assert b['result']=='PASS_OBJECT_SERVICE_DARK_ROUGHNESS_SCALAR_TEXTURE_BUDGET_PACKET',b
+          assert b['materials_head']=='83f8d8fc99f7c832711f7f30fbcac72938550fc2',b
+          assert b['dimensions_px']==[512,512],b
+          assert b['mip_texel_count']==349525,b
+          assert b['control_modeled_mip_bytes']==1398100,b
+          assert b['candidate_modeled_mip_bytes']==349525,b
+          assert b['modeled_mip_bytes_saved']==1048575,b
+          assert abs(b['modeled_mip_reduction_fraction']-0.75)<1e-12,b
+          print(json.dumps(b,indent=2))
+          PY
+
+      - name: Prove format-contract mutation fails closed
+        run: |
+          python - <<'PY'
+          import json, subprocess, sys, tempfile
+          from pathlib import Path
+          src=Path('runtime/service_dark_roughness_l8_budget_001.json')
+          data=json.loads(src.read_text())
+          data['candidate']['image_format']='RGBA8'
+          data['candidate']['bytes_per_texel']=4
+          bad=Path(tempfile.mkdtemp())/'bad-runtime-roughness.json'
+          bad.write_text(json.dumps(data))
+          proc=subprocess.run([
+            sys.executable,'tools/build_object_service_dark_runtime_roughness_format_budget_evidence.py',
+            '--runtime',str(bad),
+            '--exact-head','NEGATIVE_CONTROL',
+            '--out',str(bad.parent/'out.json'),
+            '--runtime-copy',str(bad.parent/'runtime.json'),
+          ],capture_output=True,text=True)
+          assert proc.returncode != 0,(proc.stdout,proc.stderr)
+          assert 'bounded candidate must remain L8/R' in (proc.stdout+proc.stderr),(proc.stdout,proc.stderr)
+          print('non-L8 candidate mutation rejected as expected')
+          PY
+
+      - name: Download pinned Godot 4.7.2
+        env:
+          GODOT_URL: https://github.com/godotengine/godot-builds/releases/download/4.7.2-stable/Godot_v4.7.2-stable_linux.x86_64.zip
+          GODOT_SHA256: cadd3204e728a35d3f13adb7fd0d7902636b79f6b95c40c265eb73b6c35329e4
+        run: |
+          set -euo pipefail
+          mkdir -p .godot-bin
+          curl --fail --location --retry 3 --retry-delay 2 "$GODOT_URL" --output .godot-bin/godot.zip
+          echo "$GODOT_SHA256  .godot-bin/godot.zip" | sha256sum --check --strict
+          unzip -q .godot-bin/godot.zip -d .godot-bin
+          chmod +x .godot-bin/Godot_v4.7.2-stable_linux.x86_64
+          .godot-bin/Godot_v4.7.2-stable_linux.x86_64 --version
+
+      - name: Install proof-host dependencies
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check pillow
+          if ! command -v xvfb-run >/dev/null 2>&1; then
+            sudo apt-get update
+            sudo apt-get install -y xvfb
+          fi
+
+      - name: Measure RGBA8 roughness control
+        env:
+          AXM_RUNTIME_ROUGHNESS_FORMAT_MODE: rgba8_control
+        run: |
+          set -euo pipefail
+          rm -f lookdev-proof/service-dark-runtime-roughness-rgba8_control-*.png lookdev-proof/service-dark-runtime-roughness-rgba8_control-receipt.json
+          xvfb-run --auto-servernum --server-args="-screen 0 1000x760x24" \
+            .godot-bin/Godot_v4.7.2-stable_linux.x86_64 \
+            --display-driver x11 \
+            --rendering-method gl_compatibility \
+            --path lookdev-proof \
+            --script service_dark_roughness_runtime_format_budget_observe.gd
+
+      - name: Measure L8 roughness candidate
+        env:
+          AXM_RUNTIME_ROUGHNESS_FORMAT_MODE: l8_candidate
+        run: |
+          set -euo pipefail
+          rm -f lookdev-proof/service-dark-runtime-roughness-l8_candidate-*.png lookdev-proof/service-dark-runtime-roughness-l8_candidate-receipt.json
+          xvfb-run --auto-servernum --server-args="-screen 0 1000x760x24" \
+            .godot-bin/Godot_v4.7.2-stable_linux.x86_64 \
+            --display-driver x11 \
+            --rendering-method gl_compatibility \
+            --path lookdev-proof \
+            --script service_dark_roughness_runtime_format_budget_observe.gd
+
+      - name: Compare memory, scalar identity and retained frames
+        run: |
+          python tools/compare_object_service_dark_runtime_roughness_format_budget.py
+
+      - name: Prove measured-memory non-win fails closed
+        run: |
+          python - <<'PY'
+          import json, subprocess, sys
+          from pathlib import Path
+          root=Path('lookdev-proof')
+          cp=root/'service-dark-runtime-roughness-rgba8_control-receipt.json'
+          np=root/'service-dark-runtime-roughness-l8_candidate-receipt.json'
+          control=json.loads(cp.read_text())
+          original=np.read_text()
+          candidate=json.loads(original)
+          candidate['roughness_texture_allocation_delta_bytes']=control['roughness_texture_allocation_delta_bytes']
+          np.write_text(json.dumps(candidate,indent=2))
+          proc=subprocess.run([sys.executable,'tools/compare_object_service_dark_runtime_roughness_format_budget.py','--out','/tmp/negative.json'],capture_output=True,text=True)
+          np.write_text(original)
+          assert proc.returncode != 0,(proc.stdout,proc.stderr)
+          print('measured memory non-win rejected as expected')
+          PY
+
+      - name: Retain exact Runtime roughness format evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: object-runtime-service-dark-roughness-l8-${{ github.event.pull_request.head.sha || github.sha }}
+          path: |
+            runtime/service_dark_roughness_l8_budget_001.json
+            tools/build_object_service_dark_runtime_roughness_format_budget_evidence.py
+            tools/compare_object_service_dark_runtime_roughness_format_budget.py
+            lookdev-proof/service_dark_roughness_runtime_format_budget_observe.gd
+            runtime-proof/generated/exact-runtime-head.txt
+            runtime-proof/generated/exact-materials-head.txt
+            runtime-proof/generated/service_dark_roughness_l8_budget_build_receipt.json
+            runtime-proof/generated/service_dark_roughness_l8_runtime_comparison.json
+            lookdev-proof/generated/object_service_dark_roughness_microvariation_payload.json
+            lookdev-proof/service-dark-runtime-roughness-*.json
+            lookdev-proof/service-dark-runtime-roughness-*.png
+          if-no-files-found: warn
+          retention-days: 30
