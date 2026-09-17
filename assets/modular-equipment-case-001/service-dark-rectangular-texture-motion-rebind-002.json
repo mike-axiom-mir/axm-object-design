@@ -1,0 +1,99 @@
+{
+  "schema": "axm.object-animation-service-dark-texture-motion-rebind/v0.1",
+  "asset_id": "modular-equipment-case-001",
+  "scope": "exact Runtime-candidate 512x384 service_dark textured receiving surfaces through unchanged lid motion in the Godot proof host",
+  "motion_mutation_policy": "FORBIDDEN_REBIND_ONLY",
+  "continuity": {
+    "previous_animation_head": "954c747c5e5565077abc20cb09458e2e414b9382",
+    "previous_receiver_contract": "service-dark-texture-motion-rebind-001.json",
+    "previous_receiver_dimensions_px": [512, 512],
+    "policy": "ADD_NEW_EXACT_RECEIVER_WITNESS_DO_NOT_REWRITE_PREVIOUS_EVIDENCE"
+  },
+  "host_source_sha256": "49b1f9ed9865893d6de6f1ec8f069576732df694853fde4e3fcff366de32644a",
+  "motion_identity": {
+    "sequence_id": "lid-latch-open-hold-close-001",
+    "duration_s": 2.5,
+    "sample_rate_hz": 40,
+    "endpoint_inclusive_sample_count": 101,
+    "base_lid_clip_id": "lid-open-hold-close-001",
+    "base_lid_clip_digest": "9e149195ab315f83f2d6f7d76f374f4be245567f77402de3e8a1d40ab79ef340",
+    "lid_motion_policy": "COPY_EXACT_AUTHORED_SAMPLES_UNRETIMED"
+  },
+  "source_hinge": {
+    "joint_id": "rear-lid-hinge-001",
+    "axis_source": [1.0, 0.0, 0.0],
+    "origin_source_m": [0.0, 0.252, 0.306],
+    "origin_derivation": "source depth/2 + hinge.offset_y; body_height + hinge.offset_z",
+    "source_to_uc_coordinate_map": "[x,y,z] -> [x,z,y]",
+    "target_axis_uc": [1.0, 0.0, 0.0],
+    "target_origin_uc_m": [0.0, 0.306, 0.252],
+    "source_positive_angle_to_target_sign": -1.0
+  },
+  "technical_art_dependency": {
+    "repository": "mike-axiom-mir/axm-object-design",
+    "pr": 28,
+    "exact_head": "a88ae0baaf75d24ed70ffea7265558056e0a41f7",
+    "artifact_id": 10488393791,
+    "artifact_sha256": "57e81887de193462c0641226b299711da121fc341b1857333d5b898ddbd90b14",
+    "required_transport_result": "PASS_OBJECT_SERVICE_DARK_RUNTIME_512X384_TO_UC_RECTANGULAR_BUNDLE_TEXTURED_GLB",
+    "glb_sha256": "f3fdfea4653919ece79c60e5b6806f6fae2a0436e792281c2d662bfd540e88bf",
+    "materials_authority_head": "4c12a0a57f6aa8778cff41efad321e13567c6c91",
+    "runtime_authority_head": "ce23d5edeb0766201cfbaff646dda31544cd8f9c",
+    "uc_head": "c8f38b4c3dd0d6183d035147e4816cff6fa6ef82",
+    "receiving_dimensions_px": [512, 384],
+    "maximum_required_padded_extent_px": [422, 382],
+    "candidate_spare_extent_px": [90, 2],
+    "retained_row_rgb_max_channel_delta": 0,
+    "runtime_candidate_production_adopted": false
+  },
+  "surface_ownership": {
+    "lid_inner_service_surface": {
+      "owner": "lid_shell",
+      "motion": "FOLLOW_EXACT_LID_HINGE",
+      "expected_vertex_count": 4,
+      "expected_index_count": 6,
+      "expected_uv_count": 4
+    },
+    "front_service_panel_outer_service_surface": {
+      "owner": "front_service_panel",
+      "motion": "STATIC_IN_THIS_CLIP",
+      "expected_vertex_count": 4,
+      "expected_index_count": 6,
+      "expected_uv_count": 4
+    }
+  },
+  "target_host": {
+    "engine": "Godot 4.7.2",
+    "application_mode": "AnimationPlayer discrete authored-sample seek through proof-local hinge wrapper",
+    "required_sample_count": 101,
+    "required_texture_width_px": 512,
+    "required_texture_height_px": 384,
+    "position_tolerance_m": 0.000001,
+    "uv_tolerance": 0.0000001
+  },
+  "negative_control": {
+    "kind": "TARGET_HINGE_ORIGIN_DRIFT",
+    "delta_m": [0.0, 0.001, 0.0],
+    "expected_result": "FAIL_TARGET_HINGE_IDENTITY_DRIFT"
+  },
+  "truth_boundary": {
+    "source_geometry_modified": false,
+    "motion_modified": false,
+    "rig_modified": false,
+    "technical_art_transport_modified": false,
+    "materials_policy_modified": false,
+    "runtime_candidate_production_adopted": false,
+    "uc_product_modified_by_dependency": true,
+    "production_uv_adopted": false,
+    "production_texture_authored_or_adopted": false,
+    "tangent_space_quality_accepted": false,
+    "continuous_interpolation_accepted": false,
+    "wall_clock_frame_delivery_accepted": false,
+    "runtime_controller_or_state_machine_accepted": false,
+    "physics_or_collision_accepted": false,
+    "input_or_gameplay_accepted": false,
+    "art_direction_or_visual_qa_accepted": false,
+    "canon_or_production_readiness": false
+  },
+  "failure_policy": "FAIL_CLOSED_NO_RETIME_NO_SOURCE_OR_RIG_REWRITE_NO_RUNTIME_CANDIDATE_ADOPTION_NO_TEXTURE_OR_UV_PROMOTION_NO_CONTROLLER_PROMOTION"
+}
