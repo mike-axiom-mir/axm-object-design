@@ -1,0 +1,191 @@
+name: Object service-dark roughness microvariation evidence
+
+on:
+  push:
+    branches: [studio/materials-object-functional-surface-001]
+    paths:
+      - "lookdev/service_dark_roughness_microvariation_review_001.json"
+      - "lookdev-proof/service_dark_roughness_microvariation_observe.gd"
+      - "tools/verify_service_dark_roughness_microvariation.py"
+      - ".github/workflows/object-service-dark-roughness-microvariation.yml"
+  pull_request:
+    paths:
+      - "lookdev/service_dark_roughness_microvariation_review_001.json"
+      - "lookdev-proof/service_dark_roughness_microvariation_observe.gd"
+      - "tools/verify_service_dark_roughness_microvariation.py"
+      - ".github/workflows/object-service-dark-roughness-microvariation.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  exact-service-dark-roughness-microvariation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 26
+    strategy:
+      matrix:
+        python-version: ['3.11', '3.13']
+    steps:
+      - name: Checkout exact Materials head
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Record exact receiving identity
+        run: |
+          set -euo pipefail
+          mkdir -p lookdev-proof/generated
+          git rev-parse HEAD > lookdev-proof/generated/service-dark-roughness-exact-head.txt
+          test "$(cat lookdev-proof/generated/service-dark-roughness-exact-head.txt)" = "${{ github.event.pull_request.head.sha || github.sha }}"
+          git merge-base --is-ancestor 4c12a0a57f6aa8778cff41efad321e13567c6c91 HEAD
+          test "$(git rev-parse 4c12a0a57f6aa8778cff41efad321e13567c6c91:lookdev/object_material_profile_001.json)" = "0c53b497b1fd172cf68a9577c70a43aa591e0052"
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Compile and run complete Object suite
+        run: |
+          python -m compileall -q tools tests
+          python -m unittest discover -s tests -v
+
+      - name: Rebuild exact base material payload
+        run: python tools/build_object_material_lookdev_evidence.py
+
+      - name: Materialize exact Animation, Rigging and latch-ownership donors
+        env:
+          ANIMATION_COMMIT: 12a350fc38f67348f342cd0e53ed6b16383b789d
+          RIG_COMMIT: 4b72c9918c5fc1e89bd18a0be24fb4afac6e7775
+          LATCH_OWNERSHIP_COMMIT: d3fa10a270faae7925811f44f03381fe5c5d0215
+        run: |
+          set -euo pipefail
+          git fetch --no-tags origin \
+            studio/animation-object-lid-open-close-001 \
+            studio/rigging-object-lid-articulation-001 \
+            studio/hard-surface-front-latch-ownership-001
+          git cat-file -e "$ANIMATION_COMMIT^{commit}"
+          git cat-file -e "$RIG_COMMIT^{commit}"
+          git cat-file -e "$LATCH_OWNERSHIP_COMMIT^{commit}"
+          git show "$ANIMATION_COMMIT:assets/modular-equipment-case-001/lid-motion-clip.json" > lookdev-proof/generated/lid-motion-clip.json
+          git show "$RIG_COMMIT:assets/modular-equipment-case-001/articulation.json" > lookdev-proof/generated/articulation.json
+          git show "$LATCH_OWNERSHIP_COMMIT:assets/modular-equipment-case-001/front-latch-ownership-001.json" > lookdev-proof/generated/front-latch-ownership-001.json
+
+      - name: Rebuild exact owner-bound articulation payload
+        run: python tools/build_object_material_articulation_evidence.py
+
+      - name: Materialize exact source-owned inner-lid surface identity
+        env:
+          SOURCE_SURFACE_COMMIT: e67353416209604aa50ad3ba57f71336f4384349
+          SOURCE_SURFACE_PATH: assets/modular-equipment-case-001/lid-inner-surface-identity-001.json
+          SOURCE_SURFACE_BLOB: 873c03a73042213255c65df63cdff49edcf10a6c
+        run: |
+          set -euo pipefail
+          git fetch --no-tags origin "$SOURCE_SURFACE_COMMIT" --depth=1
+          observed_blob="$(git rev-parse "$SOURCE_SURFACE_COMMIT:$SOURCE_SURFACE_PATH")"
+          test "$observed_blob" = "$SOURCE_SURFACE_BLOB"
+          git show "$SOURCE_SURFACE_COMMIT:$SOURCE_SURFACE_PATH" > lookdev-proof/generated/lid-inner-surface-identity-001.json
+
+      - name: Rebuild source-bound two-surface Materials atlas chain
+        run: |
+          python tools/build_object_inner_lid_material_evidence.py \
+            --source-surface-identity lookdev-proof/generated/lid-inner-surface-identity-001.json
+          python tools/build_object_service_dark_uv_density_family_evidence.py \
+            --exact-head "$(git rev-parse HEAD)"
+          python tools/build_object_service_dark_atlas_pack_evidence.py \
+            --exact-head "$(git rev-parse HEAD)"
+          python tools/verify_service_dark_roughness_microvariation.py
+
+      - name: Prove roughness policy drift fails closed
+        run: |
+          python - <<'PY'
+          import json, subprocess, sys, tempfile
+          from pathlib import Path
+          data=json.loads(Path('lookdev/service_dark_roughness_microvariation_review_001.json').read_text())
+          data['roughness']['candidate_amplitude']=0.12
+          data['roughness']['candidate_range']=[0.54,0.78]
+          bad=Path(tempfile.mkdtemp())/'bad-roughness.json'
+          bad.write_text(json.dumps(data))
+          proc=subprocess.run([sys.executable,'tools/verify_service_dark_roughness_microvariation.py','--contract',str(bad),'--out',str(bad.parent/'out.json')],capture_output=True,text=True)
+          assert proc.returncode != 0,(proc.stdout,proc.stderr)
+          assert 'bounded review range' in (proc.stdout+proc.stderr),(proc.stdout,proc.stderr)
+          print('roughness-amplitude negative rejected as expected')
+          PY
+
+      - name: Download pinned Godot 4.7.2
+        if: matrix.python-version == '3.11'
+        env:
+          GODOT_URL: https://github.com/godotengine/godot-builds/releases/download/4.7.2-stable/Godot_v4.7.2-stable_linux.x86_64.zip
+          GODOT_SHA256: cadd3204e728a35d3f13adb7fd0d7902636b79f6b95c40c265eb73b6c35329e4
+        run: |
+          set -euo pipefail
+          mkdir -p .godot-bin
+          curl --fail --location --retry 3 --retry-delay 2 "$GODOT_URL" --output .godot-bin/godot.zip
+          echo "$GODOT_SHA256  .godot-bin/godot.zip" | sha256sum --check --strict
+          unzip -q .godot-bin/godot.zip -d .godot-bin
+          chmod +x .godot-bin/Godot_v4.7.2-stable_linux.x86_64
+          .godot-bin/Godot_v4.7.2-stable_linux.x86_64 --version
+
+      - name: Install virtual display when needed
+        if: matrix.python-version == '3.11'
+        run: |
+          if ! command -v xvfb-run >/dev/null 2>&1; then
+            sudo apt-get update
+            sudo apt-get install -y xvfb
+          fi
+
+      - name: Render bounded service-dark roughness response
+        if: matrix.python-version == '3.11'
+        run: |
+          set -euo pipefail
+          rm -f lookdev-proof/service-dark-roughness-microvariation-runtime-receipt.json lookdev-proof/service-dark-roughness-*.png
+          xvfb-run --auto-servernum --server-args="-screen 0 1000x760x24" \
+            .godot-bin/Godot_v4.7.2-stable_linux.x86_64 \
+            --display-driver x11 \
+            --rendering-method gl_compatibility \
+            --path lookdev-proof \
+            --script service_dark_roughness_microvariation_observe.gd
+
+      - name: Validate real target-host roughness A-B
+        if: matrix.python-version == '3.11'
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          root=Path('lookdev-proof')
+          r=json.loads((root/'service-dark-roughness-microvariation-runtime-receipt.json').read_text())
+          assert r['state']=='PASS',r
+          assert r['result']=='PASS_OBJECT_SERVICE_DARK_BOUNDED_ROUGHNESS_MICROVARIATION_TARGET_HOST_REVIEW',r
+          assert r['candidate_visible_all_contexts'] is True,r
+          assert r['negative_exceeds_candidate_all_contexts'] is True,r
+          assert r['candidate_changed_pixels_gt_1lsb_total']>0,r
+          assert r['negative_changed_pixels_gt_1lsb_total']>r['candidate_changed_pixels_gt_1lsb_total'],r
+          for pose,contexts in r['comparisons'].items():
+            for context,row in contexts.items():
+              c=row['control_to_candidate']; n=row['control_to_overcontrast_negative']
+              assert c['changed_pixels_gt_1lsb']>0,(pose,context,c)
+              assert n['max_rgb_channel_delta']>c['max_rgb_channel_delta'],(pose,context,c,n)
+              for mode in ('constant_roughness_control','roughness_micro_candidate','roughness_overcontrast_negative'):
+                p=root/f'service-dark-roughness-{pose}-{context}-{mode}.png'
+                assert p.stat().st_size>2000,p
+          assert r['truth_boundary']['production_texture_authored'] is False,r
+          assert r['truth_boundary']['physically_measured_coating'] is False,r
+          assert r['truth_boundary']['art_direction_final_accepted'] is False,r
+          print(json.dumps(r,indent=2))
+          PY
+
+      - name: Retain exact service-dark roughness evidence
+        if: matrix.python-version == '3.11' && always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: object-service-dark-roughness-microvariation-${{ github.event.pull_request.head.sha || github.sha }}
+          path: |
+            lookdev/service_dark_roughness_microvariation_review_001.json
+            lookdev-proof/service_dark_roughness_microvariation_observe.gd
+            lookdev-proof/generated/service-dark-roughness-exact-head.txt
+            lookdev-proof/generated/object_service_dark_roughness_microvariation_payload.json
+            lookdev-proof/service-dark-roughness-microvariation-runtime-receipt.json
+            lookdev-proof/service-dark-roughness-*.png
+          if-no-files-found: warn
+          retention-days: 30
