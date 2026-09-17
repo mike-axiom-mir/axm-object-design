@@ -98,7 +98,7 @@ func legacy_make(ss:Array,root:Node3D)->Dictionary:
 
 func batch_make(ss:Array,root:Node3D)->Dictionary:
     var c:Color=(ss[0] as Dictionary)["color"]
-    var m:=StandardMaterial3D.new(); m.shading_mode=BaseMaterial3D.SHADING_MODE_UNSHADED; m.transparency=BaseMaterial3D.TRANSPARENCY_ALPHA; m.billboard_mode=BaseMaterial3D.BILLBOARD_ENABLED; m.vertex_color_use_as_albedo=true; m.albedo_color=Color(c.r,c.g,c.b,1)
+    var m:=StandardMaterial3D.new(); m.shading_mode=BaseMaterial3D.SHADING_MODE_UNSHADED; m.transparency=BaseMaterial3D.TRANSPARENCY_ALPHA; m.billboard_mode=BaseMaterial3D.BILLBOARD_ENABLED; m.billboard_keep_scale=true; m.vertex_color_use_as_albedo=true; m.albedo_color=Color(c.r,c.g,c.b,1)
     var q:=QuadMesh.new(); q.size=Vector2.ONE; q.material=m
     var mm:=MultiMesh.new(); mm.transform_format=MultiMesh.TRANSFORM_3D; mm.use_colors=true; mm.instance_count=ss.size(); mm.mesh=q
     for i in range(ss.size()):
