@@ -1,0 +1,223 @@
+name: Object Runtime lid-release mote MultiMesh batching
+
+on:
+  push:
+    branches: [studio/runtime-object-lid-release-mote-batching-001]
+    paths:
+      - 'animation-proof/observe_lid_release_motes_runtime_batching.gd'
+      - 'tools/verify_object_runtime_lid_release_mote_batching.py'
+      - '.github/workflows/object-runtime-lid-release-mote-batching.yml'
+  pull_request:
+    paths:
+      - 'animation-proof/observe_lid_release_motes_runtime_batching.gd'
+      - 'tools/verify_object_runtime_lid_release_mote_batching.py'
+      - '.github/workflows/object-runtime-lid-release-mote-batching.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  VFX_PARENT_HEAD: 1fc2eb89b7869b81a97614a586e04375a7ad0547
+  OWNER_VFX_HEAD: 7994d6f28050053f07dd355d8c54a983b0e8268b
+  OWNER_EFFECT_BLOB: 83c41db21e16847ac0a69215facd8697853eeb4f
+  OWNER_EFFECT_SHA256: f7a038c488405cdd8341368d155db325093907090ddbb74d557139cadf6ba813
+  OWNER_ARTIFACT_ID: '10514900595'
+  OWNER_ARTIFACT_SHA256: cf620d98c315189f1d5c4f3c8cea702aee969602eaef9a5ad7f5374daa894187
+  OWNER_ARTIFACT_NAME: object-vfx-lid-release-motes-7994d6f28050053f07dd355d8c54a983b0e8268b
+
+jobs:
+  exact-runtime-multimesh-batching:
+    runs-on: ubuntu-latest
+    timeout-minutes: 32
+    steps:
+      - name: Checkout exact Runtime head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+
+      - name: Bind exact VFX parent and frozen owner effect
+        run: |
+          set -euo pipefail
+          EXACT_RUNTIME_HEAD="$(git rev-parse HEAD)"
+          echo "EXACT_RUNTIME_HEAD=$EXACT_RUNTIME_HEAD" >> "$GITHUB_ENV"
+          git cat-file -e "${VFX_PARENT_HEAD}^{commit}"
+          git merge-base --is-ancestor "$VFX_PARENT_HEAD" HEAD
+          test "$(git rev-parse "${VFX_PARENT_HEAD}:assets/modular-equipment-case-001/lid-open-release-motes-001.json")" = "$OWNER_EFFECT_BLOB"
+          test "$(git rev-parse "HEAD:assets/modular-equipment-case-001/lid-open-release-motes-001.json")" = "$OWNER_EFFECT_BLOB"
+          test "$(sha256sum assets/modular-equipment-case-001/lid-open-release-motes-001.json | cut -d' ' -f1)" = "$OWNER_EFFECT_SHA256"
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          fx=json.loads(Path('assets/modular-equipment-case-001/lid-open-release-motes-001.json').read_text())
+          assert fx['visual_source']['seed']==41027,fx
+          assert fx['visual_source']['particle_count']==18,fx
+          assert fx['animation_dependency']['trigger_time_s']==0.25,fx
+          assert fx['animation_dependency']['trigger_semantics']=='EXACT_ANIMATION_PHASE_BOUNDARY_NOT_GAMEPLAY_EVENT',fx
+          assert fx['visual_source']['source_label']=='STYLIZED_VISUAL_RELEASE_MOTES_NOT_DUST_OR_FLUID_SIMULATION',fx
+          print('exact frozen VFX identity PASS')
+          PY
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Run complete Object suite on Python 3.11
+        run: |
+          python -m compileall -q tools tests
+          python -m unittest discover -s tests -v
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Run complete Object suite on Python 3.13
+        run: |
+          python -m compileall -q tools tests
+          python -m unittest discover -s tests -v
+
+      - name: Download and verify exact green owner VFX receiver artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          rm -rf .owner-evidence /tmp/object-vfx-owner.zip
+          mkdir -p .owner-evidence
+          meta_digest="$(gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/${OWNER_ARTIFACT_ID}" --jq '.digest')"
+          meta_name="$(gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/${OWNER_ARTIFACT_ID}" --jq '.name')"
+          test "$meta_digest" = "sha256:${OWNER_ARTIFACT_SHA256}"
+          test "$meta_name" = "$OWNER_ARTIFACT_NAME"
+          gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/${OWNER_ARTIFACT_ID}/zip" > /tmp/object-vfx-owner.zip
+          echo "${OWNER_ARTIFACT_SHA256}  /tmp/object-vfx-owner.zip" | sha256sum -c -
+          unzip -q /tmp/object-vfx-owner.zip -d .owner-evidence
+          test "$(cat .owner-evidence/animation-proof/generated/exact-vfx-head.txt)" = "$OWNER_VFX_HEAD"
+          test "$(sha256sum .owner-evidence/animation-proof/generated/lid-open-release-motes-001.json | cut -d' ' -f1)" = "$OWNER_EFFECT_SHA256"
+          cmp --silent assets/modular-equipment-case-001/lid-open-release-motes-001.json .owner-evidence/animation-proof/generated/lid-open-release-motes-001.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          r=json.loads(Path('.owner-evidence/animation-proof/vfx-lid-release-motes-receipt.json').read_text())
+          assert r['state']=='PASS_TARGET_HOST_PHASE_BOUND_LID_RELEASE_MOTES',r
+          assert r['effect_head']=='7994d6f28050053f07dd355d8c54a983b0e8268b',r
+          assert r['particle_count']==18 and r['trigger_time_s']==0.25,r
+          print('historical exact owner receiver PASS')
+          PY
+
+      - name: Assemble exact frozen owner receiver inputs
+        run: |
+          set -euo pipefail
+          rm -rf animation-proof/generated
+          mkdir -p animation-proof/generated
+          cp .owner-evidence/animation-proof/generated/object-rigid-components-rebound.glb animation-proof/generated/
+          cp .owner-evidence/animation-proof/generated/uc-rigid-scene-handoff-receipt.json animation-proof/generated/
+          cp .owner-evidence/animation-proof/generated/lid-latch-motion-evidence.json animation-proof/generated/
+          cp .owner-evidence/animation-proof/generated/front-latch-articulation.receipt.json animation-proof/generated/
+          cp .owner-evidence/animation-proof/generated/lid-latch-motion-sequence-001.json animation-proof/generated/
+          cp .owner-evidence/animation-proof/generated/lid-open-release-motes-001.json animation-proof/generated/
+          cp .owner-evidence/animation-proof/generated/exact-animation-parent.txt animation-proof/generated/
+          cp .owner-evidence/animation-proof/generated/exact-technical-art-head.txt animation-proof/generated/
+          cp .owner-evidence/animation-proof/generated/exact-uc-head.txt animation-proof/generated/
+          cp .owner-evidence/animation-proof/generated/exact-vfx-head.txt animation-proof/generated/
+          printf '%s\n' "$VFX_PARENT_HEAD" > animation-proof/generated/exact-runtime-parent-vfx-head.txt
+          printf '%s\n' "$EXACT_RUNTIME_HEAD" > animation-proof/generated/exact-runtime-head.txt
+
+      - name: Download pinned Godot 4.7.2
+        env:
+          GODOT_URL: https://github.com/godotengine/godot-builds/releases/download/4.7.2-stable/Godot_v4.7.2-stable_linux.x86_64.zip
+          GODOT_SHA256: cadd3204e728a35d3f13adb7fd0d7902636b79f6b95c40c265eb73b6c35329e4
+        run: |
+          set -euo pipefail
+          mkdir -p .godot-bin
+          curl --fail --location --retry 3 --retry-delay 2 "$GODOT_URL" --output .godot-bin/godot.zip
+          echo "$GODOT_SHA256  .godot-bin/godot.zip" | sha256sum --check --strict
+          unzip -q .godot-bin/godot.zip -d .godot-bin
+          chmod +x .godot-bin/Godot_v4.7.2-stable_linux.x86_64
+          .godot-bin/Godot_v4.7.2-stable_linux.x86_64 --version
+
+      - name: Install virtual display when needed
+        run: |
+          if ! command -v xvfb-run >/dev/null 2>&1; then
+            sudo apt-get update
+            sudo apt-get install -y xvfb
+          fi
+
+      - name: Measure legacy versus one-MultiMesh owner effect representation
+        run: |
+          set -euo pipefail
+          rm -f animation-proof/runtime-lid-release-mote-batching-receipt.json animation-proof/runtime-mote-*.png
+          xvfb-run --auto-servernum --server-args="-screen 0 1000x760x24" \
+            .godot-bin/Godot_v4.7.2-stable_linux.x86_64 \
+            --display-driver x11 \
+            --rendering-method gl_compatibility \
+            --path animation-proof \
+            --script observe_lid_release_motes_runtime_batching.gd
+
+      - name: Verify exact Runtime measurement receipt
+        run: python tools/verify_object_runtime_lid_release_mote_batching.py
+
+      - name: Prove draw-call non-win fails closed
+        run: |
+          set -euo pipefail
+          cp animation-proof/runtime-lid-release-mote-batching-receipt.json /tmp/runtime-mote-good.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('animation-proof/runtime-lid-release-mote-batching-receipt.json')
+          r=json.loads(p.read_text())
+          q=r['draw_call_probe_040s_continuity']
+          q['batched_draw_calls_in_frame']=q['legacy_draw_calls_in_frame']
+          q['draw_calls_saved']=0
+          q['draw_call_reduction_fraction']=0.0
+          p.write_text(json.dumps(r,indent=2)+'\n')
+          PY
+          if python tools/verify_object_runtime_lid_release_mote_batching.py; then
+            echo 'ERROR: non-win mutation was accepted' >&2
+            exit 1
+          fi
+          cp /tmp/runtime-mote-good.json animation-proof/runtime-lid-release-mote-batching-receipt.json
+
+      - name: Prove resource-shape regression fails closed
+        run: |
+          set -euo pipefail
+          cp animation-proof/runtime-lid-release-mote-batching-receipt.json /tmp/runtime-mote-good.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('animation-proof/runtime-lid-release-mote-batching-receipt.json')
+          r=json.loads(p.read_text())
+          r['resource_shape']['batched']['multimesh_instance_resources']=18
+          p.write_text(json.dumps(r,indent=2)+'\n')
+          PY
+          if python tools/verify_object_runtime_lid_release_mote_batching.py; then
+            echo 'ERROR: resource regression mutation was accepted' >&2
+            exit 1
+          fi
+          cp /tmp/runtime-mote-good.json animation-proof/runtime-lid-release-mote-batching-receipt.json
+          python tools/verify_object_runtime_lid_release_mote_batching.py
+
+      - name: Retain exact Runtime mote batching evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: object-runtime-lid-release-mote-batching-${{ github.event.pull_request.head.sha || github.sha }}
+          path: |
+            assets/modular-equipment-case-001/lid-open-release-motes-001.json
+            animation-proof/observe_lid_release_motes_runtime_batching.gd
+            tools/verify_object_runtime_lid_release_mote_batching.py
+            animation-proof/generated/exact-runtime-head.txt
+            animation-proof/generated/exact-runtime-parent-vfx-head.txt
+            animation-proof/generated/exact-vfx-head.txt
+            animation-proof/generated/exact-animation-parent.txt
+            animation-proof/generated/exact-technical-art-head.txt
+            animation-proof/generated/exact-uc-head.txt
+            animation-proof/generated/uc-rigid-scene-handoff-receipt.json
+            animation-proof/generated/lid-latch-motion-evidence.json
+            animation-proof/generated/front-latch-articulation.receipt.json
+            animation-proof/generated/lid-latch-motion-sequence-001.json
+            animation-proof/generated/lid-open-release-motes-001.json
+            animation-proof/runtime-lid-release-mote-batching-receipt.json
+            animation-proof/runtime-mote-*.png
+          if-no-files-found: warn
+          retention-days: 30
