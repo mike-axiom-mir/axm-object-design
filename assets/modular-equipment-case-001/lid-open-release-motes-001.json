@@ -31,7 +31,7 @@
     "gravity_visual_mps2": -0.10,
     "color_srgb": [0.78, 0.72, 0.61],
     "alpha_peak": 0.56,
-    "anchor": "REAR_LID_SEAM_DERIVED_FROM_IMPORTED_NEUTRAL_LID_AABB",
+    "anchor": "CAMERA_FACING_LID_BODY_SEAM_DERIVED_FROM_IMPORTED_NEUTRAL_LID_AABB",
     "source_label": "STYLIZED_VISUAL_RELEASE_MOTES_NOT_DUST_OR_FLUID_SIMULATION"
   },
   "verification": {
