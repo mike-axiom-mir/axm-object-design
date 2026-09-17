@@ -75,6 +75,11 @@ class ServiceSurfaceMetricDomainTests(unittest.TestCase):
             },
         )
 
+    def assert_float_vector(self, actual, expected):
+        self.assertEqual(len(actual), len(expected))
+        for observed, wanted in zip(actual, expected):
+            self.assertAlmostEqual(observed, wanted, places=12)
+
     def test_exact_source_owns_two_service_surface_metric_domains(self):
         receipt = self.verify()
         self.assertEqual(receipt["result"], "PASS_SOURCE_OWNED_SERVICE_SURFACE_METRIC_DOMAINS")
@@ -84,17 +89,17 @@ class ServiceSurfaceMetricDomainTests(unittest.TestCase):
         by_id = {row["surface_id"]: row for row in receipt["domains"]}
         lid = by_id["lid_inner_service_surface"]
         front = by_id["front_service_panel_outer_service_surface"]
-        self.assertEqual(lid["origin_m"], [0.0, 0.0, 0.312])
+        self.assert_float_vector(lid["origin_m"], [0.0, 0.0, 0.312])
         self.assertAlmostEqual(lid["primary_extent_m"], 0.78, places=12)
         self.assertAlmostEqual(lid["secondary_extent_m"], 0.48, places=12)
-        self.assertEqual(lid["primary_bounds_m"], [-0.39, 0.39])
-        self.assertEqual(lid["secondary_bounds_m"], [-0.24, 0.24])
+        self.assert_float_vector(lid["primary_bounds_m"], [-0.39, 0.39])
+        self.assert_float_vector(lid["secondary_bounds_m"], [-0.24, 0.24])
         self.assertAlmostEqual(lid["area_m2"], 0.3744, places=12)
-        self.assertEqual(front["origin_m"], [0.0, -0.258, 0.156])
+        self.assert_float_vector(front["origin_m"], [0.0, -0.258, 0.156])
         self.assertAlmostEqual(front["primary_extent_m"], 0.468, places=12)
         self.assertAlmostEqual(front["secondary_extent_m"], 0.156, places=12)
-        self.assertEqual(front["primary_bounds_m"], [-0.234, 0.234])
-        self.assertEqual(front["secondary_bounds_m"], [-0.078, 0.078])
+        self.assert_float_vector(front["primary_bounds_m"], [-0.234, 0.234])
+        self.assert_float_vector(front["secondary_bounds_m"], [-0.078, 0.078])
         self.assertAlmostEqual(front["area_m2"], 0.073008, places=12)
         self.assertAlmostEqual(receipt["total_service_surface_area_m2"], 0.447408, places=12)
         self.assertTrue(receipt["materials_physical_sizes_match_source_domains"])
