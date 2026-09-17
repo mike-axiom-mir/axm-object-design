@@ -1,0 +1,59 @@
+{
+  "schema": "axm.object-source-box-face-indexed-uv-binding-family/v0.1",
+  "family_id": "object-source-box-face-indexed-uv-binding-001",
+  "prerequisites": {
+    "source_face_family": {
+      "path": "assets/modular-equipment-case-001/source-box-face-extraction-family-001.json",
+      "git_blob_sha": "105ea8f6e325d2ed18fe950f5158158ccf1f64e7",
+      "required_result": "PASS_BOUNDED_SOURCE_BOX_FACE_EXTRACTION_FAMILY"
+    },
+    "source_frame_family": {
+      "path": "assets/modular-equipment-case-001/source-box-face-uv-source-frame-rebind-family-001.json",
+      "git_blob_sha": "0f57ebb01fc21e02f0d2123390e9562d39e86783",
+      "required_result": "PASS_BOUNDED_SOURCE_BOX_FACE_UV_SOURCE_FRAME_REBIND_FAMILY"
+    },
+    "metric_rebind_family": {
+      "path": "assets/modular-equipment-case-001/source-box-face-uv-metric-domain-rebind-family-001.json",
+      "git_blob_sha": "edafbab0ae6d75caafd0022b2ca65f0974d36f89",
+      "required_result": "PASS_BOUNDED_SOURCE_BOX_FACE_UV_METRIC_DOMAIN_REBIND_FAMILY"
+    }
+  },
+  "parameter_contract": {
+    "maximum_surfaces": 2,
+    "variants_per_surface": 2,
+    "binding_domain": "SOURCE_GLOBAL_TRIANGLE_AND_VERTEX_INDEX_SPACE",
+    "uv_domain": "PER_SOURCE_VERTEX_ON_EXACT_SELECTED_PLANAR_FACE",
+    "surface_discovery": "FORBIDDEN",
+    "fallback": "FORBIDDEN",
+    "source_index_rewrite": "FORBIDDEN",
+    "automatic_source_uv_adoption": "FORBIDDEN",
+    "automatic_current_world_adoption": "FORBIDDEN",
+    "ordering": "CANONICAL_SURFACE_ID_THEN_VARIANT_ID_FOR_DIGEST"
+  },
+  "retained_surface_ids": [
+    "lid_inner_service_surface",
+    "front_service_panel_outer_service_surface"
+  ],
+  "failure_policy": "FAIL_CLOSED_EXACT_SOURCE_FACE_SOURCE_FRAME_AND_METRIC_REBIND_ONLY_NO_INDEX_REWRITE_NO_DISCOVERY_NO_FALLBACK_NO_ADOPTION",
+  "purpose": "Proceduralize the repeated final binding step between the two exact source-owned service-face segmentations and the already-proven review UV coordinates: emit explicit source-global triangle/vertex membership plus per-source-vertex and per-triangle-corner UV bindings for both materially different faces and both retained density variants. This is a source-space handoff manifest only; it does not split the production mesh, author source UV0, or adopt anything into the current Map world.",
+  "truth_boundary": {
+    "derived_source_index_binding_only": true,
+    "hard_surface_source_authority_preserved": true,
+    "hard_surface_frame_and_metric_authority_preserved": true,
+    "materials_review_uv_authority_preserved": true,
+    "source_geometry_changed": false,
+    "source_index_rewrite": false,
+    "source_uv_authored": false,
+    "production_uv_adopted": false,
+    "current_world_segmentation_adopted": false,
+    "current_world_uv0_adopted": false,
+    "material_assignment_changed": false,
+    "surface_discovery": false,
+    "fallback": false,
+    "runtime_or_engine_acceptance": false,
+    "art_direction_or_visual_qa_acceptance": false,
+    "uc_or_profession_fabric_promotion": false,
+    "canon": false,
+    "production_readiness": false
+  }
+}
