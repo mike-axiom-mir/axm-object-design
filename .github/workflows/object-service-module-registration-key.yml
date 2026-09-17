@@ -1,0 +1,43 @@
+name: Object service-module registration-key evidence
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  structural:
+    strategy:
+      matrix:
+        python-version: ['3.11', '3.13']
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Compile
+        run: python -m compileall tools tests
+      - name: Test full repository suite
+        run: python -m unittest discover -s tests -v
+      - name: Build exact registration-key evidence
+        if: matrix.python-version == '3.11'
+        run: |
+          python tools/verify_service_module_registration_key.py \
+            --host assets/modular-equipment-case-001/source.json \
+            --module assets/modular-equipment-case-001/utility-module-001.json \
+            --registration assets/modular-equipment-case-001/utility-module-registration-key-001.json \
+            --out evidence/service-module-registration-key
+          cp assets/modular-equipment-case-001/source.json evidence/service-module-registration-key/host-source.json
+          cp assets/modular-equipment-case-001/utility-module-001.json evidence/service-module-registration-key/module-source.json
+          cp assets/modular-equipment-case-001/utility-module-registration-key-001.json evidence/service-module-registration-key/registration-source.json
+          git rev-parse HEAD > evidence/service-module-registration-key/exact-head.txt
+      - name: Upload retained evidence
+        if: matrix.python-version == '3.11'
+        uses: actions/upload-artifact@v4
+        with:
+          name: utility-module-001-registration-key-evidence
+          path: evidence/service-module-registration-key
+          if-no-files-found: error
+          retention-days: 30
