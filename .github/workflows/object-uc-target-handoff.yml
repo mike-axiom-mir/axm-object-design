@@ -1,0 +1,154 @@
+name: Object UC target-host handoff evidence
+
+on:
+  pull_request:
+    paths:
+      - "assets/modular-equipment-case-001/**"
+      - "tools/build_modular_case.py"
+      - "tools/verify_service_module_fit.py"
+      - "tools/build_object_uc_target_handoff.py"
+      - "tests/test_uc_target_handoff.py"
+      - "target-proof/**"
+      - ".github/workflows/object-uc-target-handoff.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  exact-target-handoff:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      matrix:
+        python-version: ['3.11', '3.13']
+    steps:
+      - name: Checkout exact Object PR head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Checkout exact Universal Creation
+        uses: actions/checkout@v4
+        with:
+          repository: mike-axiom-mir/axm-universal-creation
+          ref: 646c69df21eb3b1f85ab4b005368bda827b37a14
+          path: .uc
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Compile and run complete Object tests
+        run: |
+          python -m compileall -q tools tests
+          python -m unittest discover -s tests -v
+
+      - name: Build exact source -> UC GLB handoff
+        run: |
+          rm -rf target-proof/generated
+          mkdir -p target-proof/generated
+          PYTHONPATH=.uc/src python tools/build_object_uc_target_handoff.py \
+            --uc-root .uc \
+            --expected-uc-commit 646c69df21eb3b1f85ab4b005368bda827b37a14 \
+            --out target-proof/generated
+          git rev-parse HEAD > target-proof/generated/exact-object-head.txt
+          git -C .uc rev-parse HEAD > target-proof/generated/exact-uc-head.txt
+
+      - name: Validate cross-repo handoff receipt
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          root=Path('target-proof/generated')
+          r=json.loads((root/'uc-target-handoff-receipt.json').read_text())
+          object_head=(root/'exact-object-head.txt').read_text().strip()
+          assert r['result']=='PASS_SOURCE_FRAME_BOUND_UC_GLB_HANDOFF_READY_FOR_TARGET_IMPORT',r
+          assert r['source_repository_head']==object_head,r
+          assert r['observed_uc_commit']=='646c69df21eb3b1f85ab4b005368bda827b37a14',r
+          assert r['socket_binding']['socket_name']=='right_service',r
+          assert r['socket_atom_preserved_exactly_by_uc_compile'] is True,r
+          assert abs(r['right_service_measured_body_clearance_m']-0.018)<1e-12,r
+          assert r['assembly_triangles']==824,r
+          assert r['uc_glb_verification']['passed'] is True,r
+          assert r['truth_boundary']['uc_compiled_rotation_euler_interpreted_as_renderer_semantics'] is False,r
+          assert r['truth_boundary']['target_host_import_observed'] is False,r
+          print(json.dumps(r,indent=2))
+          PY
+
+      - name: Download pinned Godot 4.7.2
+        if: matrix.python-version == '3.11'
+        env:
+          GODOT_URL: https://github.com/godotengine/godot-builds/releases/download/4.7.2-stable/Godot_v4.7.2-stable_linux.x86_64.zip
+          GODOT_SHA256: cadd3204e728a35d3f13adb7fd0d7902636b79f6b95c40c265eb73b6c35329e4
+        run: |
+          set -euo pipefail
+          mkdir -p .godot-bin
+          curl --fail --location --retry 3 --retry-delay 2 "$GODOT_URL" --output .godot-bin/godot.zip
+          echo "$GODOT_SHA256  .godot-bin/godot.zip" | sha256sum --check --strict
+          unzip -q .godot-bin/godot.zip -d .godot-bin
+          chmod +x .godot-bin/Godot_v4.7.2-stable_linux.x86_64
+          .godot-bin/Godot_v4.7.2-stable_linux.x86_64 --version
+
+      - name: Install virtual display when needed
+        if: matrix.python-version == '3.11'
+        run: |
+          if ! command -v xvfb-run >/dev/null 2>&1; then
+            sudo apt-get update
+            sudo apt-get install -y xvfb
+          fi
+
+      - name: Import exact UC GLB in Godot and capture proof
+        if: matrix.python-version == '3.11'
+        run: |
+          rm -f target-proof/target-import-runtime-receipt.json target-proof/target-import-right-service.png
+          xvfb-run --auto-servernum --server-args="-screen 0 1000x760x24" \
+            .godot-bin/Godot_v4.7.2-stable_linux.x86_64 \
+            --display-driver x11 \
+            --rendering-method gl_compatibility \
+            --path target-proof \
+            --script observe.gd
+
+      - name: Validate exact target-host import receipt
+        if: matrix.python-version == '3.11'
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          root=Path('target-proof')
+          source=json.loads((root/'generated/uc-target-handoff-receipt.json').read_text())
+          target=json.loads((root/'target-import-runtime-receipt.json').read_text())
+          assert target['state']=='PASS_SOURCE_FRAME_BOUND_UC_GLB_GODOT_HANDOFF',target
+          assert target['glb_sha256']==source['assembly_glb_sha256'],(source,target)
+          assert target['source_repository_head']==source['source_repository_head'],(source,target)
+          assert target['imported']['mesh_instances']==2,target
+          assert target['imported']['triangles']==824,target
+          assert target['capture']['coverage']['changed_pixels']>=3000,target
+          assert target['truth_boundary']['dynamic_runtime_socket_attachment'] is False,target
+          assert target['truth_boundary']['uc_rotation_euler_renderer_semantics'] is False,target
+          assert (root/'target-import-right-service.png').stat().st_size>3000
+          print(json.dumps(target,indent=2))
+          PY
+
+      - name: Retain exact Technical Art handoff evidence
+        if: matrix.python-version == '3.11' && always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: object-uc-target-handoff-${{ github.event.pull_request.head.sha || github.sha }}
+          path: |
+            assets/modular-equipment-case-001/source.json
+            assets/modular-equipment-case-001/utility-module-001.json
+            target-proof/generated/modular-equipment-case-001.obj
+            target-proof/generated/uc-socket-package.json
+            target-proof/generated/validated-package.json
+            target-proof/generated/compiled-instance.json
+            target-proof/generated/object-right-service-assembly.surface.json
+            target-proof/generated/object-right-service-assembly.glb
+            target-proof/generated/uc-target-handoff-receipt.json
+            target-proof/generated/exact-object-head.txt
+            target-proof/generated/exact-uc-head.txt
+            target-proof/target-import-runtime-receipt.json
+            target-proof/target-import-right-service.png
+          if-no-files-found: warn
+          retention-days: 30
