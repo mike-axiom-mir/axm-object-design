@@ -1,0 +1,78 @@
+{
+  "schema": "axm.object-hard-surface-service-surface-metric-domain/v0.1",
+  "asset_id": "modular-equipment-case-001",
+  "host_source_sha256": "49b1f9ed9865893d6de6f1ec8f069576732df694853fde4e3fcff366de32644a",
+  "coordinate_system": "+X right, +Y forward, +Z up",
+  "reference_frame_contract": {
+    "path": "assets/modular-equipment-case-001/service-surface-reference-frames-001.json",
+    "required_schema": "axm.object-hard-surface-service-surface-reference-frames/v0.1",
+    "relationship": "metric domains extend the already source-owned planar frame; they do not replace surface identity or frame authority"
+  },
+  "purpose": "source-own exact metric two-dimensional domains for the already-owned manufactured service surfaces so Materials, Technical Art and Runtime can bind physical extent without rediscovering box dimensions or turning UV/atlas choices into source geometry semantics",
+  "domains": [
+    {
+      "surface_id": "lid_inner_service_surface",
+      "component_name": "lid_shell",
+      "selector": "source_local_min_z_face",
+      "origin_policy": "selected_face_center",
+      "domain_units": "meters",
+      "primary_extent_m": 0.78,
+      "secondary_extent_m": 0.48,
+      "primary_bounds_m": [-0.39, 0.39],
+      "secondary_bounds_m": [-0.24, 0.24],
+      "area_m2": 0.3744,
+      "boundary_semantics": "CLOSED_RECTANGLE_ON_SELECTED_SOURCE_FACE"
+    },
+    {
+      "surface_id": "front_service_panel_outer_service_surface",
+      "component_name": "front_service_panel",
+      "selector": "source_local_min_y_face",
+      "origin_policy": "selected_face_center",
+      "domain_units": "meters",
+      "primary_extent_m": 0.468,
+      "secondary_extent_m": 0.156,
+      "primary_bounds_m": [-0.234, 0.234],
+      "secondary_bounds_m": [-0.078, 0.078],
+      "area_m2": 0.073008,
+      "boundary_semantics": "CLOSED_RECTANGLE_ON_SELECTED_SOURCE_FACE"
+    }
+  ],
+  "downstream_physical_size_observation": {
+    "repository": "mike-axiom-mir/axm-object-design",
+    "pull_request": 6,
+    "head": "0515a2d5ad2c7a1eb545f2b7b327b7367530dfca",
+    "path": "lookdev/service_dark_atlas_pack_review_001.json",
+    "git_blob_sha": "2b95fcc1fcc523576eca08dbf47a140a727ab598",
+    "schema": "axm.object-service-dark-atlas-pack-review/v0.1",
+    "relationship": "compatibility observation only; Materials physical_size_m must agree with source metric domains, while UV scale, pixels-per-meter, padding, atlas placement and appearance remain Materials-owned"
+  },
+  "authority": {
+    "hard_surface_owns_surface_metric_domain": true,
+    "hard_surface_authors_uv": false,
+    "hard_surface_selects_texel_density": false,
+    "hard_surface_selects_atlas_dimensions": false,
+    "hard_surface_selects_atlas_rectangles": false,
+    "hard_surface_assigns_material": false,
+    "technical_art_transport_adopted": false,
+    "runtime_representation_adopted": false
+  },
+  "truth_boundary": {
+    "host_source_geometry_changed": false,
+    "existing_surface_identities_changed": false,
+    "existing_surface_reference_frames_changed": false,
+    "surface_metric_domains_source_owned": true,
+    "uv_assignment": false,
+    "texel_density_acceptance": false,
+    "atlas_layout_acceptance": false,
+    "material_assignment": false,
+    "texture_assignment": false,
+    "tangent_space_acceptance": false,
+    "engine_import_acceptance": false,
+    "runtime_performance_acceptance": false,
+    "art_direction_acceptance": false,
+    "visual_qa_acceptance": false,
+    "manufacturing_validity": false,
+    "canon": false,
+    "production_readiness": false
+  }
+}
