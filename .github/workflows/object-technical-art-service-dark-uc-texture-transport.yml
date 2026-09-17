@@ -149,6 +149,7 @@ jobs:
               --uc-root _donor/axm-universal-creation \
               --expected-materials-head 4c12a0a57f6aa8778cff41efad321e13567c6c91 \
               --expected-uc-head 6ad6ad51e6f40a3dc1d0cccd3af7f7c7ab28fb33 \
+              --out creations/technical-art-proof/generated \
               --run-godot \
               > technical-art-proof/proof.log 2>&1
           code=$?
@@ -161,7 +162,7 @@ jobs:
           python - <<'PY'
           import json
           from pathlib import Path
-          root=Path("technical-art-proof/generated")
+          root=Path("creations/technical-art-proof/generated")
           r=json.loads((root/"technical-art-uc-texture-transport-receipt.json").read_text())
           assert r["result"]=="PASS_OBJECT_SERVICE_DARK_EXACT_ATLAS_RGB_TO_CURRENT_UC_TEXTURED_GLB_TO_GODOT",r
           assert r["technical_art_head"]==Path("technical-art-proof/technical-art-head.txt").read_text().strip(),r
@@ -191,7 +192,7 @@ jobs:
               --uc-root _donor/axm-universal-creation \
               --expected-materials-head 4c12a0a57f6aa8778cff41efad321e13567c6c91 \
               --expected-uc-head 6ad6ad51e6f40a3dc1d0cccd3af7f7c7ab28fb33 \
-              --out technical-art-proof/negative-one-texel \
+              --out creations/technical-art-proof/negative-one-texel \
               --uv-delta-px 1 \
               > technical-art-proof/negative-one-texel.log 2>&1
           code=$?
@@ -209,7 +210,7 @@ jobs:
             technical-art-proof/technical-art-head.txt
             technical-art-proof/uc-head.txt
             technical-art-proof/proof.log
-            technical-art-proof/generated/**
+            creations/technical-art-proof/generated/**
             technical-art-proof/negative-one-texel.log
             lookdev/service_dark_atlas_pack_review_001.json
             lookdev/service_dark_uv_density_family_001.json
