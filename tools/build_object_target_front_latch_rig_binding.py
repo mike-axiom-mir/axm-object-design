@@ -7,13 +7,20 @@ from pathlib import Path
 from typing import Any
 
 
-SCHEMA = "axm.object-target-front-latch-rig-binding/v0.1"
-RESULT = "PASS_EXACT_SOURCE_OWNED_FRONT_LATCH_RIG_TO_UC_TARGET_BINDING_READY"
-SOURCE_RIG_HEAD = "a1acd2bcb2074f41e536562f2673508e2cb0a4d5"
-SOURCE_INTERFACE_HEAD = "6086f39a3da344c57a68653f90d040e03e04cec2"
+SCHEMA = "axm.object-target-front-latch-rig-binding/v0.2"
+RESULT = "PASS_SOURCE_OWNED_FRONT_LATCH_CAPTURE_ENVELOPE_TO_UC_TARGET_BINDING_READY"
+SOURCE_RIG_HEAD = "3a17a02528918ec63a46e954e883179f752c8151"
+SOURCE_RIG_BINDING_BLOB = "0331d30528f58d353fa9396d7ca129a020e8c6ce"
+SOURCE_MECHANICAL_AUTHORITY_HEAD = "56aaaecb45b520fdff9e08fe2d4ea42562f5690f"
+SOURCE_INTERFACE_SHA256 = "bcbbe098371eb702bc9289a97370744093105925202eda6036bdced6e25e34d3"
+SOURCE_CAPTURE_BLOB = "b96df9c5469dffb20e674edd4b176941eda81b8e"
+PRIOR_RIGGING_HEAD = "a1acd2bcb2074f41e536562f2673508e2cb0a4d5"
 TECH_ART_HEAD = "965fb2f24dbd0b0cbb748d9f8b8712d62966315f"
 UC_HEAD = "6dc465987e01362264f88b7cef4213609ae50763"
 SOURCE_SHA256 = "49b1f9ed9865893d6de6f1ec8f069576732df694853fde4e3fcff366de32644a"
+EXPECTED_SOURCE_ANGLES = [0.0, 9.25, 9.30, 25.0, 48.65, 48.70, 50.0]
+EXPECTED_CAPTURE_BRACKET = [9.25, 9.30]
+EXPECTED_Z_AABB_BRACKET = [48.65, 48.70]
 
 
 def sha256_file(path: Path) -> str:
@@ -27,6 +34,10 @@ def source_to_target(point: list[float] | tuple[float, float, float]) -> list[fl
 
 def _float_list(values: Any) -> list[float]:
     return [float(value) for value in values]
+
+
+def _mapped_bracket(values: list[float]) -> list[float]:
+    return [-float(values[1]), -float(values[0])]
 
 
 def build_binding(
@@ -51,28 +62,61 @@ def build_binding(
     interface = json.loads(source_interface_path.read_text(encoding="utf-8"))
     tech = json.loads(tech_receipt_path.read_text(encoding="utf-8"))
 
-    if source_binding.get("schema") != "axm.object-front-latch-source-rig-binding/v0.1":
+    if source_binding.get("schema") != "axm.object-front-latch-source-rig-binding/v0.2":
         raise AssertionError("unexpected source Rigging binding schema")
+    if source_binding.get("binding_id") != "front-latch-source-rig-binding-003":
+        raise AssertionError("source Rigging binding identity drift")
     if source_binding.get("asset_id") != "modular-equipment-case-001":
         raise AssertionError("source Rigging asset identity drift")
     if source_binding.get("host_source_sha256") != SOURCE_SHA256:
         raise AssertionError("source Rigging host source identity drift")
-    source_ref = source_binding.get("source_interface", {})
-    if source_ref.get("head") != SOURCE_INTERFACE_HEAD:
-        raise AssertionError("source interface authority head drift")
-    observed_interface_sha = sha256_file(source_interface_path)
-    if source_ref.get("sha256") != observed_interface_sha:
-        raise AssertionError("source interface byte identity drift")
-    if source_ref.get("role") != "CURRENT_SOURCE_INTERFACE_AUTHORITY":
-        raise AssertionError("source interface is not current authority")
+
+    mechanical = source_binding.get("source_mechanical_authority", {})
+    if mechanical.get("head") != SOURCE_MECHANICAL_AUTHORITY_HEAD:
+        raise AssertionError("source mechanical authority head drift")
+    if mechanical.get("role") != "CURRENT_SOURCE_PIVOT_AND_PROOF_VOLUME_CAPTURE_AUTHORITY":
+        raise AssertionError("source mechanical authority role drift")
+    pivot_ref = mechanical.get("pivot_interface", {})
+    if pivot_ref.get("path") != "assets/modular-equipment-case-001/front-latch-pivot-interface-001.json":
+        raise AssertionError("source pivot-interface path drift")
+    if pivot_ref.get("sha256") != SOURCE_INTERFACE_SHA256:
+        raise AssertionError("source pivot-interface declared identity drift")
+    capture_ref = mechanical.get("capture_envelope", {})
+    if capture_ref.get("git_blob_sha") != SOURCE_CAPTURE_BLOB:
+        raise AssertionError("source capture-envelope blob drift")
+    if capture_ref.get("required_result") != "PASS_SOURCE_OWNED_FRONT_LATCH_CAPTURE_TO_CLEARANCE_ENVELOPE":
+        raise AssertionError("source capture-envelope authority result drift")
+
+    prior = source_binding.get("prior_rigging_binding", {})
+    if prior.get("head") != PRIOR_RIGGING_HEAD:
+        raise AssertionError("prior Rigging lineage drift")
+    if prior.get("role") != "HISTORICAL_PRE_CAPTURE_ENVELOPE_CLASSIFICATION":
+        raise AssertionError("historical pre-capture Rigging binding was re-promoted")
     if source_binding.get("historical_rigging_observation", {}).get("role") != "PROVENANCE_ONLY_NOT_CURRENT_INTERFACE_AUTHORITY":
         raise AssertionError("historical Rigging observation was re-promoted")
+
     if _float_list(source_binding.get("joint_axis", [])) != [1.0, 0.0, 0.0]:
         raise AssertionError("source Rigging joint axis drift")
     source_angles = _float_list(source_binding.get("pose_samples_deg", []))
-    if source_angles != [0.0, 25.0, 50.0]:
-        raise AssertionError("source Rigging representative pose schedule drift")
+    if source_angles != EXPECTED_SOURCE_ANGLES:
+        raise AssertionError("source Rigging representative boundary-pose schedule drift")
+    capture_bracket = _float_list(source_binding.get("required_capture_transition_bracket_deg", []))
+    z_aabb_bracket = _float_list(source_binding.get("required_z_aabb_only_transition_bracket_deg", []))
+    if capture_bracket != EXPECTED_CAPTURE_BRACKET:
+        raise AssertionError("source proof-volume capture bracket drift")
+    if z_aabb_bracket != EXPECTED_Z_AABB_BRACKET:
+        raise AssertionError("source Z-AABB broad-phase bracket drift")
+    if capture_bracket == z_aabb_bracket:
+        raise AssertionError("source capture and Z-AABB broad-phase brackets were collapsed")
+    if float(source_binding.get("required_minimum_threshold_separation_deg", 0.0)) < 39.0:
+        raise AssertionError("source capture/broad-phase threshold separation weakened")
+    semantics = source_binding.get("capture_semantics", {})
+    if semantics.get("z_aabb_transition") != "BROAD_PHASE_AXIS_SEPARATION_ONLY_NOT_CAPTURE_THRESHOLD":
+        raise AssertionError("source Z-AABB broad-phase semantics drift")
 
+    observed_interface_sha = sha256_file(source_interface_path)
+    if observed_interface_sha != SOURCE_INTERFACE_SHA256:
+        raise AssertionError("source interface byte identity drift")
     if interface.get("schema") != "axm.object-front-latch-pivot-interface/v0.1":
         raise AssertionError("unexpected source interface schema")
     if interface.get("host_source_sha256") != SOURCE_SHA256:
@@ -117,10 +161,6 @@ def build_binding(
     if len(stations) != 2:
         raise AssertionError("bounded target proof expects exactly two latch stations")
 
-    # Object source -> UC/glTF is [x,y,z] -> [x,z,y], an orientation-reversing map.
-    # The source Rigging proof uses positive +X rotations. Under this mapping that exact
-    # axial rotation becomes a negative +X target rotation; this is coordinate conversion,
-    # not retiming or reauthoring.
     target_angles = [-angle for angle in source_angles]
     target_stations: list[dict[str, Any]] = []
     for station in stations:
@@ -154,9 +194,11 @@ def build_binding(
         "asset_id": "modular-equipment-case-001",
         "source_sha256": SOURCE_SHA256,
         "source_rig_donor_head": SOURCE_RIG_HEAD,
+        "source_rig_binding_git_blob": SOURCE_RIG_BINDING_BLOB,
         "source_rig_binding_sha256": sha256_file(source_rig_binding_path),
-        "source_interface_head": SOURCE_INTERFACE_HEAD,
+        "source_mechanical_authority_head": SOURCE_MECHANICAL_AUTHORITY_HEAD,
         "source_interface_sha256": observed_interface_sha,
+        "source_capture_envelope_git_blob": SOURCE_CAPTURE_BLOB,
         "technical_art_donor_head": TECH_ART_HEAD,
         "technical_art_receipt_sha256": sha256_file(tech_receipt_path),
         "technical_art_rebound_glb_sha256": observed_glb_sha,
@@ -168,14 +210,23 @@ def build_binding(
         "target_x_rotation_sign": -1,
         "representative_source_angles_deg": source_angles,
         "representative_target_angles_deg": target_angles,
+        "source_capture_transition_bracket_deg": capture_bracket,
+        "target_capture_transition_bracket_x_deg": _mapped_bracket(capture_bracket),
+        "source_z_aabb_only_transition_bracket_deg": z_aabb_bracket,
+        "target_z_aabb_only_transition_bracket_x_deg": _mapped_bracket(z_aabb_bracket),
         "stations": target_stations,
         "fixed_target_components": ["body_shell", "lid_shell", *target_keepers],
-        "failure_policy": "FAIL_CLOSED_ON_SOURCE_RIG_INTERFACE_TECH_ART_UC_GLB_HIERARCHY_COORDINATE_OR_REPRESENTATIVE_TARGET_POSE_DRIFT",
+        "failure_policy": "FAIL_CLOSED_ON_SOURCE_RIG_MECHANICAL_AUTHORITY_CAPTURE_CLASSIFICATION_INTERFACE_TECH_ART_UC_GLB_HIERARCHY_COORDINATE_OR_BOUNDARY_POSE_DRIFT",
         "truth_boundary": {
             "exact_source_rig_identity_pinned": True,
-            "exact_source_owned_interface_identity_pinned": True,
+            "exact_source_owned_mechanical_authority_pinned": True,
+            "proof_volume_capture_and_z_aabb_broad_phase_kept_distinct": True,
             "exact_technical_art_target_identity_pinned": True,
             "coordinate_handedness_conversion_explicit": True,
+            "static_target_boundary_pose_fidelity_only": True,
+            "target_host_independently_proves_capture_contact": False,
+            "target_host_independently_proves_z_aabb_separation": False,
+            "continuous_between_pose_motion_accepted": False,
             "animation_timing_or_clip_acceptance": False,
             "animationplayer_acceptance": False,
             "runtime_controller_or_state_machine_acceptance": False,

@@ -7,10 +7,10 @@ const TOLERANCE_M := 0.000001
 const TRANSFORM_TOLERANCE := 0.000001
 
 var receipt := {
-    "schema": "axm.object-target-front-latch-rig-godot/v0.1",
+    "schema": "axm.object-target-front-latch-rig-godot/v0.2",
     "state": "NOT_RUN",
     "promotion_effect": "NONE",
-    "observer_boundary": "Godot 4.7.2 GL Compatibility GLTFDocument import of exact Technical Art rebound GLB; direct static 0/25/50 degree source-rig poses only, no AnimationPlayer/controller/physics/gameplay acceptance."
+    "observer_boundary": "Godot 4.7.2 GL Compatibility GLTFDocument import of exact Technical Art rebound GLB; direct static source-rig boundary poses only. Source capture/Z-AABB labels are carried as pinned semantics, not independently re-proved by this target observer. No AnimationPlayer/controller/physics/gameplay acceptance."
 }
 
 func read_json(path: String) -> Dictionary:
@@ -114,8 +114,8 @@ func rotation_about_pivot_x(pivot: Vector3, angle_deg: float) -> Transform3D:
 
 func _initialize() -> void:
     var binding := read_json(BINDING_PATH)
-    if binding.get("result") != "PASS_EXACT_SOURCE_OWNED_FRONT_LATCH_RIG_TO_UC_TARGET_BINDING_READY":
-        fail("exact source-owned target latch binding missing or not green")
+    if binding.get("result") != "PASS_SOURCE_OWNED_FRONT_LATCH_CAPTURE_ENVELOPE_TO_UC_TARGET_BINDING_READY":
+        fail("exact current source-owned target latch binding missing or not green")
         return
     if not FileAccess.file_exists(GLB_PATH):
         fail("exact rebound target GLB missing")
@@ -185,8 +185,16 @@ func _initialize() -> void:
 
     var source_angles = binding.get("representative_source_angles_deg", [])
     var target_angles = binding.get("representative_target_angles_deg", [])
-    if source_angles.size() != 3 or target_angles.size() != 3:
-        fail("expected exact 0/25/50 representative schedule")
+    var expected_source := [0.0, 9.25, 9.30, 25.0, 48.65, 48.70, 50.0]
+    var expected_target := [-0.0, -9.25, -9.30, -25.0, -48.65, -48.70, -50.0]
+    if source_angles != expected_source or target_angles != expected_target:
+        fail("expected exact seven-pose source boundary schedule and handedness-mapped target schedule")
+        return
+    if binding.get("source_capture_transition_bracket_deg", []) != [9.25, 9.30]:
+        fail("source capture bracket identity drift")
+        return
+    if binding.get("source_z_aabb_only_transition_bracket_deg", []) != [48.65, 48.70]:
+        fail("source Z-AABB broad-phase bracket identity drift")
         return
 
     var max_expected_transform_residual := 0.0
@@ -289,9 +297,11 @@ func _initialize() -> void:
         fail("neutral return transform drift exceeded tolerance")
         return
 
-    receipt["state"] = "PASS_EXACT_SOURCE_OWNED_FRONT_LATCH_RIG_ON_UC_TARGET_HIERARCHY"
+    receipt["state"] = "PASS_CURRENT_SOURCE_CAPTURE_ENVELOPE_RIG_ON_UC_TARGET_HIERARCHY"
     receipt["source_rig_donor_head"] = binding["source_rig_donor_head"]
-    receipt["source_interface_head"] = binding["source_interface_head"]
+    receipt["source_mechanical_authority_head"] = binding["source_mechanical_authority_head"]
+    receipt["source_capture_transition_bracket_deg"] = binding["source_capture_transition_bracket_deg"]
+    receipt["source_z_aabb_only_transition_bracket_deg"] = binding["source_z_aabb_only_transition_bracket_deg"]
     receipt["technical_art_donor_head"] = binding["technical_art_donor_head"]
     receipt["uc_donor_head"] = binding["uc_donor_head"]
     receipt["glb_sha256"] = sha256_file(GLB_PATH)
