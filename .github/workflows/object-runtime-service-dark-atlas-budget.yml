@@ -1,0 +1,330 @@
+name: Object Runtime service-dark atlas height budget
+
+on:
+  push:
+    branches: [studio/runtime-object-service-dark-atlas-height-budget-001]
+    paths:
+      - "runtime/service_dark_atlas_height_budget_001.json"
+      - "tools/build_object_service_dark_runtime_atlas_budget_evidence.py"
+      - "lookdev-proof/service_dark_atlas_runtime_budget_observe.gd"
+      - ".github/workflows/object-runtime-service-dark-atlas-budget.yml"
+  pull_request:
+    paths:
+      - "runtime/service_dark_atlas_height_budget_001.json"
+      - "tools/build_object_service_dark_runtime_atlas_budget_evidence.py"
+      - "lookdev-proof/service_dark_atlas_runtime_budget_observe.gd"
+      - ".github/workflows/object-runtime-service-dark-atlas-budget.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  MATERIALS_HEAD: 4c12a0a57f6aa8778cff41efad321e13567c6c91
+  MATERIALS_ATLAS_PATH: lookdev/service_dark_atlas_pack_review_001.json
+  MATERIALS_ATLAS_BLOB: 2b95fcc1fcc523576eca08dbf47a140a727ab598
+
+jobs:
+  exact-runtime-atlas-height-budget:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout exact Runtime head
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Bind exact Runtime and Materials identities
+        run: |
+          set -euo pipefail
+          mkdir -p runtime-proof/generated lookdev-proof/generated
+          git rev-parse HEAD > runtime-proof/generated/exact-runtime-head.txt
+          echo "EXACT_RUNTIME_HEAD=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
+          git cat-file -e "$MATERIALS_HEAD^{commit}"
+          git merge-base --is-ancestor "$MATERIALS_HEAD" HEAD
+          observed_blob="$(git rev-parse "$MATERIALS_HEAD:$MATERIALS_ATLAS_PATH")"
+          test "$observed_blob" = "$MATERIALS_ATLAS_BLOB"
+          printf '%s\n' "$MATERIALS_HEAD" > runtime-proof/generated/exact-materials-head.txt
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Compile and run complete Object suite
+        run: |
+          python -m compileall -q tools tests
+          python -m unittest discover -s tests -v
+
+      - name: Build bounded Runtime atlas budget packet
+        run: |
+          python tools/build_object_service_dark_runtime_atlas_budget_evidence.py \
+            --exact-head "$EXACT_RUNTIME_HEAD"
+
+      - name: Prove too-short atlas mutation fails closed
+        run: |
+          python - <<'PY'
+          import json, subprocess, sys, tempfile
+          from pathlib import Path
+          src=Path('runtime/service_dark_atlas_height_budget_001.json')
+          data=json.loads(src.read_text())
+          data['candidate']['height_px']=380
+          bad=Path(tempfile.mkdtemp())/'bad-runtime-atlas.json'
+          bad.write_text(json.dumps(data))
+          cmd=[
+            sys.executable,'tools/build_object_service_dark_runtime_atlas_budget_evidence.py',
+            '--runtime',str(bad),'--exact-head','NEGATIVE_CONTROL',
+            '--out',str(bad.parent/'out'),
+          ]
+          proc=subprocess.run(cmd,capture_output=True,text=True)
+          assert proc.returncode != 0,(proc.stdout,proc.stderr)
+          combined=proc.stdout+proc.stderr
+          assert '512x384' in combined or 'clips required padded surface' in combined,combined
+          print('too-short / drifted atlas candidate rejected as expected')
+          PY
+
+      - name: Rebuild exact base material payload
+        run: python tools/build_object_material_lookdev_evidence.py
+
+      - name: Materialize exact Animation, Rigging and latch-ownership donors
+        env:
+          ANIMATION_COMMIT: 12a350fc38f67348f342cd0e53ed6b16383b789d
+          RIG_COMMIT: 4b72c9918c5fc1e89bd18a0be24fb4afac6e7775
+          LATCH_OWNERSHIP_COMMIT: d3fa10a270faae7925811f44f03381fe5c5d0215
+        run: |
+          set -euo pipefail
+          git fetch --no-tags origin \
+            studio/animation-object-lid-open-close-001 \
+            studio/rigging-object-lid-articulation-001 \
+            studio/hard-surface-front-latch-ownership-001
+          git cat-file -e "$ANIMATION_COMMIT^{commit}"
+          git cat-file -e "$RIG_COMMIT^{commit}"
+          git cat-file -e "$LATCH_OWNERSHIP_COMMIT^{commit}"
+          git show "$ANIMATION_COMMIT:assets/modular-equipment-case-001/lid-motion-clip.json" > lookdev-proof/generated/lid-motion-clip.json
+          git show "$RIG_COMMIT:assets/modular-equipment-case-001/articulation.json" > lookdev-proof/generated/articulation.json
+          git show "$LATCH_OWNERSHIP_COMMIT:assets/modular-equipment-case-001/front-latch-ownership-001.json" > lookdev-proof/generated/front-latch-ownership-001.json
+
+      - name: Rebuild exact owner-bound articulation payload
+        run: python tools/build_object_material_articulation_evidence.py
+
+      - name: Materialize exact source-owned inner-lid surface identity
+        env:
+          SOURCE_SURFACE_COMMIT: e67353416209604aa50ad3ba57f71336f4384349
+          SOURCE_SURFACE_PATH: assets/modular-equipment-case-001/lid-inner-surface-identity-001.json
+          SOURCE_SURFACE_BLOB: 873c03a73042213255c65df63cdff49edcf10a6c
+        run: |
+          set -euo pipefail
+          git fetch --no-tags origin "$SOURCE_SURFACE_COMMIT" --depth=1
+          git cat-file -e "$SOURCE_SURFACE_COMMIT^{commit}"
+          observed_blob="$(git rev-parse "$SOURCE_SURFACE_COMMIT:$SOURCE_SURFACE_PATH")"
+          test "$observed_blob" = "$SOURCE_SURFACE_BLOB"
+          git show "$SOURCE_SURFACE_COMMIT:$SOURCE_SURFACE_PATH" > lookdev-proof/generated/lid-inner-surface-identity-001.json
+
+      - name: Rebuild exact source-owned inner-lid material payload
+        run: |
+          python tools/build_object_inner_lid_material_evidence.py \
+            --source-surface-identity lookdev-proof/generated/lid-inner-surface-identity-001.json
+
+      - name: Rebuild exact shared service-dark UV-density payload
+        run: |
+          python tools/build_object_service_dark_uv_density_family_evidence.py \
+            --exact-head "$MATERIALS_HEAD"
+
+      - name: Rebuild exact Materials 512 atlas payload
+        run: |
+          python tools/build_object_service_dark_atlas_pack_evidence.py \
+            --exact-head "$MATERIALS_HEAD"
+          cp runtime/service_dark_atlas_height_budget_001.json lookdev-proof/generated/service_dark_atlas_height_budget_001.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          b=json.loads(Path('runtime-proof/generated/service_dark_atlas_height_budget_build_receipt.json').read_text())
+          m=json.loads(Path('lookdev-proof/generated/service_dark_atlas_pack_build_receipt.json').read_text())
+          p=json.loads(Path('lookdev-proof/generated/object_service_dark_atlas_pack_payload.json').read_text())
+          assert b['result']=='PASS_OBJECT_SERVICE_DARK_ATLAS_HEIGHT_BUDGET_PACKET',b
+          assert b['materials_head']=='4c12a0a57f6aa8778cff41efad321e13567c6c91',b
+          assert b['maximum_required_padded_extent_px']==[422,382],b
+          assert b['candidate_spare_extent_px']==[90,2],b
+          assert b['control_base_rgba8_bytes']==1048576,b
+          assert b['candidate_base_rgba8_bytes']==786432,b
+          assert b['base_rgba8_bytes_saved']==262144,b
+          assert abs(b['base_rgba8_reduction_fraction']-0.25)<1e-12,b
+          assert m['atlas_size_px']==[512,512] and m['pixels_per_meter']==500 and m['padding_px']==16,m
+          assert p['exact_materials_head']=='4c12a0a57f6aa8778cff41efad321e13567c6c91',p
+          print(json.dumps({'runtime_budget':b,'materials_atlas':m},indent=2))
+          PY
+
+      - name: Download pinned Godot 4.7.2
+        env:
+          GODOT_URL: https://github.com/godotengine/godot-builds/releases/download/4.7.2-stable/Godot_v4.7.2-stable_linux.x86_64.zip
+          GODOT_SHA256: cadd3204e728a35d3f13adb7fd0d7902636b79f6b95c40c265eb73b6c35329e4
+        run: |
+          set -euo pipefail
+          mkdir -p .godot-bin
+          curl --fail --location --retry 3 --retry-delay 2 "$GODOT_URL" --output .godot-bin/godot.zip
+          echo "$GODOT_SHA256  .godot-bin/godot.zip" | sha256sum --check --strict
+          unzip -q .godot-bin/godot.zip -d .godot-bin
+          chmod +x .godot-bin/Godot_v4.7.2-stable_linux.x86_64
+          .godot-bin/Godot_v4.7.2-stable_linux.x86_64 --version
+
+      - name: Install proof-host dependencies
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check pillow
+          if ! command -v xvfb-run >/dev/null 2>&1; then
+            sudo apt-get update
+            sudo apt-get install -y xvfb
+          fi
+
+      - name: Measure exact 512x512 control
+        env:
+          AXM_RUNTIME_ATLAS_MODE: control
+        run: |
+          set -euo pipefail
+          rm -f lookdev-proof/service-dark-runtime-atlas-control-*.png lookdev-proof/service-dark-runtime-atlas-control-receipt.json
+          xvfb-run --auto-servernum --server-args="-screen 0 1000x760x24" \
+            .godot-bin/Godot_v4.7.2-stable_linux.x86_64 \
+            --display-driver x11 \
+            --rendering-method gl_compatibility \
+            --path lookdev-proof \
+            --script service_dark_atlas_runtime_budget_observe.gd
+
+      - name: Measure exact 512x384 candidate
+        env:
+          AXM_RUNTIME_ATLAS_MODE: candidate
+        run: |
+          set -euo pipefail
+          rm -f lookdev-proof/service-dark-runtime-atlas-candidate-*.png lookdev-proof/service-dark-runtime-atlas-candidate-receipt.json
+          xvfb-run --auto-servernum --server-args="-screen 0 1000x760x24" \
+            .godot-bin/Godot_v4.7.2-stable_linux.x86_64 \
+            --display-driver x11 \
+            --rendering-method gl_compatibility \
+            --path lookdev-proof \
+            --script service_dark_atlas_runtime_budget_observe.gd
+
+      - name: Compare proof-host memory counters and retained frames
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          from PIL import Image, ImageChops
+
+          root=Path('lookdev-proof')
+          control=json.loads((root/'service-dark-runtime-atlas-control-receipt.json').read_text())
+          candidate=json.loads((root/'service-dark-runtime-atlas-candidate-receipt.json').read_text())
+          budget=json.loads(Path('runtime-proof/generated/service_dark_atlas_height_budget_build_receipt.json').read_text())
+          assert control['state']=='PASS_RUNTIME_ATLAS_MODE_CAPTURE',control
+          assert candidate['state']=='PASS_RUNTIME_ATLAS_MODE_CAPTURE',candidate
+          assert control['mode']=='control' and candidate['mode']=='candidate'
+          assert control['exact_materials_head']==candidate['exact_materials_head']=='4c12a0a57f6aa8778cff41efad321e13567c6c91'
+          assert control['atlas_dimensions_px']==[512,512],control
+          assert candidate['atlas_dimensions_px']==[512,384],candidate
+          assert control['pixels_per_meter']==candidate['pixels_per_meter']==500
+          assert control['padding_px']==candidate['padding_px']==16
+          assert candidate['atlas_image_rgba8_mip_bytes'] < control['atlas_image_rgba8_mip_bytes'],(control,candidate)
+
+          pairs=[]
+          changed_total=0
+          changed_over_one_lsb_total=0
+          max_channel_delta=0
+          texture_deltas=[]
+          buffer_deltas=[]
+          video_deltas=[]
+          for pose in sorted(control['poses']):
+              assert pose in candidate['poses'],pose
+              for context in sorted(control['poses'][pose]):
+                  c=control['poses'][pose][context]
+                  n=candidate['poses'][pose][context]
+                  assert n['rendering']['draw_calls_in_frame'] <= c['rendering']['draw_calls_in_frame'],(pose,context,c,n)
+                  assert n['rendering']['objects_in_frame'] <= c['rendering']['objects_in_frame'],(pose,context,c,n)
+                  assert n['rendering']['primitives_in_frame'] <= c['rendering']['primitives_in_frame'],(pose,context,c,n)
+                  td=int(n['rendering']['texture_mem_used_bytes'])-int(c['rendering']['texture_mem_used_bytes'])
+                  bd=int(n['rendering']['buffer_mem_used_bytes'])-int(c['rendering']['buffer_mem_used_bytes'])
+                  vd=int(n['rendering']['video_mem_used_bytes'])-int(c['rendering']['video_mem_used_bytes'])
+                  texture_deltas.append(td); buffer_deltas.append(bd); video_deltas.append(vd)
+                  cp=root/f'service-dark-runtime-atlas-control-{pose}-{context}.png'
+                  np=root/f'service-dark-runtime-atlas-candidate-{pose}-{context}.png'
+                  ci=Image.open(cp).convert('RGB')
+                  ni=Image.open(np).convert('RGB')
+                  assert ci.size==ni.size,(pose,context,ci.size,ni.size)
+                  diff=ImageChops.difference(ci,ni)
+                  changed=0; over_one=0; local_max=0
+                  for rgb in diff.getdata():
+                      m=max(rgb)
+                      if m>0: changed+=1
+                      if m>1: over_one+=1
+                      local_max=max(local_max,m)
+                  changed_total+=changed
+                  changed_over_one_lsb_total+=over_one
+                  max_channel_delta=max(max_channel_delta,local_max)
+                  pairs.append({
+                      'pose':pose,'context':context,
+                      'control_rendering':c['rendering'],'candidate_rendering':n['rendering'],
+                      'texture_mem_delta_bytes':td,'buffer_mem_delta_bytes':bd,'video_mem_delta_bytes':vd,
+                      'changed_pixels':changed,'changed_pixels_over_one_lsb':over_one,'max_channel_delta_lsb':local_max,
+                  })
+
+          assert len(pairs)==4,pairs
+          assert all(v < 0 for v in texture_deltas),texture_deltas
+          comparison={
+              'schema':'axm.object-service-dark-atlas-runtime-budget-comparison/v0.1',
+              'result':'PASS_OBJECT_SERVICE_DARK_ATLAS_HEIGHT_RIGHTSIZE_REDUCES_PROOF_HOST_TEXTURE_MEMORY__HOLD_ART_QA_AND_TARGET_DEVICE',
+              'exact_runtime_head':Path('runtime-proof/generated/exact-runtime-head.txt').read_text().strip(),
+              'exact_materials_head':control['exact_materials_head'],
+              'control_dimensions_px':control['atlas_dimensions_px'],
+              'candidate_dimensions_px':candidate['atlas_dimensions_px'],
+              'pixels_per_meter':500,'padding_px':16,
+              'modeled_rgba8_mip_chain_bytes_saved':budget['rgba8_mip_chain_bytes_saved'],
+              'modeled_rgba8_mip_chain_reduction_fraction':budget['rgba8_mip_chain_reduction_fraction'],
+              'observed_texture_mem_delta_bytes':texture_deltas,
+              'observed_buffer_mem_delta_bytes':buffer_deltas,
+              'observed_video_mem_delta_bytes':video_deltas,
+              'pair_count':len(pairs),
+              'changed_pixels_total':changed_total,
+              'changed_pixels_over_one_lsb_total':changed_over_one_lsb_total,
+              'max_channel_delta_lsb':max_channel_delta,
+              'visual_tradeoff':'NONE_OBSERVED_FOUR_MATCHED_FRAMES_BYTE_IDENTICAL' if changed_total==0 else 'BOUNDED_NONZERO_RASTER_DELTA__ART_DIRECTION_AND_VISUAL_QA_REVIEW_REQUIRED',
+              'pairs':pairs,
+              'truth_boundary':candidate['truth_boundary'],
+          }
+          Path('runtime-proof/generated/service_dark_atlas_runtime_comparison.json').write_text(json.dumps(comparison,indent=2,sort_keys=True)+'\n')
+          print(json.dumps(comparison,indent=2,sort_keys=True))
+          PY
+
+      - name: Prove memory-win mutation fails closed
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('runtime-proof/generated/service_dark_atlas_runtime_comparison.json')
+          d=json.loads(p.read_text())
+          mutated=list(d['observed_texture_mem_delta_bytes'])
+          mutated[0]=0
+          assert not all(v < 0 for v in mutated),'negative control failed to invalidate texture-memory gate'
+          print('texture-memory non-win mutation rejected as expected')
+          PY
+
+      - name: Retain exact Runtime atlas-budget evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: object-runtime-service-dark-atlas-height-budget-${{ github.event.pull_request.head.sha || github.sha }}
+          path: |
+            runtime/service_dark_atlas_height_budget_001.json
+            tools/build_object_service_dark_runtime_atlas_budget_evidence.py
+            lookdev-proof/service_dark_atlas_runtime_budget_observe.gd
+            lookdev/service_dark_atlas_pack_review_001.json
+            lookdev-proof/generated/object_service_dark_atlas_pack_payload.json
+            lookdev-proof/generated/service_dark_atlas_pack_build_receipt.json
+            runtime-proof/generated/exact-runtime-head.txt
+            runtime-proof/generated/exact-materials-head.txt
+            runtime-proof/generated/service_dark_atlas_height_budget_build_receipt.json
+            runtime-proof/generated/service_dark_atlas_runtime_comparison.json
+            lookdev-proof/service-dark-runtime-atlas-control-receipt.json
+            lookdev-proof/service-dark-runtime-atlas-candidate-receipt.json
+            lookdev-proof/service-dark-runtime-atlas-control-source.png
+            lookdev-proof/service-dark-runtime-atlas-candidate-source.png
+            lookdev-proof/service-dark-runtime-atlas-control-*.png
+            lookdev-proof/service-dark-runtime-atlas-candidate-*.png
+          if-no-files-found: warn
+          retention-days: 30
