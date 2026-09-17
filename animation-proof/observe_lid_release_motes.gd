@@ -454,7 +454,7 @@ func _initialize() -> void:
 
         var metrics := diff_metrics(control, candidate)
         var changed := int(metrics["changed_pixels"])
-        var is_active := time_s >= float(effect["animation_dependency"]["trigger_time_s"]) and active_count > 0
+        var is_active: bool = time_s >= float(effect["animation_dependency"]["trigger_time_s"]) and active_count > 0
         if is_active:
             active_changed_min = mini(active_changed_min, changed)
             active_changed_max = maxi(active_changed_max, changed)
