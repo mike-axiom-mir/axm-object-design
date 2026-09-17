@@ -1,0 +1,142 @@
+name: Object source box-face atlas layout family evidence
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  procedural:
+    strategy:
+      matrix:
+        python-version: ['3.11', '3.13']
+    runs-on: ubuntu-latest
+    env:
+      AXM_STICKER_FABRIC_ROOT: _donor/axm-sticker-fabric
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+      - name: Checkout exact Sticker Fabric dependency for inherited Procedural tests
+        uses: actions/checkout@v4
+        with:
+          repository: mike-axiom-mir/axm-sticker-fabric
+          ref: 3aa93b0132eea9becefb20c716c6ec1a023ad28b
+          path: _donor/axm-sticker-fabric
+      - name: Checkout exact Hard-Surface source-authority donor
+        uses: actions/checkout@v4
+        with:
+          repository: mike-axiom-mir/axm-object-design
+          ref: fcae744a8bdbcb765c32758e9da03fe54ffe4dbc
+          path: _donor/object-hard-surface
+      - name: Checkout exact Materials donor used by the source-UV prerequisite
+        uses: actions/checkout@v4
+        with:
+          repository: mike-axiom-mir/axm-object-design
+          ref: ad2378f18be55efa1f8e6dba9d8823c6b5d500e1
+          path: _donor/object-materials-uv
+      - name: Checkout exact current Materials atlas donor
+        uses: actions/checkout@v4
+        with:
+          repository: mike-axiom-mir/axm-object-design
+          ref: 4c12a0a57f6aa8778cff41efad321e13567c6c91
+          path: _donor/object-materials-atlas
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Compile
+        run: python -m compileall tools tests
+      - name: Test full repository suite
+        run: python -m unittest discover -s tests -v
+      - name: Pin unchanged source-UV prerequisite implementation
+        if: matrix.python-version == '3.11'
+        run: |
+          test "$(git rev-parse HEAD:assets/modular-equipment-case-001/source-box-face-uv-projection-family-001.json)" = "193ab5340953601d6d88f38b3fa480221821c93b"
+          test "$(git rev-parse HEAD:tools/build_source_box_face_uv_projection_family.py)" = "126c593c2aafcff3ba895ca264d11a01c4c5fdd9"
+      - name: Materialize exact review inputs for source-face prerequisite
+        if: matrix.python-version == '3.11'
+        run: |
+          mkdir -p evidence/source-box-face-atlas-layout-family/source-faces
+          git fetch origin 8e92324648d837a92b7c3e0b1107df1f58f9aa61 --depth=1
+          test "$(git rev-parse 8e92324648d837a92b7c3e0b1107df1f58f9aa61:lookdev/inner_lid_surface_review_001.json)" = "cc90cd2c4c0f8eaf6b93d190436bc278c0fa1c83"
+          git show 8e92324648d837a92b7c3e0b1107df1f58f9aa61:lookdev/inner_lid_surface_review_001.json > /tmp/inner_lid_surface_review_001.json
+          git fetch origin 04c521a5a7e31bef54093c818108fd6c2080ca0e --depth=1
+          test "$(git rev-parse 04c521a5a7e31bef54093c818108fd6c2080ca0e:lookdev/front_service_panel_uv_review_001.json)" = "c473d20a466b97ea2e7d513a4efe78533245de77"
+          git show 04c521a5a7e31bef54093c818108fd6c2080ca0e:lookdev/front_service_panel_uv_review_001.json > /tmp/front_service_panel_uv_review_001.json
+      - name: Rebuild exact source-owned face prerequisite
+        if: matrix.python-version == '3.11'
+        run: |
+          python tools/build_source_box_face_extraction_family.py \
+            --family assets/modular-equipment-case-001/source-box-face-extraction-family-001.json \
+            --hard-surface-root _donor/object-hard-surface \
+            --review lid_inner_service_surface=/tmp/inner_lid_surface_review_001.json \
+            --review front_service_panel_outer_service_surface=/tmp/front_service_panel_uv_review_001.json \
+            --out evidence/source-box-face-atlas-layout-family/source-faces
+      - name: Rebuild exact source-face review UV prerequisite
+        if: matrix.python-version == '3.11'
+        run: |
+          mkdir -p evidence/source-box-face-atlas-layout-family/uv-family
+          python tools/build_source_box_face_uv_projection_family.py \
+            --family assets/modular-equipment-case-001/source-box-face-uv-projection-family-001.json \
+            --materials-root _donor/object-materials-uv \
+            --face-root evidence/source-box-face-atlas-layout-family/source-faces \
+            --out evidence/source-box-face-atlas-layout-family/uv-family
+      - name: Build bounded declared atlas layout family
+        if: matrix.python-version == '3.11'
+        run: |
+          mkdir -p evidence/source-box-face-atlas-layout-family/atlas-family
+          python tools/build_source_box_face_atlas_layout_family.py \
+            --family assets/modular-equipment-case-001/source-box-face-atlas-layout-family-001.json \
+            --materials-root _donor/object-materials-atlas \
+            --uv-root evidence/source-box-face-atlas-layout-family/uv-family \
+            --out evidence/source-box-face-atlas-layout-family/atlas-family
+          cp assets/modular-equipment-case-001/source-box-face-atlas-layout-family-001.json evidence/source-box-face-atlas-layout-family/family-profile.json
+          cp assets/modular-equipment-case-001/source-box-face-uv-projection-family-001.json evidence/source-box-face-atlas-layout-family/source-uv-family-profile.json
+          cp _donor/object-materials-atlas/lookdev/service_dark_atlas_pack_review_001.json evidence/source-box-face-atlas-layout-family/materials-atlas-contract.json
+          git rev-parse HEAD > evidence/source-box-face-atlas-layout-family/exact-head.txt
+          git -C _donor/object-materials-atlas rev-parse HEAD > evidence/source-box-face-atlas-layout-family/materials-donor-head.txt
+      - name: Assert two materially different atlas outputs and failure bounds
+        if: matrix.python-version == '3.11'
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          summary = json.loads(Path('evidence/source-box-face-atlas-layout-family/atlas-family/summary.json').read_text())
+          assert summary['result'] == 'PASS_BOUNDED_SOURCE_BOX_FACE_ATLAS_LAYOUT_FAMILY'
+          assert summary['surface_count'] == 2
+          assert summary['output_count'] == 2
+          assert summary['distinct_output_digest_count'] == 2
+          assert summary['distinct_basis_plane_count'] == 2
+          assert summary['distinct_pixel_extent_count'] == 2
+          assert summary['distinct_padded_tile_extent_count'] == 2
+          assert summary['distinct_atlas_uv_payload_count'] == 2
+          assert summary['atlas_size_px'] == [512, 512]
+          assert summary['pixels_per_meter'] == 500
+          assert summary['review_uv_unit_m'] == 0.05
+          assert summary['texels_per_review_uv_unit'] == 25
+          assert summary['padding_px'] == 16
+          assert summary['occupied_surface_texels'] == 111852
+          assert summary['padded_envelope_texels'] == 144044
+          assert summary['canonical_order_replay_equal'] is True
+          assert len(summary['negative_controls']) == 6
+          assert all(row['result'] == 'HOLD_INVALID_SOURCE_BOX_FACE_ATLAS_LAYOUT_FAMILY' for row in summary['negative_controls'])
+          by_id = {row['surface_id']: row for row in summary['outputs']}
+          assert by_id['lid_inner_service_surface']['pixel_size'] == [390, 240]
+          assert by_id['lid_inner_service_surface']['padded_rect_px'] == [0, 0, 422, 272]
+          assert by_id['front_service_panel_outer_service_surface']['pixel_size'] == [234, 78]
+          assert by_id['front_service_panel_outer_service_surface']['padded_rect_px'] == [0, 272, 266, 110]
+          assert summary['truth_boundary']['automatic_atlas_pack_search'] is False
+          assert summary['truth_boundary']['source_uv_authored'] is False
+          print('PASS_OBJECT_SOURCE_BOX_FACE_ATLAS_LAYOUT_FAMILY')
+          PY
+      - name: Upload retained evidence
+        if: matrix.python-version == '3.11'
+        uses: actions/upload-artifact@v4
+        with:
+          name: object-source-box-face-atlas-layout-family-001-evidence
+          path: evidence/source-box-face-atlas-layout-family
+          if-no-files-found: error
+          retention-days: 30
