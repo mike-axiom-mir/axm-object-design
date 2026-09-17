@@ -1,0 +1,56 @@
+{
+  "schema": "axm.object-hinge-knuckle-owner-partition-family/v0.1",
+  "family_id": "modular-equipment-case-001-hinge-knuckle-owner-partition-family-001",
+  "asset_id": "modular-equipment-case-001",
+  "hard_surface_owner_head": "172dd9ff5ed1fee3a21cd460c607f07ee0da7520",
+  "donor_paths": {
+    "host": "assets/modular-equipment-case-001/source.json",
+    "owner_stack_contract": "assets/modular-equipment-case-001/hinge-knuckle-owner-stack-001.json",
+    "bore_contract": "assets/modular-equipment-case-001/hinge-pin-bore-clearance-001.json",
+    "annular_mesh_contract": "assets/modular-equipment-case-001/hinge-pin-annular-mesh-001.json"
+  },
+  "donor_git_blobs": {
+    "host": "018e36bb08539f212d2c65e6408566e3540fd983",
+    "owner_stack_contract": "e4e7c95769c0827a6a019afd672ff4b20cd13541",
+    "bore_contract": "e94fbc0d960d949f49fc3a05edba74b706f2a87e",
+    "annular_mesh_contract": "39a52ad5ba8497a8a524d764bbf6744bb11cf54a"
+  },
+  "owner_allowlist": ["body", "lid"],
+  "variants": [
+    {
+      "id": "full",
+      "owners": ["body", "lid"],
+      "expected_knuckle_ids": ["b0", "l0", "b1", "l1", "b2"],
+      "expected_knuckles": 5,
+      "expected_vertices": 240,
+      "expected_triangles": 480
+    },
+    {
+      "id": "body-only",
+      "owners": ["body"],
+      "expected_knuckle_ids": ["b0", "b1", "b2"],
+      "expected_knuckles": 3,
+      "expected_vertices": 144,
+      "expected_triangles": 288
+    },
+    {
+      "id": "lid-only",
+      "owners": ["lid"],
+      "expected_knuckle_ids": ["l0", "l1"],
+      "expected_knuckles": 2,
+      "expected_vertices": 96,
+      "expected_triangles": 192
+    }
+  ],
+  "failure_policy": "FAIL_CLOSED_NO_UNKNOWN_OWNER_NO_DUPLICATE_SELECTOR_NO_DONOR_DRIFT_NO_SOURCE_OR_RIG_ADOPTION",
+  "authority": {
+    "source_geometry_changed": false,
+    "annular_candidate_adopted": false,
+    "rig_parenting_authorized": false,
+    "animation_authorized": false,
+    "technical_art_adoption_authorized": false,
+    "automatic_downstream_adoption": false
+  },
+  "intent": "Reuse the exact Hard-Surface annular review mesh and exact source-owned body/lid owner stack to emit deterministic full, fixed-body and moving-lid review partitions. This removes repeated manual owner filtering for downstream review while preserving the Hard-Surface generator and owner contract as authority.",
+  "truth_boundary": "This family partitions one exact derived annular review mesh by exact source ownership. It does not change or adopt host geometry, authorize rig parenting, prove physical hinge behavior, manufacturing fit, collision, animation, Technical-Art receiving, Runtime performance, visual acceptance, CANON or production readiness."
+}
