@@ -1,0 +1,199 @@
+name: Object Animation continuous mechanical phase-guard evidence
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  LID_RIG_HEAD: 4b72c9918c5fc1e89bd18a0be24fb4afac6e7775
+  HISTORICAL_LATCH_RIG_HEAD: 3b667ff5d30c46ec2fe7da7679518970f8610018
+  HISTORICAL_LATCH_PLAN_SHA256: 81c27ab7b73ed9a43cb3f554b56c3f4294b893712075e33d13f5b02e008455db
+  RIGGING_CONTINUOUS_HEAD: 44e0a56872a823cf768c749672116fd026b1ef5e
+  RIGGING_ARTIFACT_ID: 10483747546
+  RIGGING_ARTIFACT_SHA256: 2785d67b29325a4041f5761033b56d07b93aa30ca9645db05434d432892b4a9e
+
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.11', '3.13']
+    steps:
+      - name: Checkout exact Animation head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Compile and run full Object regression suite
+        run: |
+          python -m compileall -q tools tests
+          python -m unittest discover -s tests -v
+
+  phase-guard:
+    needs: regression
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout exact Animation head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          path: object
+          fetch-depth: 0
+
+      - name: Bind exact Animation head
+        working-directory: object
+        run: |
+          set -euo pipefail
+          echo "EXACT_HEAD=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
+
+      - name: Checkout exact historical lid Rigging donor
+        uses: actions/checkout@v4
+        with:
+          repository: mike-axiom-mir/axm-object-design
+          ref: ${{ env.LID_RIG_HEAD }}
+          path: lid-rig-donor
+
+      - name: Checkout exact historical latch Rigging donor
+        uses: actions/checkout@v4
+        with:
+          repository: mike-axiom-mir/axm-object-design
+          ref: ${{ env.HISTORICAL_LATCH_RIG_HEAD }}
+          path: latch-rig-donor
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Rebuild exact current authored motion evidence
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/axm-lid-motion /tmp/axm-latch-rig /tmp/axm-lid-latch
+          python object/tools/build_lid_motion_evidence.py \
+            --source object/assets/modular-equipment-case-001/source.json \
+            --rig lid-rig-donor/assets/modular-equipment-case-001/articulation.json \
+            --clip object/assets/modular-equipment-case-001/lid-motion-clip.json \
+            --out /tmp/axm-lid-motion \
+            --exact-head "$EXACT_HEAD"
+          python latch-rig-donor/tools/verify_front_latch_articulation.py \
+            --host latch-rig-donor/assets/modular-equipment-case-001/source.json \
+            --ownership latch-rig-donor/assets/modular-equipment-case-001/front-latch-ownership-001.json \
+            --plan latch-rig-donor/assets/modular-equipment-case-001/front-latch-articulation-001.json \
+            --out /tmp/axm-latch-rig
+          python object/tools/build_lid_latch_motion_evidence.py \
+            --source object/assets/modular-equipment-case-001/source.json \
+            --sequence object/assets/modular-equipment-case-001/lid-latch-motion-sequence-001.json \
+            --motion-evidence /tmp/axm-lid-motion/lid-motion-evidence.json \
+            --ownership latch-rig-donor/assets/modular-equipment-case-001/front-latch-ownership-001.json \
+            --rig-receipt /tmp/axm-latch-rig/front-latch-articulation.receipt.json \
+            --rig-head "$HISTORICAL_LATCH_RIG_HEAD" \
+            --rig-plan-sha256 "$HISTORICAL_LATCH_PLAN_SHA256" \
+            --out /tmp/axm-lid-latch \
+            --exact-head "$EXACT_HEAD"
+
+      - name: Download and independently bind exact Rigging continuous-clearance artifact
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/rigging-continuous /tmp/rigging-continuous.zip
+          curl --fail --location --silent --show-error \
+            -H "Authorization: Bearer $GITHUB_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/mike-axiom-mir/axm-object-design/actions/artifacts/$RIGGING_ARTIFACT_ID/zip" \
+            -o /tmp/rigging-continuous.zip
+          echo "$RIGGING_ARTIFACT_SHA256  /tmp/rigging-continuous.zip" | sha256sum -c -
+          mkdir -p /tmp/rigging-continuous
+          unzip -q /tmp/rigging-continuous.zip -d /tmp/rigging-continuous
+          test "$(cat /tmp/rigging-continuous/exact-head.txt)" = "$RIGGING_CONTINUOUS_HEAD"
+          test "$(cat /tmp/rigging-continuous/animation-pose-set-head.txt)" = "82b0c22e3a9eb346f2b06745b958a570d41beb15"
+          grep -q 'PASS_CONTINUOUS_KEEPER_LEVER_CLEARANCE_DURING_LID_MOTION__ENGAGEMENT_OVERLAP_HELD' /tmp/rigging-continuous/receipt.json
+
+      - name: Compose continuous moving-lid phase guard without changing motion
+        working-directory: object
+        run: |
+          set -euo pipefail
+          rm -rf evidence/animation-mechanical-phase-guard-001
+          python tools/verify_animation_mechanical_phase_guard.py \
+            --contract assets/modular-equipment-case-001/animation-mechanical-phase-guard-001.json \
+            --sequence assets/modular-equipment-case-001/lid-latch-motion-sequence-001.json \
+            --motion-evidence /tmp/axm-lid-latch/lid-latch-motion-evidence.json \
+            --rigging-receipt /tmp/rigging-continuous/receipt.json \
+            --exact-head "$EXACT_HEAD" \
+            --observed-rigging-head "$RIGGING_CONTINUOUS_HEAD" \
+            --out evidence/animation-mechanical-phase-guard-001
+          printf '%s\n' "$EXACT_HEAD" > evidence/animation-mechanical-phase-guard-001/exact-head.txt
+          printf '%s\n' "$RIGGING_CONTINUOUS_HEAD" > evidence/animation-mechanical-phase-guard-001/rigging-continuous-head.txt
+          printf '%s\n' "$RIGGING_ARTIFACT_ID" > evidence/animation-mechanical-phase-guard-001/rigging-artifact-id.txt
+          printf '%s\n' "$RIGGING_ARTIFACT_SHA256" > evidence/animation-mechanical-phase-guard-001/rigging-artifact-sha256.txt
+          cp /tmp/axm-lid-latch/lid-latch-motion-evidence.json evidence/animation-mechanical-phase-guard-001/exact-motion-evidence.json
+          cp /tmp/rigging-continuous/receipt.json evidence/animation-mechanical-phase-guard-001/exact-rigging-continuous-receipt.json
+          cp assets/modular-equipment-case-001/animation-mechanical-phase-guard-001.json evidence/animation-mechanical-phase-guard-001/contract.json
+
+      - name: Prove fail-closed hidden nonreleased moving sample
+        working-directory: object
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          source = Path('/tmp/axm-lid-latch/lid-latch-motion-evidence.json')
+          target = Path('/tmp/axm-lid-latch-mutated.json')
+          data = json.loads(source.read_text())
+          for row in data['samples']:
+              if float(row['lid_open_angle_deg']) > 1e-12:
+                  row['latch_lever_angle_deg'] = 49.9
+                  break
+          else:
+              raise SystemExit('no non-neutral lid sample found for negative control')
+          target.write_text(json.dumps(data, indent=2, sort_keys=True) + '\n')
+          PY
+          rm -rf /tmp/animation-phase-guard-negative
+          set +e
+          python tools/verify_animation_mechanical_phase_guard.py \
+            --contract assets/modular-equipment-case-001/animation-mechanical-phase-guard-001.json \
+            --sequence assets/modular-equipment-case-001/lid-latch-motion-sequence-001.json \
+            --motion-evidence /tmp/axm-lid-latch-mutated.json \
+            --rigging-receipt /tmp/rigging-continuous/receipt.json \
+            --exact-head "$EXACT_HEAD" \
+            --observed-rigging-head "$RIGGING_CONTINUOUS_HEAD" \
+            --out /tmp/animation-phase-guard-negative \
+            > /tmp/animation-phase-guard-negative.stdout 2> /tmp/animation-phase-guard-negative.stderr
+          code=$?
+          set -e
+          if [ "$code" -eq 0 ]; then
+            echo 'negative control unexpectedly passed' >&2
+            exit 1
+          fi
+          grep -q 'MOVING_LID_NOT_FULLY_RELEASED' /tmp/animation-phase-guard-negative.stderr
+          printf '%s\n' 'PASS_FAILS_CLOSED_ON_HIDDEN_NONRELEASED_MOVING_SAMPLE' > evidence/animation-mechanical-phase-guard-001/negative-control.txt
+          cp /tmp/animation-phase-guard-negative.stderr evidence/animation-mechanical-phase-guard-001/negative-control.stderr.txt
+
+      - name: Assert truth boundary remains explicit
+        working-directory: object
+        run: |
+          set -euo pipefail
+          grep -q 'PASS_CONTINUOUS_MOVING_LID_PHASE_GUARD_OVER_RIGGING_CLEARANCE' evidence/animation-mechanical-phase-guard-001/receipt.json
+          grep -q '"motion_authorship_changed": false' evidence/animation-mechanical-phase-guard-001/receipt.json
+          grep -q '"continuous_lid_motion_keeper_lever_clearance_composed": true' evidence/animation-mechanical-phase-guard-001/receipt.json
+          grep -q '"continuous_latch_release_clearance_proven": false' evidence/animation-mechanical-phase-guard-001/receipt.json
+          grep -q '"continuous_latch_reengagement_clearance_proven": false' evidence/animation-mechanical-phase-guard-001/receipt.json
+          grep -q '"runtime_controller_accepted": false' evidence/animation-mechanical-phase-guard-001/receipt.json
+          grep -q '"gameplay_accepted": false' evidence/animation-mechanical-phase-guard-001/receipt.json
+          grep -q 'PASS_FAILS_CLOSED_ON_HIDDEN_NONRELEASED_MOVING_SAMPLE' evidence/animation-mechanical-phase-guard-001/negative-control.txt
+
+      - name: Upload exact Animation phase-guard evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: object-animation-mechanical-phase-guard-${{ github.event.pull_request.head.sha || github.sha }}
+          path: object/evidence/animation-mechanical-phase-guard-001
+          if-no-files-found: error
+          retention-days: 30
