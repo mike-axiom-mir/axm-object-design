@@ -5,8 +5,10 @@ import hashlib
 import json
 import math
 import shutil
+import struct
 import subprocess
 import sys
+import zlib
 from pathlib import Path
 from typing import Any
 
@@ -14,9 +16,11 @@ MATERIALS_HEAD = "4c12a0a57f6aa8778cff41efad321e13567c6c91"
 UC_HEAD = "6ad6ad51e6f40a3dc1d0cccd3af7f7c7ab28fb33"
 PAYLOAD_SCHEMA = "axm.object-service-dark-atlas-pack-payload/v0.1"
 RUNTIME_SCHEMA = "axm.object-service-dark-atlas-pack-runtime/v0.1"
-RECEIPT_SCHEMA = "axm.object-service-dark-uc-texture-transport/v0.1"
+RECEIPT_SCHEMA = "axm.object-service-dark-uc-texture-transport/v0.2"
+RGB_ADAPTER_SCHEMA = "axm.object-service-dark-atlas-uc-rgb-adapter/v0.2"
 SOURCE_COORDINATES = "+X right, +Y forward, +Z up"
 TARGET_COORDINATES = "+X right, +Y up, +Z forward"
+PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
 CRITICAL_MATERIALS_PATHS = (
     "lookdev/service_dark_atlas_pack_review_001.json",
     "lookdev/service_dark_uv_density_family_001.json",
@@ -173,6 +177,141 @@ def primitive_from_source(
     return group, expected_density
 
 
+def _paeth(a: int, b: int, c: int) -> int:
+    p = a + b - c
+    pa, pb, pc = abs(p - a), abs(p - b), abs(p - c)
+    if pa <= pb and pa <= pc:
+        return a
+    return b if pb <= pc else c
+
+
+def decode_rgba8_png(data: bytes) -> tuple[int, int, bytes, list[str]]:
+    """Decode the bounded Godot RGBA8 PNG subset used by the Materials proof.
+
+    This is deliberately Object-local Technical Art transport plumbing. It accepts
+    only 8-bit noninterlaced RGBA, validates all CRCs, ignores only ancillary PNG
+    chunks, and does not become a general UC image decoder.
+    """
+    if not isinstance(data, bytes) or len(data) < 45 or data[:8] != PNG_SIGNATURE:
+        raise AssertionError("Materials atlas is not a bounded PNG")
+    cursor = 8
+    chunks: list[bytes] = []
+    ancillary: list[str] = []
+    compressed = bytearray()
+    size: tuple[int, int] | None = None
+    while cursor + 12 <= len(data):
+        length = struct.unpack_from(">I", data, cursor)[0]
+        kind = data[cursor + 4 : cursor + 8]
+        end = cursor + 8 + length
+        if end + 4 > len(data):
+            raise AssertionError("Materials atlas PNG chunk exceeds payload")
+        payload = data[cursor + 8 : end]
+        crc = struct.unpack_from(">I", data, end)[0]
+        if zlib.crc32(kind + payload) & 0xFFFFFFFF != crc:
+            raise AssertionError("Materials atlas PNG CRC mismatch")
+        if kind == b"IHDR":
+            if chunks or length != 13:
+                raise AssertionError("Materials atlas PNG header order/length invalid")
+            width, height, bits, color, compression, filtering, interlace = struct.unpack(">IIBBBBB", payload)
+            if (bits, color, compression, filtering, interlace) != (8, 6, 0, 0, 0):
+                raise AssertionError("Materials atlas transport requires 8-bit RGBA noninterlaced PNG")
+            if not 1 <= width <= 2048 or not 1 <= height <= 2048:
+                raise AssertionError("Materials atlas PNG dimensions exceed bounded transport")
+            size = width, height
+        elif kind == b"IDAT":
+            compressed.extend(payload)
+        elif kind == b"IEND":
+            if length != 0:
+                raise AssertionError("Materials atlas PNG IEND payload invalid")
+        elif kind and kind[0] & 32:
+            ancillary.append(kind.decode("ascii", "replace"))
+        else:
+            raise AssertionError(f"unsupported critical Materials atlas PNG chunk: {kind!r}")
+        chunks.append(kind)
+        cursor = end + 4
+    if cursor != len(data) or not chunks or chunks[0] != b"IHDR" or chunks[-1] != b"IEND" or size is None:
+        raise AssertionError("Materials atlas PNG chunk sequence invalid")
+    if not compressed:
+        raise AssertionError("Materials atlas PNG contains no image data")
+
+    width, height = size
+    stride = width * 4
+    expected = height * (stride + 1)
+    decoder = zlib.decompressobj()
+    raw = decoder.decompress(bytes(compressed), expected + 1)
+    if len(raw) != expected or not decoder.eof or decoder.unused_data:
+        raise AssertionError("Materials atlas PNG scanlines are truncated or oversized")
+
+    pixels = bytearray(stride * height)
+    for y in range(height):
+        src = y * (stride + 1)
+        filter_kind = raw[src]
+        if filter_kind > 4:
+            raise AssertionError("Materials atlas PNG scanline filter unsupported")
+        dest = y * stride
+        for x in range(stride):
+            a = pixels[dest + x - 4] if x >= 4 else 0
+            b = pixels[dest + x - stride] if y else 0
+            c = pixels[dest + x - stride - 4] if y and x >= 4 else 0
+            if filter_kind == 0:
+                prediction = 0
+            elif filter_kind == 1:
+                prediction = a
+            elif filter_kind == 2:
+                prediction = b
+            elif filter_kind == 3:
+                prediction = (a + b) // 2
+            else:
+                prediction = _paeth(a, b, c)
+            pixels[dest + x] = (raw[src + 1 + x] + prediction) & 0xFF
+    return width, height, bytes(pixels), ancillary
+
+
+def make_rgb_transport_derivative(source_rgba: Path, out_dir: Path, *, png_bytes, decode_png) -> tuple[Path, dict[str, Any]]:
+    width, height, rgba, ancillary = decode_rgba8_png(source_rgba.read_bytes())
+    if (width, height) != (512, 512):
+        raise AssertionError("bounded Materials atlas must remain 512x512")
+    alphas = rgba[3::4]
+    if not alphas or min(alphas) != 255 or max(alphas) != 255:
+        raise AssertionError("Materials atlas alpha is not fully opaque; dropping alpha would be lossy")
+    rgb = bytearray(width * height * 3)
+    cursor = 0
+    for offset in range(0, len(rgba), 4):
+        rgb[cursor : cursor + 3] = rgba[offset : offset + 3]
+        cursor += 3
+    target = out_dir / "service-dark-atlas-uc-rgb.png"
+    encoded = png_bytes(width, height, 3, bytes(rgb))
+    target.write_bytes(encoded)
+    observed_w, observed_h, observed_rgb = decode_png(encoded)
+    if (observed_w, observed_h) != (width, height) or observed_rgb != bytes(rgb):
+        raise AssertionError("UC RGB PNG encoder changed Materials atlas RGB bytes")
+    receipt = {
+        "schema": RGB_ADAPTER_SCHEMA,
+        "state": "PASS_EXACT_RGBA_TO_RGB_TRANSPORT_DERIVATIVE",
+        "promotion_effect": "NONE",
+        "source_rgba_sha256": sha256_file(source_rgba),
+        "target_rgb_sha256": sha256_file(target),
+        "decoded_rgb_sha256": sha256_bytes(bytes(rgb)),
+        "width": width,
+        "height": height,
+        "source_ancillary_chunks": ancillary,
+        "source_alpha_min": min(alphas),
+        "source_alpha_max": max(alphas),
+        "max_rgb_channel_delta": 0,
+        "truth_boundary": {
+            "source_materials_png_modified": False,
+            "source_materials_semantics_changed": False,
+            "rgb_channels_changed": False,
+            "alpha_semantics_present": False,
+            "production_texture_authored": False,
+            "visual_acceptance": False,
+        },
+    }
+    receipt_path = out_dir / "service-dark-atlas-uc-rgb-receipt.json"
+    receipt_path.write_text(json.dumps(receipt, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    return target, receipt
+
+
 def png_record(path: Path, channels: int, color_space: str) -> dict[str, Any]:
     return {
         "file": path.name,
@@ -188,12 +327,10 @@ def write_transport_bundle(
     payload: dict[str, Any],
     *,
     png_bytes,
-    canonicalize_godot_png,
 ) -> dict[str, Any]:
     bundle.mkdir(parents=True, exist_ok=False)
-    canonical_base, removed_chunks = canonicalize_godot_png(source_rgb_png.read_bytes())
     base = bundle / "base_color.png"
-    base.write_bytes(canonical_base)
+    base.write_bytes(source_rgb_png.read_bytes())
 
     width = height = 512
     service = payload.get("materials", {}).get("candidate", {}).get("service_dark")
@@ -250,7 +387,6 @@ def write_transport_bundle(
     return {
         "base_color_sha256": sha256_file(base),
         "source_rgb_png_sha256": sha256_file(source_rgb_png),
-        "godot_png_ancillary_chunks_removed": removed_chunks,
         "roughness_scalar": roughness,
         "metallic_scalar": metallic,
         "manifest_sha256": sha256_file(bundle / "game-material.json"),
@@ -269,8 +405,6 @@ def build_transport(
     payload_path: Path,
     materials_runtime_receipt_path: Path,
     source_atlas_rgba: Path,
-    source_atlas_rgb: Path,
-    rgb_adapter_receipt_path: Path,
     out_dir: Path,
     expected_materials_head: str,
     expected_uc_head: str,
@@ -285,7 +419,6 @@ def build_transport(
 
     payload = json.loads(payload_path.read_text(encoding="utf-8"))
     runtime = json.loads(materials_runtime_receipt_path.read_text(encoding="utf-8"))
-    rgb_adapter = json.loads(rgb_adapter_receipt_path.read_text(encoding="utf-8"))
     if payload.get("schema") != PAYLOAD_SCHEMA:
         raise AssertionError("Materials atlas payload schema drift")
     if payload.get("exact_materials_head") != current_head:
@@ -299,30 +432,35 @@ def build_transport(
         raise AssertionError("bounded 512x512 / 500 px/m atlas contract drift")
     if atlas.get("padding_px") != 16 or atlas.get("repeat") is not False:
         raise AssertionError("atlas padding/wrap contract drift")
-    if rgb_adapter.get("state") != "PASS_EXACT_RGBA_TO_RGB_TRANSPORT_DERIVATIVE":
-        raise AssertionError("RGBA->RGB target adapter prerequisite is not green")
-    if rgb_adapter.get("max_rgb_channel_delta") != 0 or rgb_adapter.get("min_source_alpha") != 255:
-        raise AssertionError("RGB transport derivative is not pixel-exact or source alpha is not opaque")
 
     sys.path.insert(0, str(uc_root / "src"))
     from axm_uc.fabric_noise import png_bytes  # type: ignore
     from axm_uc.game_material_bridge import load_material_bundle  # type: ignore
-    from axm_uc.godot_target import _render_png as canonicalize_godot_png  # type: ignore
     from axm_uc.material_pipeline import observe_station, run_station  # type: ignore
+    from axm_uc.native_textures import decode_png  # type: ignore
 
     out_dir.mkdir(parents=True, exist_ok=False)
+    source_atlas_rgb, rgb_adapter = make_rgb_transport_derivative(
+        source_atlas_rgba,
+        out_dir,
+        png_bytes=png_bytes,
+        decode_png=decode_png,
+    )
+
     bundle_dir = out_dir / "service-dark-uc-bundle"
     bundle_receipt = write_transport_bundle(
         bundle_dir,
         source_atlas_rgb,
         payload,
         png_bytes=png_bytes,
-        canonicalize_godot_png=canonicalize_godot_png,
     )
     loaded_bundle = load_material_bundle(bundle_dir)
     if loaded_bundle["manifest_sha256"] != bundle_receipt["manifest_sha256"]:
         raise AssertionError("UC material bundle canonical identity drift")
     base_rgb = loaded_bundle["pngs"]["base_color"]
+    base_w, base_h, base_pixels = decode_png(base_rgb)
+    if (base_w, base_h) != (512, 512) or sha256_bytes(base_pixels) != rgb_adapter["decoded_rgb_sha256"]:
+        raise AssertionError("UC bundle validation changed exact Materials RGB payload")
 
     surfaces = surface_map(payload)
     primitives: list[dict[str, Any]] = []
@@ -377,6 +515,7 @@ def build_transport(
     if len(uv.get("primitives", [])) != 2:
         raise AssertionError("UC UV observer did not retain exactly two bounded source surfaces")
     measured: dict[str, float] = {}
+    measured_all: dict[str, list[float]] = {}
     for index, row in enumerate(uv["primitives"]):
         sid = primitives[index]["id"]
         values = [float(binding["texels_per_m"]["p50"]) for binding in row.get("bindings", [])]
@@ -389,6 +528,7 @@ def build_transport(
                 f"UC transported texel-density drift for {sid}: expected={expected:.9f} measured={values}"
             )
         measured[sid] = values[0]
+        measured_all[sid] = values
 
     if abs(uv_delta_px) > 1e-12:
         raise AssertionError(
@@ -439,6 +579,7 @@ def build_transport(
     uc_blobs = {path: git(uc_root, "rev-parse", f"HEAD:{path}") for path in uc_paths}
     uc_sha256 = {path: sha256_file(uc_root / path) for path in uc_paths}
 
+    rgb_receipt_path = out_dir / "service-dark-atlas-uc-rgb-receipt.json"
     receipt = {
         "schema": RECEIPT_SCHEMA,
         "result": (
@@ -460,21 +601,26 @@ def build_transport(
         "materials_runtime_receipt_sha256": sha256_file(materials_runtime_receipt_path),
         "source_atlas_rgba_sha256": sha256_file(source_atlas_rgba),
         "source_atlas_rgb_derivative_sha256": sha256_file(source_atlas_rgb),
-        "rgb_adapter_receipt_sha256": sha256_file(rgb_adapter_receipt_path),
+        "rgb_adapter_receipt_sha256": sha256_file(rgb_receipt_path),
+        "rgb_adapter": rgb_adapter,
         "transport_bundle": bundle_receipt,
         "base_color_rgb_sha256_after_uc_bundle_validation": sha256_bytes(base_rgb),
+        "base_color_decoded_rgb_sha256_after_uc_bundle_validation": sha256_bytes(base_pixels),
         "surface_spec_sha256": sha256_file(surface_path),
         "surface_spec_canonical_sha256": canonical_digest(specification),
         "glb_sha256": sha256_file(glb_path),
+        "glb_bytes": glb_path.stat().st_size,
         "uc_bind_result": bind_result,
         "uc_bind_observation": bind_observation,
         "uc_quality_status": quality_result["status"],
         "uc_uv_status": uv["status"],
         "expected_center_sample_texels_per_m": expected_density,
         "measured_center_sample_texels_per_m": measured,
+        "measured_all_core_bindings_texels_per_m": measured_all,
         "godot_target_status": None if godot_report is None else godot_report.get("status"),
         "godot_target_observation_status": None if godot_observation is None else godot_observation.get("status"),
         "godot_backend": None if godot_report is None else godot_report.get("backend"),
+        "godot_checks": [] if godot_report is None else godot_report.get("checks", []),
         "truth_boundary": {
             "materials_source_surface_authority_changed": False,
             "materials_atlas_policy_changed": False,
@@ -507,8 +653,6 @@ def main() -> None:
     parser.add_argument("--payload", default="lookdev-proof/generated/object_service_dark_atlas_pack_payload.json")
     parser.add_argument("--materials-runtime-receipt", default="lookdev-proof/service-dark-atlas-pack-runtime-receipt.json")
     parser.add_argument("--source-atlas-rgba", default="lookdev-proof/service-dark-atlas-padded.png")
-    parser.add_argument("--source-atlas-rgb", default="lookdev-proof/generated/service-dark-atlas-uc-rgb.png")
-    parser.add_argument("--rgb-adapter-receipt", default="lookdev-proof/generated/service-dark-atlas-uc-rgb-receipt.json")
     parser.add_argument("--out", default="technical-art-proof/generated")
     parser.add_argument("--expected-materials-head", default=MATERIALS_HEAD)
     parser.add_argument("--expected-uc-head", default=UC_HEAD)
@@ -526,8 +670,6 @@ def main() -> None:
         payload_path=Path(args.payload).resolve(),
         materials_runtime_receipt_path=Path(args.materials_runtime_receipt).resolve(),
         source_atlas_rgba=Path(args.source_atlas_rgba).resolve(),
-        source_atlas_rgb=Path(args.source_atlas_rgb).resolve(),
-        rgb_adapter_receipt_path=Path(args.rgb_adapter_receipt).resolve(),
         out_dir=out,
         expected_materials_head=args.expected_materials_head,
         expected_uc_head=args.expected_uc_head,
