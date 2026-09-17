@@ -21,16 +21,11 @@ REQUIRED_CHECKS = (
     "all-target-images-and-asset-masks",
 )
 
-# The bounded Object proof publishes two intentionally one-sided source surfaces.
-# Their target-space front normals are -Y (inner lid) and -Z (front panel).
 TARGET_FRONT_NORMALS = {
     "lid_inner_service_surface": [0.0, -1.0, 0.0],
     "front_service_panel_outer_service_surface": [0.0, 0.0, -1.0],
 }
 
-# UC's generic observer intentionally bounds elevation to [-0.1, 1.45].
-# These two Object-local evidence views remain inside that contract while placing
-# the camera on the front side of both source-owned one-sided planes.
 FRONT_VIEWS = (
     {"yaw": 2.45, "elevation": -0.08},
     {"yaw": -2.45, "elevation": -0.08},
@@ -91,6 +86,7 @@ def main() -> None:
     parser.add_argument("--final-result", default=DEFAULT_FINAL_RESULT)
     parser.add_argument("--transport-receipt-name", default="technical-art-uc-texture-transport-receipt.json")
     parser.add_argument("--glb-name", default="service-dark-two-surface.glb")
+    parser.add_argument("--uc-product-modified", action="store_true")
     args = parser.parse_args()
 
     root = Path.cwd().resolve()
@@ -114,8 +110,11 @@ def main() -> None:
         raise AssertionError("UC identity drift at target-host proof boundary")
     if transport.get("glb_sha256") != sha256_file(glb_path):
         raise AssertionError("transported GLB identity drift before target-host observation")
-    if transport.get("truth_boundary", {}).get("uc_product_modified") is not False:
-        raise AssertionError("transport prerequisite unexpectedly claims a UC product modification")
+    observed_uc_modified = transport.get("truth_boundary", {}).get("uc_product_modified")
+    if observed_uc_modified is not bool(args.uc_product_modified):
+        raise AssertionError(
+            f"transport UC-modification truth drift expected={bool(args.uc_product_modified)} observed={observed_uc_modified}"
+        )
 
     view_evidence = prove_view_sidedness()
 
@@ -161,7 +160,7 @@ def main() -> None:
         "materials_authority_head": transport.get("materials_authority_head"),
         "runtime_authority_head": transport.get("runtime_authority_head"),
         "uc_head": uc_head,
-        "uc_product_modified": False,
+        "uc_product_modified": bool(args.uc_product_modified),
         "transport_receipt_sha256": sha256_file(transport_receipt_path),
         "glb_sha256": sha256_file(glb_path),
         "view_policy": "OBJECT_SOURCE_FRONT_SIDE_EVIDENCE_VIEWS_WITHIN_EXISTING_UC_BOUNDS",
@@ -178,7 +177,7 @@ def main() -> None:
             "material_double_sidedness_enabled": False,
             "materials_atlas_policy_changed": False,
             "uc_camera_contract_changed": False,
-            "uc_product_modified": False,
+            "uc_product_modified": bool(args.uc_product_modified),
             "target_specific_view_selection_owned_by_technical_art": True,
             "production_uv_adopted": False,
             "production_texture_authored": False,
