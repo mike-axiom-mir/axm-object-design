@@ -1,17 +1,12 @@
 import copy
-import importlib.util
 import json
+import unittest
 from pathlib import Path
 
-import pytest
+from tools import build_lid_release_mote_seeded_variation_family as mod
 
 ROOT = Path(__file__).resolve().parents[1]
-MODULE_PATH = ROOT / "tools" / "build_lid_release_mote_seeded_variation_family.py"
 PROFILE_PATH = ROOT / "assets" / "modular-equipment-case-001" / "lid-release-mote-seeded-variation-family-001.json"
-
-spec = importlib.util.spec_from_file_location("seeded_motes", MODULE_PATH)
-mod = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(mod)
 
 
 def profile():
@@ -50,65 +45,65 @@ def synthetic_owner_effect():
     }
 
 
-def test_profile_is_exact_bounded_seed_family():
-    mod.validate_profile(profile())
+class LidReleaseMoteSeededVariationFamilyTests(unittest.TestCase):
+    def test_profile_is_exact_bounded_seed_family(self):
+        mod.validate_profile(profile())
+
+    def test_hash_contract_matches_retained_vfx_witnesses(self):
+        self.assertAlmostEqual(mod.hash01(41027, 0, 1), 0.0962096209620962)
+        self.assertAlmostEqual(mod.hash01(41027, 0, 2), 0.33073307330733076)
+        self.assertAlmostEqual(mod.hash01(41027, 0, 8), 0.7377737773777377)
+        self.assertAlmostEqual(mod.hash01(17489, 0, 1), 0.7424742474247424)
+
+    def test_four_seeds_make_four_materially_different_tables(self):
+        p = profile()
+        effect = synthetic_owner_effect()
+        outputs = [mod.build_variant(p, effect, row) for row in p["variants"]]
+        self.assertEqual(len({row["mote_digest"] for row in outputs}), 4)
+        self.assertTrue(all(len(row["motes"]) == 18 for row in outputs))
+        for i, left in enumerate(outputs):
+            for right in outputs[i + 1:]:
+                changed = sum(a["unit_samples"] != b["unit_samples"] for a, b in zip(left["motes"], right["motes"]))
+                self.assertEqual(changed, 18)
+
+    def test_owner_seed_first_mote_exact_scalar_expansion(self):
+        p = profile()
+        row = mod.build_variant(p, synthetic_owner_effect(), p["variants"][0])["motes"][0]
+        self.assertAlmostEqual(row["spawn_s"], 0.30652565256525655)
+        self.assertAlmostEqual(row["lifetime_s"], 0.41196919691969197)
+        self.assertAlmostEqual(row["size_m"], 0.01441044104410441)
+        expected = [-0.025440044004400437, 0.2803900390039004, -0.06188868886888688]
+        for observed, wanted in zip(row["velocity_mps"], expected):
+            self.assertAlmostEqual(observed, wanted)
+
+    def test_duplicate_seed_fails_closed(self):
+        p = profile()
+        p["variants"][1]["seed"] = p["variants"][0]["seed"]
+        with self.assertRaisesRegex(AssertionError, "duplicate seed"):
+            mod.validate_profile(p)
+
+    def test_owner_parameter_override_policy_cannot_be_enabled(self):
+        p = profile()
+        p["parameter_contract"]["owner_effect_parameter_override"] = "ALLOWED"
+        with self.assertRaisesRegex(AssertionError, "forbidden seed-family policy drift"):
+            mod.validate_profile(p)
+
+    def test_variant_order_does_not_change_canonical_identity_rows(self):
+        p = profile()
+        effect = synthetic_owner_effect()
+        forward = [mod.build_variant(p, effect, row) for row in p["variants"]]
+        reverse = [mod.build_variant(p, effect, row) for row in reversed(p["variants"])]
+        forward_id = [(row["variant_id"], row["seed"], row["mote_digest"]) for row in sorted(forward, key=lambda row: row["variant_id"])]
+        reverse_id = [(row["variant_id"], row["seed"], row["mote_digest"]) for row in sorted(reverse, key=lambda row: row["variant_id"])]
+        self.assertEqual(forward_id, reverse_id)
+
+    def test_review_variants_never_claim_adoption(self):
+        p = profile()
+        effect = synthetic_owner_effect()
+        outputs = [mod.build_variant(p, effect, row) for row in p["variants"]]
+        self.assertEqual(outputs[0]["adoption"], "OWNER_BASELINE_REPRODUCTION_ONLY")
+        self.assertEqual({row["adoption"] for row in outputs[1:]}, {"REVIEW_VARIATION_ONLY"})
 
 
-def test_hash_contract_matches_retained_vfx_witnesses():
-    assert mod.hash01(41027, 0, 1) == pytest.approx(0.0962096209620962)
-    assert mod.hash01(41027, 0, 2) == pytest.approx(0.33073307330733076)
-    assert mod.hash01(41027, 0, 8) == pytest.approx(0.7377737773777377)
-    assert mod.hash01(17489, 0, 1) == pytest.approx(0.7424742474247424)
-
-
-def test_four_seeds_make_four_materially_different_tables():
-    p = profile()
-    effect = synthetic_owner_effect()
-    outputs = [mod.build_variant(p, effect, row) for row in p["variants"]]
-    assert len({row["mote_digest"] for row in outputs}) == 4
-    assert all(len(row["motes"]) == 18 for row in outputs)
-    for i, left in enumerate(outputs):
-        for right in outputs[i + 1:]:
-            changed = sum(a["unit_samples"] != b["unit_samples"] for a, b in zip(left["motes"], right["motes"]))
-            assert changed == 18
-
-
-def test_owner_seed_first_mote_exact_scalar_expansion():
-    p = profile()
-    row = mod.build_variant(p, synthetic_owner_effect(), p["variants"][0])["motes"][0]
-    assert row["spawn_s"] == pytest.approx(0.30652565256525655)
-    assert row["lifetime_s"] == pytest.approx(0.41196919691969197)
-    assert row["size_m"] == pytest.approx(0.01441044104410441)
-    assert row["velocity_mps"] == pytest.approx([-0.025440044004400437, 0.2803900390039004, -0.06188868886888688])
-
-
-def test_duplicate_seed_fails_closed():
-    p = profile()
-    p["variants"][1]["seed"] = p["variants"][0]["seed"]
-    with pytest.raises(AssertionError, match="duplicate seed"):
-        mod.validate_profile(p)
-
-
-def test_owner_parameter_override_policy_cannot_be_enabled():
-    p = profile()
-    p["parameter_contract"]["owner_effect_parameter_override"] = "ALLOWED"
-    with pytest.raises(AssertionError, match="forbidden seed-family policy drift"):
-        mod.validate_profile(p)
-
-
-def test_variant_order_does_not_change_canonical_identity_rows():
-    p = profile()
-    effect = synthetic_owner_effect()
-    forward = [mod.build_variant(p, effect, row) for row in p["variants"]]
-    reverse = [mod.build_variant(p, effect, row) for row in reversed(p["variants"])]
-    forward_id = [(row["variant_id"], row["seed"], row["mote_digest"]) for row in sorted(forward, key=lambda row: row["variant_id"])]
-    reverse_id = [(row["variant_id"], row["seed"], row["mote_digest"]) for row in sorted(reverse, key=lambda row: row["variant_id"])]
-    assert forward_id == reverse_id
-
-
-def test_review_variants_never_claim_adoption():
-    p = profile()
-    effect = synthetic_owner_effect()
-    outputs = [mod.build_variant(p, effect, row) for row in p["variants"]]
-    assert outputs[0]["adoption"] == "OWNER_BASELINE_REPRODUCTION_ONLY"
-    assert {row["adoption"] for row in outputs[1:]} == {"REVIEW_VARIATION_ONLY"}
+if __name__ == "__main__":
+    unittest.main()
