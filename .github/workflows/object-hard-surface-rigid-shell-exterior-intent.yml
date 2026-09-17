@@ -1,0 +1,124 @@
+name: Object Hard Surface rigid-shell exterior-intent evidence
+
+on:
+  pull_request:
+    paths:
+      - "assets/modular-equipment-case-001/source.json"
+      - "assets/modular-equipment-case-001/rigid-shell-exterior-intent-001.json"
+      - "tools/build_modular_case.py"
+      - "tools/verify_rigid_shell_exterior_intent.py"
+      - "tests/test_rigid_shell_exterior_intent.py"
+      - ".github/workflows/object-hard-surface-rigid-shell-exterior-intent.yml"
+  workflow_dispatch:
+
+jobs:
+  hard-surface-exterior-intent:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.13"]
+    steps:
+      - name: Checkout exact Hard-Surface owner candidate
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Checkout exact Geometry comparison donor
+        uses: actions/checkout@v4
+        with:
+          repository: mike-axiom-mir/axm-object-design
+          ref: 606d8189a3bf4502141d8038f08d35d421829dde
+          path: geometry-donor
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Compile structural tools and tests
+        run: python -m compileall -q tools tests
+
+      - name: Run complete Object regression suite
+        env:
+          PYTHONPATH: .
+        run: python -m unittest discover -s tests -p "test_*.py"
+
+      - name: Rebuild exact Geometry orientation candidate
+        working-directory: geometry-donor
+        env:
+          PYTHONPATH: .
+        run: |
+          python tools/verify_rigid_shell_orientation.py \
+            --receipt ../geometry-receipt.json \
+            --obj ../geometry-candidate.obj
+
+      - name: Prove source-owned exterior intent and exact Geometry compatibility
+        env:
+          PYTHONPATH: .
+        run: |
+          rm -rf hard-surface-exterior-intent-evidence
+          mkdir -p hard-surface-exterior-intent-evidence
+          python tools/verify_rigid_shell_exterior_intent.py \
+            --geometry-candidate-obj geometry-candidate.obj \
+            --geometry-head 606d8189a3bf4502141d8038f08d35d421829dde \
+            --receipt hard-surface-exterior-intent-evidence/receipt.json
+          cp assets/modular-equipment-case-001/source.json hard-surface-exterior-intent-evidence/source.json
+          cp assets/modular-equipment-case-001/rigid-shell-exterior-intent-001.json hard-surface-exterior-intent-evidence/contract.json
+          cp geometry-receipt.json hard-surface-exterior-intent-evidence/geometry-receipt.json
+          cp geometry-candidate.obj hard-surface-exterior-intent-evidence/geometry-candidate.obj
+          cp geometry-donor/assets/modular-equipment-case-001/rigid-shell-orientation-review-001.json hard-surface-exterior-intent-evidence/geometry-policy.json
+          printf '%s\n' "${{ github.event.pull_request.head.sha || github.sha }}" > hard-surface-exterior-intent-evidence/exact-owner-head.txt
+          printf '%s\n' "${{ github.sha }}" > hard-surface-exterior-intent-evidence/github-event-sha.txt
+          printf '%s\n' "606d8189a3bf4502141d8038f08d35d421829dde" > hard-surface-exterior-intent-evidence/exact-geometry-head.txt
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          receipt = json.loads(Path("hard-surface-exterior-intent-evidence/receipt.json").read_text())
+          assert receipt["result"] == "PASS_SOURCE_OWNED_RIGID_SHELL_EXTERIOR_INTENT"
+          assert receipt["source_vertices"] == 468
+          assert receipt["source_triangles"] == 812
+          assert receipt["source_rigid_components"] == 31
+          assert receipt["stored_faces_already_exterior_aligned"] == 304
+          assert receipt["stored_faces_opposed_to_exterior_intent"] == 508
+          assert receipt["ambiguous_face_planes"] == 0
+          assert receipt["source_triangle_winding_rewritten"] is False
+          assert receipt["geometry_candidate_adopted"] is False
+          probe = receipt["geometry_compatibility_probe"]
+          assert probe["geometry_candidate_exact_head"] == "606d8189a3bf4502141d8038f08d35d421829dde"
+          assert probe["geometry_candidate_faces_matching_source_exterior_intent"] == 812
+          assert probe["geometry_candidate_face_mismatches"] == 0
+          assert probe["geometry_candidate_adopted"] is False
+          PY
+
+      - name: Fail closed on one-face Geometry mismatch
+        env:
+          PYTHONPATH: .
+        run: |
+          cp geometry-candidate.obj mutated-geometry-candidate.obj
+          python - <<'PY'
+          from pathlib import Path
+          path = Path("mutated-geometry-candidate.obj")
+          lines = path.read_text().splitlines()
+          for index, line in enumerate(lines):
+              if line.startswith("f "):
+                  parts = line.split()
+                  lines[index] = " ".join([parts[0], parts[1], parts[3], parts[2]])
+                  break
+          path.write_text("\n".join(lines) + "\n")
+          PY
+          if python tools/verify_rigid_shell_exterior_intent.py \
+            --geometry-candidate-obj mutated-geometry-candidate.obj \
+            --geometry-head 606d8189a3bf4502141d8038f08d35d421829dde \
+            --receipt /tmp/should-not-pass.json; then
+            echo "ERROR: mismatched Geometry face was accepted"
+            exit 1
+          fi
+
+      - name: Upload retained Hard-Surface evidence
+        if: matrix.python-version == '3.11'
+        uses: actions/upload-artifact@v4
+        with:
+          name: object-hard-surface-rigid-shell-exterior-intent-${{ github.event.pull_request.head.sha || github.sha }}
+          path: hard-surface-exterior-intent-evidence
+          retention-days: 30
