@@ -10,9 +10,9 @@ import sys
 from pathlib import Path
 from typing import Any
 
-SCHEMA = "axm.object-service-dark-uc-godot-front-view-proof/v0.1"
-TRANSPORT_RESULT = "PASS_OBJECT_SERVICE_DARK_EXACT_ATLAS_RGB_TO_CURRENT_UC_TEXTURED_GLB"
-FINAL_RESULT = "PASS_OBJECT_SERVICE_DARK_EXACT_ATLAS_RGB_TO_CURRENT_UC_TEXTURED_GLB_TO_GODOT_FRONT_VIEWS"
+SCHEMA = "axm.object-service-dark-uc-godot-front-view-proof/v0.2"
+DEFAULT_TRANSPORT_RESULT = "PASS_OBJECT_SERVICE_DARK_EXACT_ATLAS_RGB_TO_CURRENT_UC_TEXTURED_GLB"
+DEFAULT_FINAL_RESULT = "PASS_OBJECT_SERVICE_DARK_EXACT_ATLAS_RGB_TO_CURRENT_UC_TEXTURED_GLB_TO_GODOT_FRONT_VIEWS"
 REQUIRED_CHECKS = (
     "actual-rendering-backend",
     "exact-imported-source",
@@ -87,19 +87,23 @@ def main() -> None:
     parser.add_argument("--transport-dir", default="creations/technical-art-proof/generated")
     parser.add_argument("--out", default="creations/technical-art-proof/godot-front-view-proof")
     parser.add_argument("--expected-uc-head", required=True)
+    parser.add_argument("--expected-transport-result", default=DEFAULT_TRANSPORT_RESULT)
+    parser.add_argument("--final-result", default=DEFAULT_FINAL_RESULT)
+    parser.add_argument("--transport-receipt-name", default="technical-art-uc-texture-transport-receipt.json")
+    parser.add_argument("--glb-name", default="service-dark-two-surface.glb")
     args = parser.parse_args()
 
     root = Path.cwd().resolve()
     uc_root = Path(args.uc_root).resolve()
     transport_dir = Path(args.transport_dir).resolve()
     out_dir = Path(args.out).resolve()
-    transport_receipt_path = transport_dir / "technical-art-uc-texture-transport-receipt.json"
-    glb_path = transport_dir / "service-dark-two-surface.glb"
+    transport_receipt_path = transport_dir / args.transport_receipt_name
+    glb_path = transport_dir / args.glb_name
 
     if not transport_receipt_path.is_file() or not glb_path.is_file():
         raise AssertionError("exact Technical Art texture-transport prerequisite is missing")
     transport = json.loads(transport_receipt_path.read_text(encoding="utf-8"))
-    if transport.get("result") != TRANSPORT_RESULT:
+    if transport.get("result") != args.expected_transport_result:
         raise AssertionError(f"unexpected transport prerequisite result: {transport.get('result')}")
 
     technical_art_head = git(root, "rev-parse", "HEAD")
@@ -152,9 +156,10 @@ def main() -> None:
     out_dir.mkdir(parents=True, exist_ok=True)
     receipt = {
         "schema": SCHEMA,
-        "result": FINAL_RESULT,
+        "result": args.final_result,
         "technical_art_head": technical_art_head,
         "materials_authority_head": transport.get("materials_authority_head"),
+        "runtime_authority_head": transport.get("runtime_authority_head"),
         "uc_head": uc_head,
         "uc_product_modified": False,
         "transport_receipt_sha256": sha256_file(transport_receipt_path),
