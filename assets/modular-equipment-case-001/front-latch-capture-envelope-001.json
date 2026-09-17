@@ -1,0 +1,46 @@
+{
+  "schema": "axm.object-front-latch-capture-envelope/v0.1",
+  "policy_id": "front-latch-capture-envelope-001",
+  "asset_id": "modular-equipment-case-001",
+  "units": "meters",
+  "host_source_sha256": "49b1f9ed9865893d6de6f1ec8f069576732df694853fde4e3fcff366de32644a",
+  "pivot_interface": {
+    "path": "assets/modular-equipment-case-001/front-latch-pivot-interface-001.json",
+    "sha256": "bcbbe098371eb702bc9289a97370744093105925202eda6036bdced6e25e34d3",
+    "prior_hard_surface_head": "8a23c32ebc6b4e1188d2961c878d9dc365bb6da7"
+  },
+  "contact_model": {
+    "source_geometry": "EXACT_SOURCE_BOX_PROOF_VOLUMES",
+    "lever_motion": "RIGID_ROTATION_ABOUT_SOURCE_OWNED_PLUS_X_PIVOT",
+    "intersection_method": "POSITIVE_X_INTERVAL_OVERLAP_PLUS_EXACT_YZ_ORIENTED_RECTANGLE_SAT",
+    "sample_scan_step_deg": 0.05,
+    "bisection_iterations": 100,
+    "expected_contact_transition_deg_range": [9.2647, 9.2649],
+    "expected_z_aabb_only_transition_deg_range": [48.6647, 48.6649],
+    "minimum_review_release_z_axis_separation_m": 0.001
+  },
+  "source_semantics": {
+    "neutral_overlap": "INTENTIONAL_ENGAGEMENT_CONTACT_PROOF_VOLUME_OVERLAP",
+    "contact_transition": "FIRST_OBSERVED_PROOF_VOLUME_SEPARATION_UNDER_SOURCE_PIVOT_ROTATION",
+    "z_aabb_transition": "BROAD_PHASE_AXIS_SEPARATION_ONLY_NOT_CAPTURE_THRESHOLD",
+    "release_endpoint": "SOURCE_REVIEW_RELEASE_AT_50_DEG_WITH_POSITIVE_Z_AXIS_SEPARATION",
+    "reverse_path": "GEOMETRIC_STATE_SET_IS_THE_SAME_PATH_REVERSED_WITH_LID_NEUTRAL"
+  },
+  "authority": {
+    "hard_surface_owns_source_contact_intent": true,
+    "hard_surface_owns_proof_volume_capture_envelope": true,
+    "animation_timing_owned": false,
+    "rigging_motion_authorship_owned": false,
+    "runtime_controller_owned": false,
+    "physics_owned": false,
+    "physical_latch_retention_owned": false,
+    "manufacturing_fit_owned": false
+  },
+  "failure_policy": "FAIL_CLOSED_ON_SOURCE_OR_INTERFACE_IDENTITY_DRIFT_CONTACT_MODEL_DRIFT_FALSE_Z_AABB_CAPTURE_EQUIVALENCE_TRANSITION_RANGE_DRIFT_RELEASE_ENDPOINT_SEPARATION_LOSS_OR_AUTHORITY_INFLATION",
+  "truth_boundary": "PASS means only that the exact existing keeper and lever source proof boxes, with the exact source-owned +X lever pivot and the lid held neutral, have a reproducible oriented-box contact-to-separation transition under the bounded 0..50 degree review rotation; it also distinguishes that true proof-volume transition from the much later Z-AABB-only broad-phase separation. It does not prove physical hook/catch retention, loads, tolerances, wear, manufacturing fit, dynamic release or re-engagement forces, continuous full-assembly collision freedom, Animation timing, Runtime/controller behavior, physics, gameplay, final visual acceptance, CANON or production readiness.",
+  "provenance": {
+    "method": "Hard-Surface source-owner refinement of existing deterministic Object proof geometry; no donor geometry and no host source mutation",
+    "external_assets": [],
+    "external_geometry": false
+  }
+}
