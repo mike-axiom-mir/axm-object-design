@@ -200,6 +200,7 @@ func _initialize() -> void:
         return
     var imported := generated as Node3D
     get_root().add_child(imported)
+    await process_frame
 
     var lid := find_node(imported, "lid_inner_service_surface")
     var front := find_node(imported, "front_service_panel_outer_service_surface")
@@ -325,6 +326,8 @@ func _initialize() -> void:
             })
     csv.close()
 
+    player.seek(float(sequence["duration_s"]), true)
+    player.advance(0.0)
     var endpoint_lid_drift := max_point_error(neutral_lid_world, world_vertices(lid, lid_data["vertices"]))
     var endpoint_front_drift := max_point_error(neutral_front_world, world_vertices(front, front_data["vertices"]))
     if max_vertex_error > pos_tol:
