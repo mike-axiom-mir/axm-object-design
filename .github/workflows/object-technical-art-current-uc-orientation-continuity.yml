@@ -184,6 +184,7 @@ jobs:
           mkdir -p rigid-proof/front-face-generated
           cp rigid-proof/current-uc-orientation-continuity/geometry33-parity-corrected-rebound.glb rigid-proof/front-face-generated/
           cp rigid-proof/current-uc-orientation-continuity/geometry33-unadapted-rebound.glb rigid-proof/front-face-generated/
+          cp rigid-proof/current-uc-orientation-continuity/front-face-transport-receipt.json rigid-proof/front-face-generated/
           rm -f rigid-proof/front-face-index-target-receipt.json
           xvfb-run --auto-servernum --server-args="-screen 0 1000x760x24" \
             .godot-bin/Godot_v4.7.2-stable_linux.x86_64 \
