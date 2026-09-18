@@ -78,6 +78,15 @@ jobs:
             --capture-contract assets/modular-equipment-case-001/hinge-bored-knuckle-axial-stop-capture-001.json \
             --bracket-contract assets/modular-equipment-case-001/hinge-bored-knuckle-axial-stop-bracket-001.json \
             --out evidence/hinge-pin-bore-clearance
+          python tools/verify_hinge_bored_knuckle_relative_facet_phase_successor.py \
+            --host assets/modular-equipment-case-001/source.json \
+            --successor002 assets/modular-equipment-case-001/hinge-bored-knuckle-phase-invariant-source-successor-002.json \
+            --owner-contract assets/modular-equipment-case-001/hinge-knuckle-owner-stack-001.json \
+            --axial-stop-contract assets/modular-equipment-case-001/hinge-pin-axial-stop-001.json \
+            --capture-contract assets/modular-equipment-case-001/hinge-bored-knuckle-axial-stop-capture-001.json \
+            --bracket-contract assets/modular-equipment-case-001/hinge-bored-knuckle-axial-stop-bracket-001.json \
+            --contract assets/modular-equipment-case-001/hinge-bored-knuckle-relative-facet-phase-source-successor-003.json \
+            --out evidence/hinge-pin-bore-clearance
           cp assets/modular-equipment-case-001/source.json evidence/hinge-pin-bore-clearance/host-source.json
           cp assets/modular-equipment-case-001/hinge-pin-bore-clearance-001.json evidence/hinge-pin-bore-clearance/bore-clearance-contract.json
           cp assets/modular-equipment-case-001/hinge-pin-annular-mesh-001.json evidence/hinge-pin-bore-clearance/annular-mesh-contract.json
@@ -87,12 +96,13 @@ jobs:
           cp assets/modular-equipment-case-001/hinge-pin-axial-stop-001.json evidence/hinge-pin-bore-clearance/axial-stop-contract.json
           cp assets/modular-equipment-case-001/hinge-bored-knuckle-axial-stop-capture-001.json evidence/hinge-pin-bore-clearance/axial-stop-capture-contract.json
           cp assets/modular-equipment-case-001/hinge-bored-knuckle-axial-stop-bracket-001.json evidence/hinge-pin-bore-clearance/axial-stop-bracket-contract.json
+          cp assets/modular-equipment-case-001/hinge-bored-knuckle-relative-facet-phase-source-successor-003.json evidence/hinge-pin-bore-clearance/relative-facet-phase-successor-contract.json
           git rev-parse HEAD > evidence/hinge-pin-bore-clearance/exact-head.txt
       - name: Upload retained evidence
         if: matrix.python-version == '3.11'
         uses: actions/upload-artifact@v4
         with:
-          name: modular-equipment-case-001-hinge-phase-invariant-successor-stop-capture-and-bracket-evidence
+          name: modular-equipment-case-001-hinge-relative-facet-phase-successor-evidence
           path: evidence/hinge-pin-bore-clearance
           if-no-files-found: error
           retention-days: 30
