@@ -297,19 +297,17 @@ def main() -> None:
         observed_capture_blob_sha1=_git_blob_sha1(paths["capture"]),
     )
 
-    # Fail closed if the left stop is moved inward far enough that its inward
-    # face no longer lies outside the complete knuckle stack. This changes only
-    # the negative-control copy; source bytes remain untouched.
-    bad_stop = copy.deepcopy(values["stop"])
-    for stop in bad_stop["stops"]:
-        if stop["side"] == "left":
-            stop["center_x_m"] = -0.323
+    # Fail closed if the complete source knuckle stack grows beyond the left
+    # stop's inward face while the stop itself remains exactly seated at the
+    # pin endpoint. Only the negative-control copy is changed.
+    bad_host = copy.deepcopy(values["host"])
+    bad_host["hinge"]["knuckles"][0]["center_x"] = -0.30
     try:
-        _axial_bracket_metrics(values["host"], bad_stop)
+        _axial_bracket_metrics(bad_host, values["stop"])
     except AssertionError as exc:
-        receipt["negative_control_left_stop_inside_stack"] = f"HOLD:{exc}"
+        receipt["negative_control_knuckle_stack_outgrows_left_bracket"] = f"HOLD:{exc}"
     else:
-        raise AssertionError("left-stop-inside-stack negative control unexpectedly passed")
+        raise AssertionError("knuckle-stack-outgrows-left-bracket negative control unexpectedly passed")
 
     bad_authority = copy.deepcopy(values["bracket"])
     bad_authority["authority"]["retention_force_authorized"] = True
