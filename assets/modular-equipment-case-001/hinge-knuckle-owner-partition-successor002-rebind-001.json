@@ -1,0 +1,85 @@
+{
+  "schema": "axm.object-hinge-knuckle-owner-partition-successor-rebind/v0.1",
+  "family_id": "modular-equipment-case-001-hinge-knuckle-owner-partition-successor002-rebind-001",
+  "asset_id": "modular-equipment-case-001",
+  "procedural_predecessor": {
+    "exact_head": "e08b5aacd97e16f3fe8feea4995db2d0885b68a2",
+    "family_id": "modular-equipment-case-001-hinge-knuckle-owner-partition-family-001",
+    "family_digest": "39973aae8bc433b92a4d84152e5e16f0bf916a8f6aef4d9db69050569b145522",
+    "artifact_id": 10525202240,
+    "variant_mesh_digests": {
+      "full": "6b49213d239726b97af0b1dd53d23c84e49dca9e88b41fc7669357762e045508",
+      "body-only": "635d03b284d2650162e58ed8536041189a954e0c4eed6db6eaf50e245e0c9832",
+      "lid-only": "6fe602835347518d97ab4264d9b7ec07d2c559091142ad1b284a87d556e24271"
+    }
+  },
+  "hard_surface_owner_head": "a6d18b9fe729304dc4d95d962ed27527adce211f",
+  "donor_paths": {
+    "host": "assets/modular-equipment-case-001/source.json",
+    "owner_stack_contract": "assets/modular-equipment-case-001/hinge-knuckle-owner-stack-001.json",
+    "bore_contract": "assets/modular-equipment-case-001/hinge-pin-bore-clearance-001.json",
+    "annular_mesh_contract": "assets/modular-equipment-case-001/hinge-pin-annular-mesh-001.json",
+    "predecessor_successor_contract": "assets/modular-equipment-case-001/hinge-bored-knuckle-source-successor-001.json",
+    "phase_invariant_successor_contract": "assets/modular-equipment-case-001/hinge-bored-knuckle-phase-invariant-source-successor-002.json",
+    "phase_invariant_successor_verifier": "tools/verify_hinge_bored_knuckle_phase_invariant_successor.py",
+    "predecessor_successor_verifier": "tools/verify_hinge_bored_knuckle_source_successor.py",
+    "annular_builder": "tools/build_hinge_pin_annular_mesh.py"
+  },
+  "donor_git_blobs": {
+    "host": "018e36bb08539f212d2c65e6408566e3540fd983",
+    "owner_stack_contract": "e4e7c95769c0827a6a019afd672ff4b20cd13541",
+    "bore_contract": "e94fbc0d960d949f49fc3a05edba74b706f2a87e",
+    "annular_mesh_contract": "39a52ad5ba8497a8a524d764bbf6744bb11cf54a",
+    "predecessor_successor_contract": "beaf16f588450a3b298e2e581b590c5dc0c07380",
+    "phase_invariant_successor_contract": "7e078189d5c80508b28932563326cd5629c4efa6",
+    "phase_invariant_successor_verifier": "2cbeb882341eb1bba35897d744f36d014224b7ca",
+    "predecessor_successor_verifier": "f35a0ce9bd800b95359cecaeaf41d6b53100ffe9",
+    "annular_builder": "7665d904d33dea2904b55b1ebd85a6e81621ad50"
+  },
+  "expected_source_successor": {
+    "successor_id": "modular-equipment-case-001/hinge-bored-knuckle-phase-invariant-source-successor-002",
+    "bore_circumradius_m": 0.010352761804100828,
+    "minimum_phase_independent_radial_clearance_m": 0.001,
+    "owner_sequence": ["body", "lid", "body", "lid", "body"]
+  },
+  "owner_allowlist": ["body", "lid"],
+  "variants": [
+    {
+      "id": "full",
+      "owners": ["body", "lid"],
+      "expected_knuckle_ids": ["b0", "l0", "b1", "l1", "b2"],
+      "expected_knuckles": 5,
+      "expected_vertices": 240,
+      "expected_triangles": 480
+    },
+    {
+      "id": "body-only",
+      "owners": ["body"],
+      "expected_knuckle_ids": ["b0", "b1", "b2"],
+      "expected_knuckles": 3,
+      "expected_vertices": 144,
+      "expected_triangles": 288
+    },
+    {
+      "id": "lid-only",
+      "owners": ["lid"],
+      "expected_knuckle_ids": ["l0", "l1"],
+      "expected_knuckles": 2,
+      "expected_vertices": 96,
+      "expected_triangles": 192
+    }
+  ],
+  "failure_policy": "FAIL_CLOSED_NO_DONOR_DRIFT_NO_PREDECESSOR_ERASURE_NO_UNKNOWN_OR_DUPLICATE_OWNER_NO_SOURCE_RIG_OR_DOWNSTREAM_ADOPTION",
+  "authority": {
+    "hard_surface_source_successor_rewritten": false,
+    "procedural_predecessor_rewritten": false,
+    "automatic_default_replacement": false,
+    "rig_parenting_authorized": false,
+    "animation_authorized": false,
+    "technical_art_adoption_authorized": false,
+    "runtime_or_physics_authorized": false,
+    "automatic_downstream_adoption": false
+  },
+  "intent": "Rebind the existing deterministic body/lid knuckle partition operation to Hard Surface's exact phase-invariant source successor 002. Reuse the already-proven partition helper and the Hard-Surface-owned successor verifier rather than creating a second mesh or ownership system. Preserve the predecessor Procedural family as historical evidence and prove full, body-only and lid-only successor outputs independently.",
+  "truth_boundary": "This rebind proves only deterministic owner partitions of Hard Surface source successor 002 after the exact Hard-Surface verifier accepts it. It does not rewrite or default-adopt the successor, erase the predecessor family, authorize Rigging parenting, Animation, Technical Art, Runtime/physics, manufacturing fit, collision, visual acceptance, CANON or production readiness."
+}
