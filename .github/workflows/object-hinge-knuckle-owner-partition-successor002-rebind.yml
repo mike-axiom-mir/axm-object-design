@@ -1,0 +1,94 @@
+name: Object hinge-knuckle owner partition successor002 rebind
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  procedural:
+    strategy:
+      matrix:
+        python-version: ['3.11', '3.13']
+    runs-on: ubuntu-latest
+    env:
+      AXM_HINGE_SUCCESSOR002_DONOR_ROOT: _donor/object-hard-surface-hinge-successor002
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+      - name: Checkout exact Hard Surface phase-invariant successor 002
+        uses: actions/checkout@v4
+        with:
+          repository: mike-axiom-mir/axm-object-design
+          ref: a6d18b9fe729304dc4d95d962ed27527adce211f
+          path: _donor/object-hard-surface-hinge-successor002
+          fetch-depth: 1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Compile
+        run: python -m compileall tools tests
+      - name: Test complete Object suite
+        run: python -m unittest discover -s tests -v
+      - name: Build exact successor002 owner partition rebind family
+        if: matrix.python-version == '3.11'
+        run: |
+          python tools/build_hinge_knuckle_owner_partition_successor002_rebind.py \
+            --contract assets/modular-equipment-case-001/hinge-knuckle-owner-partition-successor002-rebind-001.json \
+            --donor-root _donor/object-hard-surface-hinge-successor002 \
+            --partition-module tools/build_hinge_knuckle_owner_partition_family.py \
+            --out evidence/hinge-knuckle-owner-partition-successor002-rebind
+          git rev-parse HEAD > evidence/hinge-knuckle-owner-partition-successor002-rebind/exact-head.txt
+          git -C _donor/object-hard-surface-hinge-successor002 rev-parse HEAD > evidence/hinge-knuckle-owner-partition-successor002-rebind/hard-surface-owner-head.txt
+      - name: Truth gate materially different successor partitions and predecessor continuity
+        if: matrix.python-version == '3.11'
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          root = Path('evidence/hinge-knuckle-owner-partition-successor002-rebind')
+          summary = json.loads((root / 'summary.json').read_text())
+          assert summary['result'] == 'PASS_BOUNDED_HINGE_KNUCKLE_OWNER_PARTITION_SUCCESSOR002_REBIND'
+          assert summary['decision'] == 'PASS_EXACT_SUCCESSOR002_OWNER_PARTITIONS__PREDECESSOR_FAMILY_PRESERVED__NO_SOURCE_RIG_OR_DOWNSTREAM_ADOPTION'
+          assert summary['hard_surface_owner_head'] == 'a6d18b9fe729304dc4d95d962ed27527adce211f'
+          assert summary['source_successor_id'] == 'modular-equipment-case-001/hinge-bored-knuckle-phase-invariant-source-successor-002'
+          assert summary['source_successor_result'] == 'PASS_SOURCE_OWNED_PHASE_INVARIANT_BORED_HINGE_KNUCKLE_SUCCESSOR'
+          assert abs(summary['successor_bore_circumradius_m'] - 0.010352761804100828) <= 1e-12
+          assert summary['successor_phase_independent_radial_clearance_m'] >= 0.001 - 1e-12
+          assert summary['source_owner_sequence'] == ['body', 'lid', 'body', 'lid', 'body']
+          assert summary['procedural_predecessor']['exact_head'] == 'e08b5aacd97e16f3fe8feea4995db2d0885b68a2'
+          assert summary['procedural_predecessor']['family_digest'] == '39973aae8bc433b92a4d84152e5e16f0bf916a8f6aef4d9db69050569b145522'
+          assert summary['family_digest'] != summary['procedural_predecessor']['family_digest']
+          rows = {row['id']: row for row in summary['variants']}
+          assert set(rows) == {'full', 'body-only', 'lid-only'}
+          assert (rows['full']['knuckles'], rows['full']['vertices'], rows['full']['triangles']) == (5, 240, 480)
+          assert (rows['body-only']['knuckles'], rows['body-only']['vertices'], rows['body-only']['triangles']) == (3, 144, 288)
+          assert (rows['lid-only']['knuckles'], rows['lid-only']['vertices'], rows['lid-only']['triangles']) == (2, 96, 192)
+          assert rows['full']['knuckle_ids'] == ['b0', 'l0', 'b1', 'l1', 'b2']
+          assert rows['body-only']['knuckle_ids'] == ['b0', 'b1', 'b2']
+          assert rows['lid-only']['knuckle_ids'] == ['l0', 'l1']
+          assert summary['materially_distinct_mesh_count'] == 3
+          assert summary['all_variants_changed_from_predecessor'] is True
+          assert summary['request_order_canonicalization'] == 'PASS_BODY_LID_EQUALS_LID_BODY'
+          assert summary['negative_control_count'] == 8
+          assert summary['hard_surface_source_successor_rewritten'] is False
+          assert summary['procedural_predecessor_rewritten'] is False
+          assert summary['rig_parenting_authorized'] is False
+          assert summary['automatic_downstream_adoption'] is False
+          assert len({row['mesh_digest'] for row in rows.values()}) == 3
+          assert all(row['changed_from_predecessor'] for row in rows.values())
+          assert all(row['mesh_digest'] != row['predecessor_mesh_digest'] for row in rows.values())
+          print('PASS_OBJECT_HINGE_KNUCKLE_OWNER_PARTITION_SUCCESSOR002_REBIND_TRUTH_GATE')
+          PY
+      - name: Upload retained evidence
+        if: matrix.python-version == '3.11'
+        uses: actions/upload-artifact@v4
+        with:
+          name: object-hinge-knuckle-owner-partition-successor002-rebind-evidence
+          path: evidence/hinge-knuckle-owner-partition-successor002-rebind
+          if-no-files-found: error
+          retention-days: 30
