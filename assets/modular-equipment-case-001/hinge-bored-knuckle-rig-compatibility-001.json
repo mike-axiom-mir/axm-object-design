@@ -1,0 +1,49 @@
+{
+  "schema": "axm.object-hinge-bored-knuckle-rig-compatibility/v0.1",
+  "asset_id": "modular-equipment-case-001",
+  "compatibility_id": "modular-equipment-case-001/hinge-bored-knuckle-rig-compatibility-001",
+  "source_successor": {
+    "head": "178d93e8976a741271d7f47ab4865519de925657",
+    "contract_git_blob_sha1": "beaf16f588450a3b298e2e581b590c5dc0c07380",
+    "annular_mesh_git_blob_sha1": "39a52ad5ba8497a8a524d764bbf6744bb11cf54a",
+    "owner_stack_git_blob_sha1": "e4e7c95769c0827a6a019afd672ff4b20cd13541",
+    "schema": "axm.object-hinge-bored-knuckle-source-successor/v0.1",
+    "successor_id": "modular-equipment-case-001/hinge-bored-knuckle-source-successor-001"
+  },
+  "historical_rig": {
+    "head": "4b72c9918c5fc1e89bd18a0be24fb4afac6e7775",
+    "plan_digest": "0ad6dc2ca22676cf301579932e599a441eb7c4bccce31991d1b727aeb22ac422",
+    "joint_id": "rear-lid-hinge-001",
+    "axis": [1, 0, 0],
+    "angle_limit_deg": [0, 110],
+    "opening_rotation_sign": -1,
+    "moving_lid_knuckles": ["l0", "l1"],
+    "fixed_body_knuckles": ["b0", "b1", "b2"]
+  },
+  "predecessor_rigging_head": "16b32c5ac6d52d768d64f0fac9fedfe4ee9f24fe",
+  "rig_constraint": {
+    "pin_centerline": "EXACT_SOURCE_HINGE_AXIS_COAXIAL_NO_TRANSLATION",
+    "pin_axial_phase": "UNSPECIFIED",
+    "pin_physical_owner": "UNSPECIFIED",
+    "reason": "The phase-independent radial non-contact certificate requires only the exact coaxial source hinge line. It deliberately does not invent pin ownership, axial spin behavior, bearing semantics or a physical fastening model."
+  },
+  "representative_source_angles_deg": [0, 15, 30, 45, 60, 75, 90, 105, 110],
+  "decision": {
+    "source_successor_rig_compatibility_authorized": true,
+    "source_successor_geometry_adopted": false,
+    "automatic_downstream_adoption": false,
+    "source_static_clearance_promoted_to_continuous_motion_clearance": false
+  },
+  "authority": {
+    "rigging_constraint_evidence_authorized": true,
+    "animation_accepted": false,
+    "technical_art_target_host_accepted": false,
+    "runtime_accepted": false,
+    "physics_or_load_accepted": false,
+    "manufacturing_fit_or_bearing_accepted": false,
+    "visual_accepted": false,
+    "canon_or_production_accepted": false
+  },
+  "intent": "Explicitly rebind the source-owned bored-knuckle successor to the existing Object lid-rig constraint boundary without silently adopting new geometry. Prove a phase-independent positive radial pin-to-bore clearance for the complete 0..110 degree articulation while keeping pin axial phase and physical ownership unspecified and refusing to promote the Hard-Surface neutral/same-phase 1 mm clearance into a continuous motion claim.",
+  "truth_boundary": "This Rigging compatibility overlay proves only a source-identical coaxial radial non-contact lower bound for the exact bored-knuckle successor under the existing lid articulation. It does not adopt successor geometry into a production rig, establish pin ownership or spin, preserve a 1 mm clearance at every motion phase, prove axial-stop/collar contact, retention, loads, bearing behavior, tolerance class, wear, lubrication, full-component collision, Animation timing/interpolation/playback, Technical-Art target-host adoption, Runtime/controller/device behavior, physics/gameplay, visual acceptance, CANON or production readiness."
+}
