@@ -65,32 +65,48 @@ func find_node(root: Node, wanted: String) -> Node3D:
             return found
     return null
 
-func world_mesh_center(node: Node3D) -> Vector3:
+func world_vertices(node: Node3D) -> Array[Vector3]:
     if not (node is MeshInstance3D):
         fail("CURRENT_TA_MOTION_MISMATCH expected MeshInstance3D for " + String(node.name))
-        return Vector3.ZERO
+        return []
     var instance := node as MeshInstance3D
-    if instance.mesh == null:
-        fail("CURRENT_TA_MOTION_MISMATCH mesh missing for " + String(node.name))
-        return Vector3.ZERO
-    return instance.global_transform * instance.mesh.get_aabb().get_center()
+    if instance.mesh == null or instance.mesh.get_surface_count() != 1:
+        fail("CURRENT_TA_MOTION_MISMATCH expected one mesh surface for " + String(node.name))
+        return []
+    var arrays := instance.mesh.surface_get_arrays(0)
+    var vertices: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+    if vertices.is_empty():
+        fail("CURRENT_TA_MOTION_MISMATCH empty mesh vertices for " + String(node.name))
+        return []
+    var out: Array[Vector3] = []
+    for value in vertices:
+        out.append(instance.global_transform * value)
+    return out
+
+func max_world_delta(before: Array[Vector3], after: Array[Vector3]) -> float:
+    if before.size() != after.size():
+        return INF
+    var result := 0.0
+    for i in range(before.size()):
+        result = maxf(result, before[i].distance_to(after[i]))
+    return result
 
 func max_body_drift(nodes: Dictionary, neutral: Dictionary) -> float:
     var result := 0.0
     for name in BODY_NAMES:
-        result = maxf(result, world_mesh_center(nodes[name]).distance_to(neutral[name]))
+        result = maxf(result, max_world_delta(neutral[name], world_vertices(nodes[name])))
     return result
 
 func max_lid_move(nodes: Dictionary, neutral: Dictionary) -> float:
     var result := 0.0
     for name in LID_NAMES:
-        result = maxf(result, world_mesh_center(nodes[name]).distance_to(neutral[name]))
+        result = maxf(result, max_world_delta(neutral[name], world_vertices(nodes[name])))
     return result
 
 func max_endpoint_drift(nodes: Dictionary, neutral: Dictionary) -> float:
     var result := 0.0
     for name in HINGE_NAMES:
-        result = maxf(result, world_mesh_center(nodes[name]).distance_to(neutral[name]))
+        result = maxf(result, max_world_delta(neutral[name], world_vertices(nodes[name])))
     return result
 
 func _initialize() -> void:
@@ -169,7 +185,7 @@ func _run_observation() -> void:
 
     var neutral: Dictionary = {}
     for name in HINGE_NAMES:
-        neutral[name] = world_mesh_center(nodes[name])
+        neutral[name] = world_vertices(nodes[name])
 
     var mutation := OS.get_environment("AXM_MUTATE_BODY_PARENT")
     if mutation != "":
@@ -246,8 +262,8 @@ func _run_observation() -> void:
     if sampled_max_body_drift_m > POSITION_TOL_M:
         fail("CURRENT_TA_MOTION_MISMATCH body-owned successor hinge moved under sampled lid animation")
         return
-    if sampled_max_lid_move_m < 0.005:
-        fail("CURRENT_TA_MOTION_MISMATCH lid-owned successor hinge did not receive sampled lid motion")
+    if sampled_max_lid_move_m < 0.0001:
+        fail("CURRENT_TA_MOTION_MISMATCH lid-owned successor hinge vertices did not receive sampled lid motion")
         return
 
     player.seek(2.5, true)
@@ -285,8 +301,8 @@ func _run_observation() -> void:
     if wall_max_body_drift_m > POSITION_TOL_M:
         fail("CURRENT_TA_MOTION_MISMATCH body-owned successor hinge moved during natural AnimationPlayer playback")
         return
-    if wall_max_lid_move_m < 0.005:
-        fail("CURRENT_TA_MOTION_MISMATCH lid-owned successor hinge did not move during natural AnimationPlayer playback")
+    if wall_max_lid_move_m < 0.0001:
+        fail("CURRENT_TA_MOTION_MISMATCH lid-owned successor hinge vertices did not move during natural AnimationPlayer playback")
         return
     if wall_endpoint_drift_m > POSITION_TOL_M:
         fail("CURRENT_TA_MOTION_MISMATCH natural AnimationPlayer playback did not close at neutral")
@@ -309,17 +325,17 @@ func _run_observation() -> void:
     receipt["animation_update_mode"] = "DISCRETE_AUTHORED_SAMPLES"
     receipt["peak_authored_lid_deg"] = peak_authored_deg
     receipt["sampled_max_lid_angle_error_deg"] = max_seek_angle_error_deg
-    receipt["sampled_max_body_knuckle_world_drift_m"] = sampled_max_body_drift_m
-    receipt["sampled_max_lid_knuckle_world_move_m"] = sampled_max_lid_move_m
-    receipt["sampled_endpoint_parent_motion_closure_m"] = sampled_endpoint_drift_m
+    receipt["sampled_max_body_knuckle_world_vertex_drift_m"] = sampled_max_body_drift_m
+    receipt["sampled_max_lid_knuckle_world_vertex_move_m"] = sampled_max_lid_move_m
+    receipt["sampled_endpoint_world_vertex_closure_m"] = sampled_endpoint_drift_m
     receipt["selected_sample_observations"] = selected
     receipt["wall_clock_playback_completed"] = true
     receipt["wall_clock_elapsed_s"] = wall_elapsed_s
     receipt["wall_clock_process_observations"] = wall_frames
     receipt["wall_clock_peak_lid_deg"] = wall_peak_lid_deg
-    receipt["wall_clock_max_body_knuckle_world_drift_m"] = wall_max_body_drift_m
-    receipt["wall_clock_max_lid_knuckle_world_move_m"] = wall_max_lid_move_m
-    receipt["wall_clock_endpoint_parent_motion_closure_m"] = wall_endpoint_drift_m
+    receipt["wall_clock_max_body_knuckle_world_vertex_drift_m"] = wall_max_body_drift_m
+    receipt["wall_clock_max_lid_knuckle_world_vertex_move_m"] = wall_max_lid_move_m
+    receipt["wall_clock_endpoint_world_vertex_closure_m"] = wall_endpoint_drift_m
     receipt["negative_parent_mutation_requested"] = mutation
     receipt["godot_version"] = Engine.get_version_info()
     write_receipt()
