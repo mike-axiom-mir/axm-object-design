@@ -1,0 +1,182 @@
+name: Object material hinge successor002 transport lookdev
+
+on:
+  push:
+    branches: [studio/materials-object-functional-surface-001]
+    paths:
+      - "lookdev/object_hinge_successor002_material_transport_lookdev_001.json"
+      - "tools/verify_object_hinge_successor002_material_transport_lookdev.py"
+      - "lookdev-proof/hinge_successor002_material_transport_observe.gd"
+      - ".github/workflows/object-material-hinge-successor002-transport-lookdev.yml"
+      - "lookdev/object_material_profile_001.json"
+      - "assets/modular-equipment-case-001/source.json"
+      - "tools/build_modular_case.py"
+  pull_request:
+    paths:
+      - "lookdev/object_hinge_successor002_material_transport_lookdev_001.json"
+      - "tools/verify_object_hinge_successor002_material_transport_lookdev.py"
+      - "lookdev-proof/hinge_successor002_material_transport_observe.gd"
+      - ".github/workflows/object-material-hinge-successor002-transport-lookdev.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  hinge-successor002-material-transport-lookdev:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ['3.11', '3.13']
+    env:
+      TA_ARTIFACT_ID: "10531541834"
+      TA_ARTIFACT_SHA256: 5e1134d0ebdf786d04ae789a841493ce9cf684f16aedd7dbad597f2e02b3ad5e
+      TARGET_GLB_SHA256: f81a9bccd9de1033476da4e5bbea3871b01e2ebf9fb65fcf909447fd14c43e40
+
+    steps:
+      - name: Checkout exact Materials head
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Bind bounded Materials delta and run Object suite
+        run: |
+          set -euo pipefail
+          git rev-parse HEAD > lookdev-proof/hinge-successor002-materials-exact-head.txt
+          python -m json.tool lookdev/object_hinge_successor002_material_transport_lookdev_001.json >/dev/null
+          python -m py_compile tools/verify_object_hinge_successor002_material_transport_lookdev.py
+          python tools/verify_object_hinge_successor002_material_transport_lookdev.py \
+            --exact-head "$(git rev-parse HEAD)"
+          python -m unittest discover -s tests -v
+
+      - name: Negative control rejects Technical Art owner-head drift
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          src=Path('lookdev/object_hinge_successor002_material_transport_lookdev_001.json')
+          data=json.loads(src.read_text())
+          data['technical_art_owner']['exact_head']='0000000000000000000000000000000000000000'
+          Path('/tmp/bad-object-hinge-successor002-material.json').write_text(json.dumps(data,indent=2)+'\n')
+          PY
+          set +e
+          output="$(python tools/verify_object_hinge_successor002_material_transport_lookdev.py \
+            --contract /tmp/bad-object-hinge-successor002-material.json \
+            --exact-head "$(git rev-parse HEAD)" 2>&1)"
+          status=$?
+          set -e
+          test "$status" -ne 0
+          printf '%s\n' "$output" | grep -q "Technical Art owner binding drift"
+          printf '%s\n' "Technical Art owner-head negative rejected as expected"
+
+      - name: Download exact Technical Art successor002 artifact
+        if: matrix.python-version == '3.11'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p .ta-artifact lookdev-proof/generated/technical-art-successor002-packet
+          curl --fail --location --retry 3 --retry-delay 2 \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts/${TA_ARTIFACT_ID}/zip" \
+            -o .ta-artifact.zip
+          echo "$TA_ARTIFACT_SHA256  .ta-artifact.zip" | sha256sum --check --strict
+          printf '%s  %s\n' "$TA_ARTIFACT_SHA256" "$TA_ARTIFACT_ID" > lookdev-proof/generated/technical-art-successor002-packet/technical-art-artifact-identity.txt
+          unzip -q .ta-artifact.zip -d .ta-artifact
+          cp .ta-artifact/rigid-proof/generated/object-hinge-successor002-ta-transport-rebind-receipt.json \
+            lookdev-proof/generated/technical-art-successor002-packet/object-hinge-successor002-ta-transport-rebind-receipt.json
+          cp .ta-artifact/rigid-proof/hinge-successor002-target-transport-receipt.json \
+            lookdev-proof/generated/technical-art-successor002-packet/hinge-successor002-target-transport-receipt.json
+          cp .ta-artifact/rigid-proof/generated/object-rigid-components-hinge-successor002-rebound.glb \
+            lookdev-proof/generated/technical-art-successor002-packet/object-rigid-components-hinge-successor002-rebound.glb
+          echo "$TARGET_GLB_SHA256  lookdev-proof/generated/technical-art-successor002-packet/object-rigid-components-hinge-successor002-rebound.glb" | sha256sum --check --strict
+
+      - name: Build exact Materials receiving payload from pinned Technical Art packet
+        if: matrix.python-version == '3.11'
+        run: |
+          set -euo pipefail
+          python tools/verify_object_hinge_successor002_material_transport_lookdev.py \
+            --exact-head "$(git rev-parse HEAD)" \
+            --ta-root lookdev-proof/generated/technical-art-successor002-packet \
+            --out lookdev-proof/generated/object-hinge-successor002-material
+
+      - name: Download pinned Godot 4.7.2
+        if: matrix.python-version == '3.11'
+        env:
+          GODOT_URL: https://github.com/godotengine/godot-builds/releases/download/4.7.2-stable/Godot_v4.7.2-stable_linux.x86_64.zip
+          GODOT_SHA256: cadd3204e728a35d3f13adb7fd0d7902636b79f6b95c40c265eb73b6c35329e4
+        run: |
+          set -euo pipefail
+          mkdir -p .godot-bin
+          curl --fail --location --retry 3 --retry-delay 2 "$GODOT_URL" --output .godot-bin/godot.zip
+          echo "$GODOT_SHA256  .godot-bin/godot.zip" | sha256sum --check --strict
+          unzip -q .godot-bin/godot.zip -d .godot-bin
+          chmod +x .godot-bin/Godot_v4.7.2-stable_linux.x86_64
+          .godot-bin/Godot_v4.7.2-stable_linux.x86_64 --version
+          if ! command -v xvfb-run >/dev/null 2>&1; then
+            sudo apt-get update
+            sudo apt-get install -y xvfb
+          fi
+
+      - name: Render exact successor002 target with unchanged Object material family
+        if: matrix.python-version == '3.11'
+        run: |
+          set -euo pipefail
+          rm -f lookdev-proof/hinge-successor002-material-transport-runtime-receipt.json lookdev-proof/hinge-successor002-material-*.png
+          xvfb-run --auto-servernum --server-args="-screen 0 1000x760x24" \
+            .godot-bin/Godot_v4.7.2-stable_linux.x86_64 \
+            --display-driver x11 \
+            --rendering-method gl_compatibility \
+            --path lookdev-proof \
+            --script hinge_successor002_material_transport_observe.gd
+
+      - name: Validate bounded successor002 material/cull evidence
+        if: matrix.python-version == '3.11'
+        run: |
+          set -euo pipefail
+          python tools/verify_object_hinge_successor002_material_transport_lookdev.py \
+            --exact-head "$(git rev-parse HEAD)" \
+            --runtime-receipt lookdev-proof/hinge-successor002-material-transport-runtime-receipt.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          r=json.loads(Path('lookdev-proof/hinge-successor002-material-transport-runtime-receipt.json').read_text())
+          assert r['state']=='PASS_EVIDENCE',r
+          assert r['decision']=='PASS_OBJECT_HINGE_SUCCESSOR002_TARGET_MATERIAL_BACKFACE_CULL_COHERENCE',r
+          assert r['aggregate_front_negative_vs_two_sided_gt1'] > r['aggregate_back_vs_two_sided_gt1'],r
+          assert r['aggregate_material_activity_gt1'] > 0,r
+          print(json.dumps(r,indent=2))
+          PY
+
+      - name: Retain exact successor002 Materials evidence
+        if: matrix.python-version == '3.11' && always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: object-material-hinge-successor002-transport-${{ github.event.pull_request.head.sha || github.sha }}
+          path: |
+            lookdev/object_hinge_successor002_material_transport_lookdev_001.json
+            tools/verify_object_hinge_successor002_material_transport_lookdev.py
+            lookdev-proof/hinge_successor002_material_transport_observe.gd
+            lookdev-proof/hinge-successor002-materials-exact-head.txt
+            lookdev-proof/generated/technical-art-successor002-packet/technical-art-artifact-identity.txt
+            lookdev-proof/generated/technical-art-successor002-packet/object-hinge-successor002-ta-transport-rebind-receipt.json
+            lookdev-proof/generated/technical-art-successor002-packet/hinge-successor002-target-transport-receipt.json
+            lookdev-proof/generated/technical-art-successor002-packet/object-rigid-components-hinge-successor002-rebound.glb
+            lookdev-proof/generated/object-hinge-successor002-material/object_hinge_successor002_material_transport_payload.json
+            lookdev-proof/generated/object-hinge-successor002-material/object_hinge_successor002_material_transport_build_receipt.json
+            lookdev-proof/generated/object-hinge-successor002-material/object-rigid-components-hinge-successor002-rebound.glb
+            lookdev-proof/hinge-successor002-material-transport-runtime-receipt.json
+            lookdev-proof/hinge-successor002-material-*.png
+          if-no-files-found: warn
+          retention-days: 30
