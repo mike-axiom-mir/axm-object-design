@@ -1,0 +1,224 @@
+name: Object Technical Art current-UC orientation continuity
+
+on:
+  pull_request:
+    paths:
+      - "tools/verify_object_geometry_front_face_current_uc_continuity.py"
+      - ".github/workflows/object-technical-art-current-uc-orientation-continuity.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  orientation-transport-continuity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.13"]
+    steps:
+      - name: Checkout exact Technical Art receiving head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+
+      - name: Checkout historical Geometry candidate owner
+        uses: actions/checkout@v4
+        with:
+          repository: mike-axiom-mir/axm-object-design
+          ref: 606d8189a3bf4502141d8038f08d35d421829dde
+          path: .geometry-historical
+          fetch-depth: 1
+
+      - name: Checkout current Geometry merged-UC rebind owner
+        uses: actions/checkout@v4
+        with:
+          repository: mike-axiom-mir/axm-object-design
+          ref: 444e6a10be53e883e8aee0a75b2b93b74cee3dbd
+          path: .geometry-current
+          fetch-depth: 1
+
+      - name: Checkout exact Hard Surface exterior-intent owner
+        uses: actions/checkout@v4
+        with:
+          repository: mike-axiom-mir/axm-object-design
+          ref: 77a4058b305fab7fd04dab94781b9460f089727e
+          path: .hard-surface
+          fetch-depth: 1
+
+      - name: Checkout exact merged UC orientation observer
+        uses: actions/checkout@v4
+        with:
+          repository: mike-axiom-mir/axm-universal-creation
+          ref: 13a823349a568db266099564d6f5d8d7bac48b2b
+          path: .uc-orientation-donor
+          fetch-depth: 1
+
+      - name: Checkout exact current Universal Creation
+        uses: actions/checkout@v4
+        with:
+          repository: mike-axiom-mir/axm-universal-creation
+          ref: 3e6e51402fdb681b4bbed1bc7e816939b06a83b5
+          path: .uc-current
+          fetch-depth: 1
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Compile and run complete Technical Art branch Object suite
+        run: |
+          python -m compileall -q tools tests
+          python -m unittest discover -s tests -v
+
+      - name: Rebuild historical Geometry candidate and Hard Surface exterior intent
+        run: |
+          rm -rf rigid-proof/current-uc-orientation-continuity
+          mkdir -p rigid-proof/current-uc-orientation-continuity
+          PYTHONPATH=.geometry-historical python .geometry-historical/tools/verify_rigid_shell_orientation.py \
+            --source .geometry-historical/assets/modular-equipment-case-001/source.json \
+            --policy .geometry-historical/assets/modular-equipment-case-001/rigid-shell-orientation-review-001.json \
+            --receipt rigid-proof/current-uc-orientation-continuity/historical-geometry-orientation-receipt.json \
+            --obj rigid-proof/current-uc-orientation-continuity/historical-geometry-orientation-candidate.obj
+          PYTHONPATH=.hard-surface python .hard-surface/tools/verify_rigid_shell_exterior_intent.py \
+            --source .hard-surface/assets/modular-equipment-case-001/source.json \
+            --contract .hard-surface/assets/modular-equipment-case-001/rigid-shell-exterior-intent-001.json \
+            --builder .hard-surface/tools/build_modular_case.py \
+            --geometry-candidate-obj rigid-proof/current-uc-orientation-continuity/historical-geometry-orientation-candidate.obj \
+            --geometry-head 606d8189a3bf4502141d8038f08d35d421829dde \
+            --receipt rigid-proof/current-uc-orientation-continuity/hard-surface-exterior-intent-receipt.json
+
+      - name: Re-observe exact candidate through merged UC orientation observer
+        env:
+          PYTHONPATH: .geometry-current
+        run: |
+          python .geometry-current/tools/verify_rigid_shell_uc_orientation_rebind.py \
+            --uc-root .uc-orientation-donor \
+            --receipt rigid-proof/current-uc-orientation-continuity/geometry-merged-uc-rebind-receipt.json \
+            --obj rigid-proof/current-uc-orientation-continuity/geometry-merged-uc-rebind-candidate.obj
+
+      - name: Rebuild exact Technical Art transport through current UC
+        env:
+          PYTHONPATH: .:.uc-current/src
+        run: |
+          python tools/build_object_geometry_front_face_transport.py \
+            --geometry-candidate-obj rigid-proof/current-uc-orientation-continuity/historical-geometry-orientation-candidate.obj \
+            --geometry-receipt rigid-proof/current-uc-orientation-continuity/historical-geometry-orientation-receipt.json \
+            --hard-surface-receipt rigid-proof/current-uc-orientation-continuity/hard-surface-exterior-intent-receipt.json \
+            --uc-root .uc-current \
+            --expected-uc-commit 3e6e51402fdb681b4bbed1bc7e816939b06a83b5 \
+            --out rigid-proof/current-uc-orientation-continuity
+          git rev-parse HEAD > rigid-proof/current-uc-orientation-continuity/exact-technical-art-head.txt
+          git -C .geometry-current rev-parse HEAD > rigid-proof/current-uc-orientation-continuity/exact-geometry-rebind-head.txt
+          git -C .geometry-historical rev-parse HEAD > rigid-proof/current-uc-orientation-continuity/exact-geometry-historical-head.txt
+          git -C .hard-surface rev-parse HEAD > rigid-proof/current-uc-orientation-continuity/exact-hard-surface-head.txt
+          git -C .uc-orientation-donor rev-parse HEAD > rigid-proof/current-uc-orientation-continuity/exact-uc-orientation-merge.txt
+          git -C .uc-current rev-parse HEAD > rigid-proof/current-uc-orientation-continuity/exact-current-uc-head.txt
+
+      - name: Bind merged observer evidence to current-UC transport bytes
+        run: |
+          python tools/verify_object_geometry_front_face_current_uc_continuity.py \
+            --geometry-rebind-root .geometry-current \
+            --geometry-rebind-receipt rigid-proof/current-uc-orientation-continuity/geometry-merged-uc-rebind-receipt.json \
+            --historical-candidate-obj rigid-proof/current-uc-orientation-continuity/historical-geometry-orientation-candidate.obj \
+            --rebound-candidate-obj rigid-proof/current-uc-orientation-continuity/geometry-merged-uc-rebind-candidate.obj \
+            --front-face-transport-receipt rigid-proof/current-uc-orientation-continuity/front-face-transport-receipt.json \
+            --current-uc-root .uc-current \
+            --expected-current-uc-head 3e6e51402fdb681b4bbed1bc7e816939b06a83b5 \
+            --out rigid-proof/current-uc-orientation-continuity/orientation-transport-continuity-receipt.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          root = Path('rigid-proof/current-uc-orientation-continuity')
+          r = json.loads((root/'orientation-transport-continuity-receipt.json').read_text())
+          assert r['result'] == 'PASS_OBJECT_GEOMETRY_MERGED_UC_ORIENTATION_TO_CURRENT_UC_TRANSPORT_CONTINUITY', r
+          assert r['geometry_current_rebind_head'] == (root/'exact-geometry-rebind-head.txt').read_text().strip(), r
+          assert r['geometry_historical_candidate_head'] == (root/'exact-geometry-historical-head.txt').read_text().strip(), r
+          assert r['hard_surface_head'] == (root/'exact-hard-surface-head.txt').read_text().strip(), r
+          assert r['merged_uc_orientation_observer_commit'] == (root/'exact-uc-orientation-merge.txt').read_text().strip(), r
+          assert r['current_uc_head'] == (root/'exact-current-uc-head.txt').read_text().strip(), r
+          assert r['historical_candidate_obj_sha256'] == r['merged_uc_rebind_candidate_obj_sha256'], r
+          assert r['rigid_groups'] == 31 and r['triangles'] == 812, r
+          assert r['source_shared_orientation_conflicts'] == 304, r
+          assert r['candidate_shared_orientation_conflicts'] == 0, r
+          assert r['parity_compatible_groups'] == 31, r
+          assert r['candidate_volume_matching_groups'] == 31, r
+          assert r['corrected_glb_sha256'] == 'c3326180d7626b224e16d372c2ff5f6fe47a6c9d13241d8225cea7629e58bd83', r
+          assert r['unadapted_glb_sha256'] == '708926421688fbc9cc727aadb21023b4e543b174ac1434fd5387d732c2d498a2', r
+          assert r['truth_boundary']['positive_signed_volume_called_outward'] is False, r
+          assert r['truth_boundary']['global_godot_front_face_rule_claimed'] is False, r
+          assert r['truth_boundary']['source_or_candidate_adopted'] is False, r
+          print(json.dumps(r, indent=2))
+          PY
+
+      - name: Download pinned Godot 4.7.2
+        if: matrix.python-version == '3.11'
+        env:
+          GODOT_URL: https://github.com/godotengine/godot-builds/releases/download/4.7.2-stable/Godot_v4.7.2-stable_linux.x86_64.zip
+          GODOT_SHA256: cadd3204e728a35d3f13adb7fd0d7902636b79f6b95c40c265eb73b6c35329e4
+        run: |
+          set -euo pipefail
+          mkdir -p .godot-bin
+          curl --fail --location --retry 3 --retry-delay 2 "$GODOT_URL" --output .godot-bin/godot.zip
+          echo "$GODOT_SHA256  .godot-bin/godot.zip" | sha256sum --check --strict
+          unzip -q .godot-bin/godot.zip -d .godot-bin
+          chmod +x .godot-bin/Godot_v4.7.2-stable_linux.x86_64
+          .godot-bin/Godot_v4.7.2-stable_linux.x86_64 --version
+
+      - name: Install virtual display
+        if: matrix.python-version == '3.11'
+        run: |
+          if ! command -v xvfb-run >/dev/null 2>&1; then
+            sudo apt-get update
+            sudo apt-get install -y xvfb
+          fi
+
+      - name: Observe current-UC GLBs through real Godot imported index arrays
+        if: matrix.python-version == '3.11'
+        run: |
+          rm -rf rigid-proof/front-face-generated
+          mkdir -p rigid-proof/front-face-generated
+          cp rigid-proof/current-uc-orientation-continuity/geometry33-parity-corrected-rebound.glb rigid-proof/front-face-generated/
+          cp rigid-proof/current-uc-orientation-continuity/geometry33-unadapted-rebound.glb rigid-proof/front-face-generated/
+          rm -f rigid-proof/front-face-index-target-receipt.json
+          xvfb-run --auto-servernum --server-args="-screen 0 1000x760x24" \
+            .godot-bin/Godot_v4.7.2-stable_linux.x86_64 \
+            --display-driver x11 \
+            --rendering-method gl_compatibility \
+            --path rigid-proof \
+            --script front_face_index_observe.gd
+          cp rigid-proof/front-face-index-target-receipt.json rigid-proof/current-uc-orientation-continuity/
+
+      - name: Validate current-UC real-target parity continuity
+        if: matrix.python-version == '3.11'
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('rigid-proof/current-uc-orientation-continuity/front-face-index-target-receipt.json')
+          r=json.loads(p.read_text())
+          assert r['state']=='PASS_EVIDENCE',r
+          assert r['result']=='PASS_OBJECT_GEOMETRY33_CURRENT_UC_GLTF_GODOT_IMPORTED_INDEX_PARITY_DISTINGUISHED',r
+          assert r['corrected']['mesh_group_count']==31 and r['corrected']['triangles']==812,r
+          assert r['unadapted_negative']['mesh_group_count']==31 and r['unadapted_negative']['triangles']==812,r
+          assert r['opposite_signed_volume_groups']==31,r
+          assert r['matching_signed_volume_magnitude_groups']==31,r
+          assert r['maximum_signed_volume_magnitude_delta_m3']<=1e-10,r
+          assert r['truth_boundary']['global_godot_front_face_rule_claimed'] is False,r
+          assert r['truth_boundary']['source_geometry_adopted'] is False,r
+          assert r['truth_boundary']['uc_modified'] is False,r
+          print(json.dumps(r,indent=2))
+          PY
+
+      - name: Retain exact continuity evidence
+        if: matrix.python-version == '3.11' && always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: object-technical-art-current-uc-orientation-continuity-${{ github.event.pull_request.head.sha || github.sha }}
+          path: rigid-proof/current-uc-orientation-continuity
+          if-no-files-found: warn
+          retention-days: 30
