@@ -1,0 +1,61 @@
+{
+  "schema": "axm.object-animation-hinge-knuckle-parent-motion-rebind/v0.1",
+  "contract_id": "modular-equipment-case-001-hinge-knuckle-parent-motion-rebind-001",
+  "asset_id": "modular-equipment-case-001",
+  "host_source_sha256": "49b1f9ed9865893d6de6f1ec8f069576732df694853fde4e3fcff366de32644a",
+  "animation_sequence": {
+    "sequence_id": "lid-latch-open-hold-close-001",
+    "sequence_digest": "0a3523cf792264f610881552fd2ebd438aabdfd05e30e92af9dbb33ded1fa2d3",
+    "sample_rate_hz": 40,
+    "duration_s": 2.5,
+    "endpoint_inclusive_sample_count": 101,
+    "motion_mutation_policy": "FORBIDDEN_REBIND_ONLY"
+  },
+  "rigging_parent_authority": {
+    "repository": "mike-axiom-mir/axm-object-design",
+    "pr": 27,
+    "exact_head": "16b32c5ac6d52d768d64f0fac9fedfe4ee9f24fe",
+    "required_result": "PASS_SOURCE_OWNED_HINGE_KNUCKLE_PARENT_BINDING_CONTINUOUS_0_TO_110",
+    "source_owner_stack_head": "172dd9ff5ed1fee3a21cd460c607f07ee0da7520",
+    "source_owner_stack_blob": "e4e7c95769c0827a6a019afd672ff4b20cd13541",
+    "lid_rig_head": "4b72c9918c5fc1e89bd18a0be24fb4afac6e7775",
+    "lid_rig_plan_digest": "0ad6dc2ca22676cf301579932e599a441eb7c4bccce31991d1b727aeb22ac422",
+    "joint_id": "rear-lid-hinge-001",
+    "moving_lid_knuckles": [
+      "l0",
+      "l1"
+    ],
+    "fixed_body_knuckles": [
+      "b0",
+      "b1",
+      "b2"
+    ]
+  },
+  "known_unconsumed_source_successor": {
+    "hard_surface_head": "178d93e8976a741271d7f47ab4865519de925657",
+    "schema": "axm.object-hinge-bored-knuckle-source-successor/v0.1",
+    "successor_id": "modular-equipment-case-001/hinge-bored-knuckle-source-successor-001",
+    "animation_authorized": false,
+    "automatic_downstream_adoption": false,
+    "adopted_by_this_animation_contract": false
+  },
+  "preservation_contract": {
+    "retimed": false,
+    "keys_changed": false,
+    "easing_changed": false,
+    "amplitude_changed": false,
+    "source_geometry_changed": false,
+    "rig_parent_partition_changed": false,
+    "historical_source_replaced": false
+  },
+  "truth_boundary": {
+    "animation_parent_motion_rebind_owned": true,
+    "bored_knuckle_successor_adopted": false,
+    "technical_art_target_host_parenting_accepted": false,
+    "runtime_controller_or_state_machine_accepted": false,
+    "physics_or_collision_accepted": false,
+    "gameplay_accepted": false,
+    "final_visual_motion_accepted": false,
+    "canon_or_production_ready": false
+  }
+}

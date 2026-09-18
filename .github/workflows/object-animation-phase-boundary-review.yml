@@ -1,0 +1,332 @@
+name: Object animation phase-boundary target-host review
+
+on:
+  pull_request:
+    paths:
+      - 'assets/modular-equipment-case-001/animation-phase-boundary-review-001.json'
+      - '.github/workflows/object-animation-phase-boundary-review.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  DERIVATIVE_DIAGNOSIS_HEAD: 7e9c7e6f3a3d8c7743cec0c0756e206b5d0d5339
+  TECHNICAL_ART_HEAD: 965fb2f24dbd0b0cbb748d9f8b8712d62966315f
+  UC_HEAD: 6dc465987e01362264f88b7cef4213609ae50763
+  LID_RIG_HEAD: 4b72c9918c5fc1e89bd18a0be24fb4afac6e7775
+  LATCH_RIG_HEAD: 3b667ff5d30c46ec2fe7da7679518970f8610018
+  LATCH_OWNERSHIP_HEAD: d3fa10a270faae7925811f44f03381fe5c5d0215
+  LATCH_RIG_PLAN_SHA256: 81c27ab7b73ed9a43cb3f554b56c3f4294b893712075e33d13f5b02e008455db
+  LATCH_OWNERSHIP_SHA256: 0702e4180f858d29c42ff8c38a61eaa16278d6848c8ce6f3ecfae172969ca8ae
+
+jobs:
+  exact-phase-boundary-target-host-review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout exact Animation PR head with ancestry
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+      - name: Bind exact Animation head and prove motion unchanged from derivative diagnosis
+        run: |
+          set -euo pipefail
+          EXACT_HEAD_SHA="$(git rev-parse HEAD)"
+          echo "EXACT_HEAD_SHA=$EXACT_HEAD_SHA" >> "$GITHUB_ENV"
+          git merge-base --is-ancestor "$DERIVATIVE_DIAGNOSIS_HEAD" "$EXACT_HEAD_SHA"
+          git diff --exit-code "$DERIVATIVE_DIAGNOSIS_HEAD" "$EXACT_HEAD_SHA" -- \
+            assets/modular-equipment-case-001/source.json \
+            assets/modular-equipment-case-001/lid-motion-clip.json \
+            assets/modular-equipment-case-001/lid-latch-motion-sequence-001.json \
+            assets/modular-equipment-case-001/source-authority-motion-rebind-002.json \
+            animation-proof/observe_interpolation_v3.gd
+      - name: Validate bounded review plan
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('assets/modular-equipment-case-001/animation-phase-boundary-review-001.json')
+          d=json.loads(p.read_text())
+          assert d['schema']=='axm.object-animation-phase-boundary-review-plan/v0.1',d
+          assert d['sequence_id']=='lid-latch-open-hold-close-001',d
+          assert d['sequence_digest']=='0a3523cf792264f610881552fd2ebd438aabdfd05e30e92af9dbb33ded1fa2d3',d
+          assert d['motion_change'] is False and d['retimed'] is False and d['retargeted'] is False and d['key_count_changed'] is False,d
+          rows=d['capture_intervals']
+          expected=[0,4,9,10,20,39,40,49,59,60,70,89,90,95,99]
+          got=[int(r['interval_index']) for r in rows]
+          assert got==expected,(got,expected)
+          assert len(set(got))==15
+          for row in rows:
+              i=int(row['interval_index'])
+              assert abs(float(row['time_s'])-((i+0.5)/40.0))<=1e-12,row
+          pairs=d['critical_boundary_pairs']
+          assert [(x['pre_interval_index'],x['post_interval_index']) for x in pairs]==[(9,10),(39,40),(59,60),(89,90),(99,0)],pairs
+          assert d['preserved_prior_capture_intervals']==[4,20,49,70,95],d
+          assert d['truth_boundary']['perceptual_quality_acceptance'] is False,d
+          print('bounded phase-boundary review plan PASS')
+          PY
+      - name: Checkout exact Technical Art rigid-scene donor
+        uses: actions/checkout@v4
+        with:
+          repository: mike-axiom-mir/axm-object-design
+          ref: ${{ env.TECHNICAL_ART_HEAD }}
+          path: .technical-art
+      - name: Checkout exact UC rigid-scene donor
+        uses: actions/checkout@v4
+        with:
+          repository: mike-axiom-mir/axm-universal-creation
+          ref: ${{ env.UC_HEAD }}
+          path: .uc
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Run exact Object structural suite
+        run: |
+          python -m compileall -q tools tests
+          python -m unittest discover -s tests -v
+      - name: Rebuild exact Technical Art UC rigid-scene donor output
+        run: |
+          set -euo pipefail
+          rm -rf .technical-art/rigid-proof/generated
+          mkdir -p .technical-art/rigid-proof/generated
+          (
+            cd .technical-art
+            PYTHONPATH=../.uc/src python tools/build_object_uc_rigid_scene_handoff.py \
+              --uc-root ../.uc \
+              --expected-uc-commit "$UC_HEAD" \
+              --out rigid-proof/generated
+          )
+          test "$(git -C .technical-art rev-parse HEAD)" = "$TECHNICAL_ART_HEAD"
+          test "$(git -C .uc rev-parse HEAD)" = "$UC_HEAD"
+      - name: Materialize exact lid/latch rig donors
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/axm-animation-phase-review-donors /tmp/axm-latch-rig-evidence /tmp/axm-lid-motion /tmp/axm-lid-latch
+          mkdir -p /tmp/axm-animation-phase-review-donors/tools /tmp/axm-animation-phase-review-donors/assets/modular-equipment-case-001
+          curl -fsSL "https://raw.githubusercontent.com/mike-axiom-mir/axm-object-design/${LID_RIG_HEAD}/assets/modular-equipment-case-001/articulation.json" -o /tmp/axm-animation-phase-review-donors/assets/modular-equipment-case-001/articulation.json
+          ownership_base="https://raw.githubusercontent.com/mike-axiom-mir/axm-object-design/${LATCH_OWNERSHIP_HEAD}"
+          rig_base="https://raw.githubusercontent.com/mike-axiom-mir/axm-object-design/${LATCH_RIG_HEAD}"
+          curl -fsSL "$ownership_base/assets/modular-equipment-case-001/front-latch-ownership-001.json" -o /tmp/axm-animation-phase-review-donors/assets/modular-equipment-case-001/front-latch-ownership-001.json
+          curl -fsSL "$ownership_base/tools/verify_front_latch_ownership.py" -o /tmp/axm-animation-phase-review-donors/tools/verify_front_latch_ownership.py
+          curl -fsSL "$rig_base/assets/modular-equipment-case-001/front-latch-articulation-001.json" -o /tmp/axm-animation-phase-review-donors/assets/modular-equipment-case-001/front-latch-articulation-001.json
+          curl -fsSL "$rig_base/tools/verify_front_latch_articulation.py" -o /tmp/axm-animation-phase-review-donors/tools/verify_front_latch_articulation.py
+          echo "$LATCH_OWNERSHIP_SHA256  /tmp/axm-animation-phase-review-donors/assets/modular-equipment-case-001/front-latch-ownership-001.json" | sha256sum -c -
+          echo "$LATCH_RIG_PLAN_SHA256  /tmp/axm-animation-phase-review-donors/assets/modular-equipment-case-001/front-latch-articulation-001.json" | sha256sum -c -
+      - name: Rebuild exact authored lid/latch sequence
+        run: |
+          set -euo pipefail
+          python tools/build_lid_motion_evidence.py \
+            --source assets/modular-equipment-case-001/source.json \
+            --rig /tmp/axm-animation-phase-review-donors/assets/modular-equipment-case-001/articulation.json \
+            --clip assets/modular-equipment-case-001/lid-motion-clip.json \
+            --out /tmp/axm-lid-motion \
+            --exact-head "$EXACT_HEAD_SHA"
+          PYTHONPATH="$PWD/tools" python /tmp/axm-animation-phase-review-donors/tools/verify_front_latch_articulation.py \
+            --host assets/modular-equipment-case-001/source.json \
+            --ownership /tmp/axm-animation-phase-review-donors/assets/modular-equipment-case-001/front-latch-ownership-001.json \
+            --plan /tmp/axm-animation-phase-review-donors/assets/modular-equipment-case-001/front-latch-articulation-001.json \
+            --out /tmp/axm-latch-rig-evidence
+          python tools/build_lid_latch_motion_evidence.py \
+            --source assets/modular-equipment-case-001/source.json \
+            --sequence assets/modular-equipment-case-001/lid-latch-motion-sequence-001.json \
+            --motion-evidence /tmp/axm-lid-motion/lid-motion-evidence.json \
+            --ownership /tmp/axm-animation-phase-review-donors/assets/modular-equipment-case-001/front-latch-ownership-001.json \
+            --rig-receipt /tmp/axm-latch-rig-evidence/front-latch-articulation.receipt.json \
+            --rig-head "$LATCH_RIG_HEAD" \
+            --rig-plan-sha256 "$LATCH_RIG_PLAN_SHA256" \
+            --out /tmp/axm-lid-latch \
+            --exact-head "$EXACT_HEAD_SHA"
+      - name: Assemble exact target-host review inputs
+        run: |
+          set -euo pipefail
+          rm -rf animation-proof/generated
+          mkdir -p animation-proof/generated
+          cp .technical-art/rigid-proof/generated/object-rigid-components-rebound.glb animation-proof/generated/
+          cp .technical-art/rigid-proof/generated/uc-rigid-scene-handoff-receipt.json animation-proof/generated/
+          cp /tmp/axm-lid-latch/lid-latch-motion-evidence.json animation-proof/generated/
+          cp /tmp/axm-latch-rig-evidence/front-latch-articulation.receipt.json animation-proof/generated/
+          printf '%s\n' "$EXACT_HEAD_SHA" > animation-proof/generated/exact-animation-head.txt
+      - name: Validate exact cross-repo identity before target host
+        run: |
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          root=Path('animation-proof/generated')
+          t=json.loads((root/'uc-rigid-scene-handoff-receipt.json').read_text())
+          s=json.loads((root/'lid-latch-motion-evidence.json').read_text())
+          r=json.loads((root/'front-latch-articulation.receipt.json').read_text())
+          plan=json.loads(Path('assets/modular-equipment-case-001/animation-phase-boundary-review-001.json').read_text())
+          assert t['result']=='PASS_OBJECT_SOURCE_OWNED_RIGID_PARTS_THROUGH_UC_SCENE_GRAPH',t
+          assert t['source_repository_head']==os.environ['TECHNICAL_ART_HEAD'],t
+          assert t['observed_uc_commit']==os.environ['UC_HEAD'],t
+          assert s['result']=='PASS_ORDERED_LATCH_RELEASE_LID_CLIP_REENGAGE_SEQUENCE',s
+          assert s['exact_receiving_head']==os.environ['EXACT_HEAD_SHA'],s
+          assert s['sequence_id']==plan['sequence_id'],(s,plan)
+          assert s['sequence_digest']==plan['sequence_digest'],(s,plan)
+          assert s['host_source_sha256']==t['source_sha256'],(s,t)
+          assert s['latch_rig_dependency_head']==os.environ['LATCH_RIG_HEAD'],s
+          assert r['result']=='PASS_BOUNDED_FRONT_LATCH_LEVER_ARTICULATION',r
+          assert r['host_source_sha256']==s['host_source_sha256'],(r,s)
+          assert s['endpoint_inclusive_sample_count']==101 and s['sample_rate_hz']==40 and s['duration_s']==2.5,s
+          print('cross-repo identity gate PASS')
+          PY
+      - name: Expand only retained capture coverage in working copy
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          plan=json.loads(Path('assets/modular-equipment-case-001/animation-phase-boundary-review-001.json').read_text())
+          indices=[int(x['interval_index']) for x in plan['capture_intervals']]
+          p=Path('animation-proof/observe_interpolation_v3.gd')
+          text=p.read_text()
+          old='    var capture_intervals: Dictionary = {4: true, 20: true, 49: true, 70: true, 95: true}'
+          new='    var capture_intervals: Dictionary = {' + ', '.join(f'{i}: true' for i in indices) + '}'
+          assert text.count(old)==1,'expected exact v3 capture selector not found once'
+          p.write_text(text.replace(old,new))
+          print(new)
+          PY
+          git diff --check -- animation-proof/observe_interpolation_v3.gd
+          git diff -- animation-proof/observe_interpolation_v3.gd
+      - name: Download pinned Godot 4.7.2
+        env:
+          GODOT_URL: https://github.com/godotengine/godot-builds/releases/download/4.7.2-stable/Godot_v4.7.2-stable_linux.x86_64.zip
+          GODOT_SHA256: cadd3204e728a35d3f13adb7fd0d7902636b79f6b95c40c265eb73b6c35329e4
+        run: |
+          set -euo pipefail
+          mkdir -p .godot-bin
+          curl --fail --location --retry 3 --retry-delay 2 "$GODOT_URL" --output .godot-bin/godot.zip
+          echo "$GODOT_SHA256  .godot-bin/godot.zip" | sha256sum --check --strict
+          unzip -q .godot-bin/godot.zip -d .godot-bin
+          chmod +x .godot-bin/Godot_v4.7.2-stable_linux.x86_64
+          .godot-bin/Godot_v4.7.2-stable_linux.x86_64 --version
+      - name: Install virtual display when needed
+        run: |
+          if ! command -v xvfb-run >/dev/null 2>&1; then
+            sudo apt-get update
+            sudo apt-get install -y xvfb
+          fi
+      - name: Observe all 100 half-steps and retain exact phase-boundary review windows
+        run: |
+          set -euo pipefail
+          rm -f animation-proof/animationplayer-interpolation-v3-receipt.json animation-proof/interp-v3-*.png
+          xvfb-run --auto-servernum --server-args="-screen 0 1000x760x24" \
+            .godot-bin/Godot_v4.7.2-stable_linux.x86_64 \
+            --display-driver x11 \
+            --rendering-method gl_compatibility \
+            --path animation-proof \
+            --script observe_interpolation_v3.gd
+      - name: Validate target-host evidence and build review receipt
+        run: |
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          root=Path('animation-proof')
+          plan_path=Path('assets/modular-equipment-case-001/animation-phase-boundary-review-001.json')
+          plan=json.loads(plan_path.read_text())
+          r=json.loads((root/'animationplayer-interpolation-v3-receipt.json').read_text())
+          expected=[int(x['interval_index']) for x in plan['capture_intervals']]
+          assert r['state']=='PASS_TARGET_HOST_LINEAR_INTERPOLATION_SUBSAMPLE_FIDELITY',r
+          assert r['technical_art_object_head']==os.environ['TECHNICAL_ART_HEAD'],r
+          assert r['uc_commit']==os.environ['UC_HEAD'],r
+          assert r['animation_sequence_head']==os.environ['EXACT_HEAD_SHA'],r
+          assert r['sequence_id']==plan['sequence_id'],(r,plan)
+          assert r['sequence_digest']==plan['sequence_digest'],(r,plan)
+          assert r['sample_rate_hz']==40 and r['duration_s']==2.5 and r['endpoint_inclusive_sample_count']==101,r
+          assert r['half_step_observation_count']==100,r
+          assert r['animationplayer_track_count']==3 and r['animationplayer_key_counts']==[101,101,101],r
+          assert r['animation_update_mode']=='CONTINUOUS' and r['animation_interpolation']=='LINEAR',r
+          assert r['target_space_signs']=={'lid':'positive X','latches':'negative X'},r
+          assert r['neutral_pivot_wrapper_max_drift_m']<=1e-6,r
+          assert r['max_lid_linear_residual_deg']<=1e-4 and r['max_latch_linear_residual_deg']<=1e-4,r
+          assert r['max_lid_analytic_smoothstep_error_deg']<=0.09,r
+          assert r['max_latch_analytic_smoothstep_error_deg']<=0.35,r
+          assert r['ordering_violation_count']==0 and r['overshoot_violation_count']==0,r
+          assert r['truth_boundary']['wall_clock_40hz_playback_pacing_observed'] is False,r
+          assert r['truth_boundary']['runtime_controller_or_state_machine'] is False,r
+          assert r['truth_boundary']['gameplay_acceptance'] is False,r
+          got=sorted(int(k) for k in r['captures'])
+          assert got==expected,(got,expected)
+          roles={int(x['interval_index']):x['role'] for x in plan['capture_intervals']}
+          capture_rows=[]
+          for index in expected:
+              p=root/f'interp-v3-{index:03d}.png'
+              assert p.stat().st_size>3000,p
+              observed=r['captures'][str(index)]
+              expected_time=(index+0.5)/40.0
+              assert abs(float(observed['time_s'])-expected_time)<=1e-9,(index,observed)
+              capture_rows.append({
+                  'interval_index':index,
+                  'time_s':expected_time,
+                  'role':roles[index],
+                  'sha256':observed['sha256'],
+                  'path':observed['path'],
+                  'bytes':p.stat().st_size,
+              })
+          boundaries=[]
+          for pair in plan['critical_boundary_pairs']:
+              pre=int(pair['pre_interval_index']); post=int(pair['post_interval_index'])
+              boundaries.append({
+                  **pair,
+                  'pre_capture_sha256':r['captures'][str(pre)]['sha256'],
+                  'post_capture_sha256':r['captures'][str(post)]['sha256'],
+              })
+          review={
+              'schema':'axm.object-animation-phase-boundary-target-host-review/v0.1',
+              'result':'PASS_PHASE_BOUNDARY_TARGET_HOST_REVIEW_PACKET_MOTION_UNCHANGED',
+              'exact_receiving_head':os.environ['EXACT_HEAD_SHA'],
+              'derivative_diagnosis_head':os.environ['DERIVATIVE_DIAGNOSIS_HEAD'],
+              'plan_id':plan['plan_id'],
+              'sequence_id':plan['sequence_id'],
+              'sequence_digest':plan['sequence_digest'],
+              'target_host':'Godot 4.7.2 GL Compatibility',
+              'target_host_state':r['state'],
+              'half_step_observation_count':r['half_step_observation_count'],
+              'retained_capture_count':len(capture_rows),
+              'critical_boundary_pair_count':len(boundaries),
+              'captures':capture_rows,
+              'critical_boundaries':boundaries,
+              'motion_changed':False,
+              'retimed':False,
+              'retargeted':False,
+              'key_count_changed':False,
+              'review_required_for_quality_judgment':True,
+              'truth_boundary':{
+                  'exact_target_host_half_step_motion_observed':True,
+                  'phase_boundary_pre_post_captures_retained':True,
+                  'prior_five_review_captures_preserved':True,
+                  'c1_discontinuity_repaired':False,
+                  'perceptual_quality_accepted':False,
+                  'wall_clock_40hz_playback_pacing_observed':False,
+                  'runtime_controller_or_state_machine':False,
+                  'collision_or_physics_acceptance':False,
+                  'gameplay_acceptance':False,
+                  'production_readiness':False,
+              },
+          }
+          (root/'phase-boundary-target-host-review-receipt.json').write_text(json.dumps(review,indent=2,sort_keys=True)+'\n')
+          print(json.dumps(review,indent=2))
+          PY
+      - name: Retain exact phase-boundary target-host review evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: object-animation-phase-boundary-review-${{ github.event.pull_request.head.sha || github.sha }}
+          path: |
+            assets/modular-equipment-case-001/animation-phase-boundary-review-001.json
+            assets/modular-equipment-case-001/lid-motion-clip.json
+            assets/modular-equipment-case-001/lid-latch-motion-sequence-001.json
+            animation-proof/generated/object-rigid-components-rebound.glb
+            animation-proof/generated/uc-rigid-scene-handoff-receipt.json
+            animation-proof/generated/lid-latch-motion-evidence.json
+            animation-proof/generated/front-latch-articulation.receipt.json
+            animation-proof/generated/exact-animation-head.txt
+            animation-proof/observe_interpolation_v3.gd
+            animation-proof/animationplayer-interpolation-v3-receipt.json
+            animation-proof/phase-boundary-target-host-review-receipt.json
+            animation-proof/interp-v3-*.png
+          if-no-files-found: warn
+          retention-days: 30

@@ -1,0 +1,301 @@
+name: Object Animation relative facet phase motion rebind
+
+on:
+  pull_request:
+    paths:
+      - 'assets/modular-equipment-case-001/hinge-relative-facet-phase-motion-rebind-003.json'
+      - 'tools/verify_animation_hinge_relative_facet_phase_motion_rebind.py'
+      - 'animation-proof/observe_hinge_relative_facet_phase_motion.gd'
+      - '.github/workflows/object-animation-hinge-relative-facet-phase-motion-rebind.yml'
+      - 'assets/modular-equipment-case-001/lid-motion-clip.json'
+      - 'assets/modular-equipment-case-001/lid-latch-motion-sequence-001.json'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  SOURCE_SUCCESSOR_HEAD: ef1dfc2f2c1adbe3c90ba089c66ac09d223df25c
+  SOURCE_SUCCESSOR_BLOB: e7a44523ea80e567a745cd61af7fd7005757cc12
+  RIGGING_RECEIVER_HEAD: 0974a97af10fedf62a5803a88921faf96f3448d5
+  RIGGING_RECEIVER_BLOB: 6d3e78476ea2b79ca48ad96d823d80d956e5bf49
+  LID_RIG_HEAD: 4b72c9918c5fc1e89bd18a0be24fb4afac6e7775
+  LATCH_RIG_HEAD: 3b667ff5d30c46ec2fe7da7679518970f8610018
+  LATCH_OWNERSHIP_HEAD: d3fa10a270faae7925811f44f03381fe5c5d0215
+  LATCH_RIG_PLAN_SHA256: 81c27ab7b73ed9a43cb3f554b56c3f4294b893712075e33d13f5b02e008455db
+  LATCH_OWNERSHIP_SHA256: 0702e4180f858d29c42ff8c38a61eaa16278d6848c8ce6f3ecfae172969ca8ae
+
+jobs:
+  relative-facet-phase-motion:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout exact Animation PR head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+
+      - name: Bind exact Animation head
+        run: echo "EXACT_HEAD_SHA=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
+
+      - name: Checkout exact Hard-Surface successor 003
+        uses: actions/checkout@v4
+        with:
+          repository: mike-axiom-mir/axm-object-design
+          ref: ${{ env.SOURCE_SUCCESSOR_HEAD }}
+          path: .source-successor
+          fetch-depth: 1
+
+      - name: Checkout exact Rigging successor 003 receiver
+        uses: actions/checkout@v4
+        with:
+          repository: mike-axiom-mir/axm-object-design
+          ref: ${{ env.RIGGING_RECEIVER_HEAD }}
+          path: .rigging-receiver
+          fetch-depth: 1
+
+      - name: Checkout historical lid rig
+        uses: actions/checkout@v4
+        with:
+          repository: mike-axiom-mir/axm-object-design
+          ref: ${{ env.LID_RIG_HEAD }}
+          path: .lid-rig
+          fetch-depth: 1
+
+      - name: Checkout historical latch rig
+        uses: actions/checkout@v4
+        with:
+          repository: mike-axiom-mir/axm-object-design
+          ref: ${{ env.LATCH_RIG_HEAD }}
+          path: .latch-rig
+          fetch-depth: 1
+
+      - name: Checkout latch ownership
+        uses: actions/checkout@v4
+        with:
+          repository: mike-axiom-mir/axm-object-design
+          ref: ${{ env.LATCH_OWNERSHIP_HEAD }}
+          path: .latch-ownership
+          fetch-depth: 1
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Verify exact donors and inherited Object suite
+        run: |
+          set -euo pipefail
+          test "$(git -C .source-successor rev-parse HEAD)" = "$SOURCE_SUCCESSOR_HEAD"
+          test "$(git -C .rigging-receiver rev-parse HEAD)" = "$RIGGING_RECEIVER_HEAD"
+          test "$(git -C .lid-rig rev-parse HEAD)" = "$LID_RIG_HEAD"
+          test "$(git -C .latch-rig rev-parse HEAD)" = "$LATCH_RIG_HEAD"
+          test "$(git -C .latch-ownership rev-parse HEAD)" = "$LATCH_OWNERSHIP_HEAD"
+          test "$(git -C .source-successor rev-parse "${SOURCE_SUCCESSOR_HEAD}:assets/modular-equipment-case-001/hinge-bored-knuckle-relative-facet-phase-source-successor-003.json")" = "$SOURCE_SUCCESSOR_BLOB"
+          test "$(git -C .rigging-receiver rev-parse "${RIGGING_RECEIVER_HEAD}:assets/modular-equipment-case-001/hinge-relative-facet-phase-rig-compatibility-003.json")" = "$RIGGING_RECEIVER_BLOB"
+          echo "$LATCH_OWNERSHIP_SHA256  .latch-ownership/assets/modular-equipment-case-001/front-latch-ownership-001.json" | sha256sum -c -
+          echo "$LATCH_RIG_PLAN_SHA256  .latch-rig/assets/modular-equipment-case-001/front-latch-articulation-001.json" | sha256sum -c -
+          python -m compileall -q tools tests
+          python -m unittest discover -s tests -v
+
+      - name: Rebuild unchanged 101-key Animation sequence
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/axm-phase003-lid /tmp/axm-phase003-latch-rig /tmp/axm-phase003-sequence
+          python tools/build_lid_motion_evidence.py \
+            --source assets/modular-equipment-case-001/source.json \
+            --rig .lid-rig/assets/modular-equipment-case-001/articulation.json \
+            --clip assets/modular-equipment-case-001/lid-motion-clip.json \
+            --out /tmp/axm-phase003-lid \
+            --exact-head "$EXACT_HEAD_SHA"
+          PYTHONPATH="$PWD/tools" python .latch-rig/tools/verify_front_latch_articulation.py \
+            --host assets/modular-equipment-case-001/source.json \
+            --ownership .latch-ownership/assets/modular-equipment-case-001/front-latch-ownership-001.json \
+            --plan .latch-rig/assets/modular-equipment-case-001/front-latch-articulation-001.json \
+            --out /tmp/axm-phase003-latch-rig
+          python tools/build_lid_latch_motion_evidence.py \
+            --source assets/modular-equipment-case-001/source.json \
+            --sequence assets/modular-equipment-case-001/lid-latch-motion-sequence-001.json \
+            --motion-evidence /tmp/axm-phase003-lid/lid-motion-evidence.json \
+            --ownership .latch-ownership/assets/modular-equipment-case-001/front-latch-ownership-001.json \
+            --rig-receipt /tmp/axm-phase003-latch-rig/front-latch-articulation.receipt.json \
+            --rig-head "$LATCH_RIG_HEAD" \
+            --rig-plan-sha256 "$LATCH_RIG_PLAN_SHA256" \
+            --out /tmp/axm-phase003-sequence \
+            --exact-head "$EXACT_HEAD_SHA"
+          grep -q 'PASS_ORDERED_LATCH_RELEASE_LID_CLIP_REENGAGE_SEQUENCE' /tmp/axm-phase003-sequence/lid-latch-motion-evidence.json
+          grep -q '"sequence_digest": "0a3523cf792264f610881552fd2ebd438aabdfd05e30e92af9dbb33ded1fa2d3"' /tmp/axm-phase003-sequence/lid-latch-motion-evidence.json
+          grep -q '"endpoint_inclusive_sample_count": 101' /tmp/axm-phase003-sequence/lid-latch-motion-evidence.json
+
+      - name: Build exact successor003 phase-bearing Animation input
+        run: |
+          set -euo pipefail
+          rm -rf animation-proof/generated/hinge-relative-facet-phase-motion
+          PYTHONPATH="$PWD/tools" python tools/verify_animation_hinge_relative_facet_phase_motion_rebind.py \
+            --contract assets/modular-equipment-case-001/hinge-relative-facet-phase-motion-rebind-003.json \
+            --source assets/modular-equipment-case-001/source.json \
+            --sequence-evidence /tmp/axm-phase003-sequence/lid-latch-motion-evidence.json \
+            --source-successor .source-successor/assets/modular-equipment-case-001/hinge-bored-knuckle-relative-facet-phase-source-successor-003.json \
+            --rigging-compatibility .rigging-receiver/assets/modular-equipment-case-001/hinge-relative-facet-phase-rig-compatibility-003.json \
+            --lid-plan .lid-rig/assets/modular-equipment-case-001/articulation.json \
+            --exact-head "$EXACT_HEAD_SHA" \
+            --observed-successor-head "$SOURCE_SUCCESSOR_HEAD" \
+            --observed-successor-blob "$SOURCE_SUCCESSOR_BLOB" \
+            --observed-rigging-head "$RIGGING_RECEIVER_HEAD" \
+            --observed-rigging-blob "$RIGGING_RECEIVER_BLOB" \
+            --out animation-proof/generated/hinge-relative-facet-phase-motion
+          cp /tmp/axm-phase003-sequence/lid-latch-motion-evidence.json animation-proof/generated/hinge-relative-facet-phase-motion/sequence-evidence.json
+          cp .source-successor/assets/modular-equipment-case-001/hinge-bored-knuckle-relative-facet-phase-source-successor-003.json animation-proof/generated/hinge-relative-facet-phase-motion/source-successor-003.json
+          cp .rigging-receiver/assets/modular-equipment-case-001/hinge-relative-facet-phase-rig-compatibility-003.json animation-proof/generated/hinge-relative-facet-phase-motion/rigging-compatibility-003.json
+          grep -q 'PASS_OBJECT_ANIMATION_RELATIVE_FACET_PHASE_MOTION_REBIND_INPUT' animation-proof/generated/hinge-relative-facet-phase-motion/structural-receipt.json
+
+      - name: Prove fail-closed phase, adoption and envelope boundaries
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          contract = Path('assets/modular-equipment-case-001/hinge-relative-facet-phase-motion-rebind-003.json')
+          row = json.loads(contract.read_text())
+          row['bounded_receiver_decision']['production_default_adoption'] = True
+          Path('/tmp/bad-phase003-contract.json').write_text(json.dumps(row, indent=2) + '\n')
+
+          successor = json.loads(Path('.source-successor/assets/modular-equipment-case-001/hinge-bored-knuckle-relative-facet-phase-source-successor-003.json').read_text())
+          successor['source_owned_successor']['owner_group_phase_deg']['lid'] = 0.0
+          successor['source_owned_successor']['relative_lid_minus_body_phase_deg'] = 0.0
+          Path('/tmp/bad-phase003-successor.json').write_text(json.dumps(successor, indent=2) + '\n')
+
+          seq = json.loads(Path('/tmp/axm-phase003-sequence/lid-latch-motion-evidence.json').read_text())
+          peak = max(range(len(seq['samples'])), key=lambda i: float(seq['samples'][i]['lid_open_angle_deg']))
+          seq['samples'][peak]['lid_open_angle_deg'] = 111.0
+          seq['samples'][peak]['lid_mathematical_rotation_deg'] = -111.0
+          Path('/tmp/bad-phase003-sequence.json').write_text(json.dumps(seq, indent=2) + '\n')
+          PY
+
+          run_bad () {
+            local contract="$1"
+            local sequence="$2"
+            local successor="$3"
+            local needle="$4"
+            local tag="$5"
+            local code=0
+            PYTHONPATH="$PWD/tools" python tools/verify_animation_hinge_relative_facet_phase_motion_rebind.py \
+              --contract "$contract" \
+              --source assets/modular-equipment-case-001/source.json \
+              --sequence-evidence "$sequence" \
+              --source-successor "$successor" \
+              --rigging-compatibility .rigging-receiver/assets/modular-equipment-case-001/hinge-relative-facet-phase-rig-compatibility-003.json \
+              --lid-plan .lid-rig/assets/modular-equipment-case-001/articulation.json \
+              --exact-head "$EXACT_HEAD_SHA" \
+              --observed-successor-head "$SOURCE_SUCCESSOR_HEAD" \
+              --observed-successor-blob "$SOURCE_SUCCESSOR_BLOB" \
+              --observed-rigging-head "$RIGGING_RECEIVER_HEAD" \
+              --observed-rigging-blob "$RIGGING_RECEIVER_BLOB" \
+              --out "/tmp/bad-${tag}-out" > "/tmp/bad-${tag}.stdout" 2> "/tmp/bad-${tag}.stderr" || code=$?
+            test "$code" -ne 0
+            grep -q "$needle" "/tmp/bad-${tag}.stderr"
+          }
+
+          run_bad /tmp/bad-phase003-contract.json /tmp/axm-phase003-sequence/lid-latch-motion-evidence.json .source-successor/assets/modular-equipment-case-001/hinge-bored-knuckle-relative-facet-phase-source-successor-003.json 'production_default_adoption' adoption
+          run_bad assets/modular-equipment-case-001/hinge-relative-facet-phase-motion-rebind-003.json /tmp/axm-phase003-sequence/lid-latch-motion-evidence.json /tmp/bad-phase003-successor.json 'lid source phase' phase
+          run_bad assets/modular-equipment-case-001/hinge-relative-facet-phase-motion-rebind-003.json /tmp/bad-phase003-sequence.json .source-successor/assets/modular-equipment-case-001/hinge-bored-knuckle-relative-facet-phase-source-successor-003.json 'escaped Rigging owner range' envelope
+
+      - name: Download pinned Godot 4.7.2
+        env:
+          GODOT_URL: https://github.com/godotengine/godot-builds/releases/download/4.7.2-stable/Godot_v4.7.2-stable_linux.x86_64.zip
+          GODOT_SHA256: cadd3204e728a35d3f13adb7fd0d7902636b79f6b95c40c265eb73b6c35329e4
+        run: |
+          set -euo pipefail
+          mkdir -p .godot-bin
+          curl --fail --location --retry 3 --retry-delay 2 "$GODOT_URL" --output .godot-bin/godot.zip
+          echo "$GODOT_SHA256  .godot-bin/godot.zip" | sha256sum --check --strict
+          unzip -q .godot-bin/godot.zip -d .godot-bin
+          chmod +x .godot-bin/Godot_v4.7.2-stable_linux.x86_64
+          .godot-bin/Godot_v4.7.2-stable_linux.x86_64 --version
+
+      - name: Prove wrong parent and collapsed source phase fail real motion observation
+        run: |
+          set -euo pipefail
+          rm -f animation-proof/hinge-relative-facet-phase-motion-godot-receipt.json
+          code=0
+          (
+            cd animation-proof
+            AXM_MUTATE_PARENT=b1_outer ../.godot-bin/Godot_v4.7.2-stable_linux.x86_64 --headless --path . --script observe_hinge_relative_facet_phase_motion.gd
+          ) > /tmp/godot-phase003-parent-negative.log 2>&1 || code=$?
+          test "$code" -ne 0
+          grep -q 'RELATIVE_FACET_PHASE_MOTION_MISMATCH' /tmp/godot-phase003-parent-negative.log
+          cp /tmp/godot-phase003-parent-negative.log animation-proof/hinge-relative-facet-phase-parent-negative.log
+
+          rm -f animation-proof/hinge-relative-facet-phase-motion-godot-receipt.json
+          code=0
+          (
+            cd animation-proof
+            AXM_MUTATE_PHASE=l0_outer ../.godot-bin/Godot_v4.7.2-stable_linux.x86_64 --headless --path . --script observe_hinge_relative_facet_phase_motion.gd
+          ) > /tmp/godot-phase003-phase-negative.log 2>&1 || code=$?
+          test "$code" -ne 0
+          grep -q 'RELATIVE_FACET_PHASE_MOTION_MISMATCH' /tmp/godot-phase003-phase-negative.log
+          cp /tmp/godot-phase003-phase-negative.log animation-proof/hinge-relative-facet-phase-phase-negative.log
+
+      - name: Observe exact source phase through real Godot AnimationPlayer
+        run: |
+          set -euo pipefail
+          rm -f animation-proof/hinge-relative-facet-phase-motion-godot-receipt.json
+          (
+            cd animation-proof
+            ../.godot-bin/Godot_v4.7.2-stable_linux.x86_64 --headless --path . --script observe_hinge_relative_facet_phase_motion.gd
+          ) | tee /tmp/godot-phase003-positive.log
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p = Path('animation-proof/hinge-relative-facet-phase-motion-godot-receipt.json')
+          row = json.loads(p.read_text())
+          assert row['result'] == 'PASS_OBJECT_ANIMATION_GODOT_RELATIVE_FACET_PHASE_MOTION_REBIND'
+          assert row['observed_sample_count'] == 101
+          assert row['animationplayer_key_count'] == 101
+          assert row['animation_interpolation'] == 'NEAREST'
+          assert row['maximum_world_position_residual_m'] <= 1e-6
+          assert row['maximum_effective_phase_residual_deg'] <= 0.001
+          assert row['maximum_body_witness_world_drift_m'] <= 1e-6
+          assert row['maximum_lid_outer_witness_world_move_m'] > 0.03
+          assert row['maximum_lid_bore_witness_world_move_m'] > 0.015
+          assert row['endpoint_witness_closure_m'] <= 1e-6
+          assert abs(row['observed_initial_lid_outer_phase_deg'] - 15.0) <= 0.001
+          assert abs(row['observed_peak_lid_outer_phase_deg'] - (-85.0)) <= 0.001
+          assert row['truth_boundary']['technical_art_target_host_adopted'] is False
+          assert row['truth_boundary']['runtime_controller_or_state_machine_accepted'] is False
+          assert row['truth_boundary']['gameplay_accepted'] is False
+          print(json.dumps(row, indent=2, sort_keys=True))
+          PY
+
+      - name: Retain exact bounded evidence
+        run: |
+          set -euo pipefail
+          printf '%s\n' "$EXACT_HEAD_SHA" > animation-proof/generated/hinge-relative-facet-phase-motion/exact-animation-head.txt
+          cp assets/modular-equipment-case-001/hinge-relative-facet-phase-motion-rebind-003.json animation-proof/generated/hinge-relative-facet-phase-motion/animation-contract.json
+          cp animation-proof/hinge-relative-facet-phase-motion-godot-receipt.json animation-proof/generated/hinge-relative-facet-phase-motion/godot-receipt.json
+          cp animation-proof/hinge-relative-facet-phase-parent-negative.log animation-proof/generated/hinge-relative-facet-phase-motion/parent-negative.log
+          cp animation-proof/hinge-relative-facet-phase-phase-negative.log animation-proof/generated/hinge-relative-facet-phase-motion/phase-negative.log
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: object-animation-relative-facet-phase-${{ env.EXACT_HEAD_SHA }}
+          path: animation-proof/generated/hinge-relative-facet-phase-motion
+          if-no-files-found: error
+
+  regression-python313:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Compile and run complete Object suite
+        run: |
+          set -euo pipefail
+          python -m compileall -q tools tests
+          python -m unittest discover -s tests -v

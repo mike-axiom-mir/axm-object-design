@@ -1,0 +1,318 @@
+name: Object animation source-authority rebind evidence
+
+on:
+  pull_request:
+    paths:
+      - 'assets/modular-equipment-case-001/source-authority-motion-rebind-002.json'
+      - 'tools/verify_animation_source_authority_rebind.py'
+      - '.github/workflows/object-animation-source-authority-rebind.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  PRIOR_ANIMATION_HEAD: 5cb073f9fcf825014556ed165ee081e1eca71cdc
+  TECHNICAL_ART_HEAD: 965fb2f24dbd0b0cbb748d9f8b8712d62966315f
+  UC_HEAD: 6dc465987e01362264f88b7cef4213609ae50763
+  LID_RIG_HEAD: 4b72c9918c5fc1e89bd18a0be24fb4afac6e7775
+  HISTORICAL_LATCH_RIG_HEAD: 3b667ff5d30c46ec2fe7da7679518970f8610018
+  HISTORICAL_OWNERSHIP_HEAD: d3fa10a270faae7925811f44f03381fe5c5d0215
+  SOURCE_RIG_HEAD: a1acd2bcb2074f41e536562f2673508e2cb0a4d5
+  SOURCE_INTERFACE_HEAD: 6086f39a3da344c57a68653f90d040e03e04cec2
+  SOURCE_INTERFACE_SHA256: bcbbe098371eb702bc9289a97370744093105925202eda6036bdced6e25e34d3
+  SOURCE_RIG_BINDING_SHA256: 615f8ff34cc0897fd399345301efce1ca9cb0aa58e86caca92b914049b89adce
+
+jobs:
+  exact-source-authority-motion-rebind:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout exact Animation PR head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Bind exact Animation head
+        run: echo "EXACT_HEAD_SHA=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
+      - name: Checkout exact prior Animation evidence donor
+        uses: actions/checkout@v4
+        with:
+          repository: mike-axiom-mir/axm-object-design
+          ref: ${{ env.PRIOR_ANIMATION_HEAD }}
+          path: .prior-animation
+      - name: Checkout exact current source-rig authority donor
+        uses: actions/checkout@v4
+        with:
+          repository: mike-axiom-mir/axm-object-design
+          ref: ${{ env.SOURCE_RIG_HEAD }}
+          path: .source-rig
+      - name: Checkout exact historical Rigging donor
+        uses: actions/checkout@v4
+        with:
+          repository: mike-axiom-mir/axm-object-design
+          ref: ${{ env.HISTORICAL_LATCH_RIG_HEAD }}
+          path: .historical-rig
+      - name: Checkout exact historical ownership donor
+        uses: actions/checkout@v4
+        with:
+          repository: mike-axiom-mir/axm-object-design
+          ref: ${{ env.HISTORICAL_OWNERSHIP_HEAD }}
+          path: .ownership
+      - name: Checkout exact lid-rig donor
+        uses: actions/checkout@v4
+        with:
+          repository: mike-axiom-mir/axm-object-design
+          ref: ${{ env.LID_RIG_HEAD }}
+          path: .lid-rig
+      - name: Checkout exact Technical Art rigid-scene donor
+        uses: actions/checkout@v4
+        with:
+          repository: mike-axiom-mir/axm-object-design
+          ref: ${{ env.TECHNICAL_ART_HEAD }}
+          path: .technical-art
+      - name: Checkout exact UC rigid-scene donor
+        uses: actions/checkout@v4
+        with:
+          repository: mike-axiom-mir/axm-universal-creation
+          ref: ${{ env.UC_HEAD }}
+          path: .uc
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Run current exact Object structural suite
+        run: |
+          python -m compileall -q tools tests
+          python -m unittest discover -s tests -v
+      - name: Validate exact donor commits and file identities
+        run: |
+          set -euo pipefail
+          test "$(git -C .prior-animation rev-parse HEAD)" = "$PRIOR_ANIMATION_HEAD"
+          test "$(git -C .source-rig rev-parse HEAD)" = "$SOURCE_RIG_HEAD"
+          test "$(git -C .historical-rig rev-parse HEAD)" = "$HISTORICAL_LATCH_RIG_HEAD"
+          test "$(git -C .ownership rev-parse HEAD)" = "$HISTORICAL_OWNERSHIP_HEAD"
+          test "$(git -C .lid-rig rev-parse HEAD)" = "$LID_RIG_HEAD"
+          test "$(git -C .technical-art rev-parse HEAD)" = "$TECHNICAL_ART_HEAD"
+          test "$(git -C .uc rev-parse HEAD)" = "$UC_HEAD"
+          echo "$SOURCE_INTERFACE_SHA256  .source-rig/assets/modular-equipment-case-001/front-latch-pivot-interface-001.json" | sha256sum -c -
+          echo "$SOURCE_RIG_BINDING_SHA256  .source-rig/assets/modular-equipment-case-001/front-latch-source-rig-binding-002.json" | sha256sum -c -
+      - name: Rebuild exact prior Animation choreography evidence
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/axm-prior-lid-motion /tmp/axm-prior-latch-rig /tmp/axm-prior-sequence
+          python .prior-animation/tools/build_lid_motion_evidence.py \
+            --source .prior-animation/assets/modular-equipment-case-001/source.json \
+            --rig .lid-rig/assets/modular-equipment-case-001/articulation.json \
+            --clip .prior-animation/assets/modular-equipment-case-001/lid-motion-clip.json \
+            --out /tmp/axm-prior-lid-motion \
+            --exact-head "$PRIOR_ANIMATION_HEAD"
+          PYTHONPATH=".historical-rig/tools" python .historical-rig/tools/verify_front_latch_articulation.py \
+            --host .prior-animation/assets/modular-equipment-case-001/source.json \
+            --ownership .ownership/assets/modular-equipment-case-001/front-latch-ownership-001.json \
+            --plan .historical-rig/assets/modular-equipment-case-001/front-latch-articulation-001.json \
+            --out /tmp/axm-prior-latch-rig
+          python .prior-animation/tools/build_lid_latch_motion_evidence.py \
+            --source .prior-animation/assets/modular-equipment-case-001/source.json \
+            --sequence .prior-animation/assets/modular-equipment-case-001/lid-latch-motion-sequence-001.json \
+            --motion-evidence /tmp/axm-prior-lid-motion/lid-motion-evidence.json \
+            --ownership .ownership/assets/modular-equipment-case-001/front-latch-ownership-001.json \
+            --rig-receipt /tmp/axm-prior-latch-rig/front-latch-articulation.receipt.json \
+            --rig-head "$HISTORICAL_LATCH_RIG_HEAD" \
+            --rig-plan-sha256 81c27ab7b73ed9a43cb3f554b56c3f4294b893712075e33d13f5b02e008455db \
+            --out /tmp/axm-prior-sequence \
+            --exact-head "$PRIOR_ANIMATION_HEAD"
+      - name: Rebuild exact current source-owned Rigging acceptance
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/axm-source-rig
+          PYTHONPATH=".source-rig/tools" python .source-rig/tools/verify_front_latch_source_rig_binding.py \
+            --host assets/modular-equipment-case-001/source.json \
+            --ownership .ownership/assets/modular-equipment-case-001/front-latch-ownership-001.json \
+            --interface .source-rig/assets/modular-equipment-case-001/front-latch-pivot-interface-001.json \
+            --historical-plan .historical-rig/assets/modular-equipment-case-001/front-latch-articulation-001.json \
+            --binding .source-rig/assets/modular-equipment-case-001/front-latch-source-rig-binding-002.json \
+            --out /tmp/axm-source-rig
+      - name: Prove Animation source-authority rebind without motion mutation
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/axm-animation-source-rebind
+          python tools/verify_animation_source_authority_rebind.py \
+            --host assets/modular-equipment-case-001/source.json \
+            --contract assets/modular-equipment-case-001/source-authority-motion-rebind-002.json \
+            --prior-sequence-evidence /tmp/axm-prior-sequence/lid-latch-motion-evidence.json \
+            --source-interface .source-rig/assets/modular-equipment-case-001/front-latch-pivot-interface-001.json \
+            --source-rig-receipt /tmp/axm-source-rig/front-latch-source-rig-binding-evidence.json \
+            --exact-head "$EXACT_HEAD_SHA" \
+            --out /tmp/axm-animation-source-rebind
+      - name: Negative controls fail closed
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/axm-negative && mkdir -p /tmp/axm-negative
+          cp .source-rig/assets/modular-equipment-case-001/front-latch-pivot-interface-001.json /tmp/axm-negative/interface.json
+          cp assets/modular-equipment-case-001/source-authority-motion-rebind-002.json /tmp/axm-negative/contract.json
+          cp /tmp/axm-prior-sequence/lid-latch-motion-evidence.json /tmp/axm-negative/prior.json
+          cp /tmp/axm-source-rig/front-latch-source-rig-binding-evidence.json /tmp/axm-negative/source-rig.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('/tmp/axm-negative/source-rig.json'); d=json.loads(p.read_text()); d['station_results'][0]['pivot_origin_m'][0]+=0.001; p.write_text(json.dumps(d,indent=2)+'\n')
+          p=Path('/tmp/axm-negative/contract.json'); d=json.loads(p.read_text()); d['source_rig_binding']['head']='0'*40; p.write_text(json.dumps(d,indent=2)+'\n')
+          p=Path('/tmp/axm-negative/prior.json'); d=json.loads(p.read_text()); d['samples'][5]['latch_lever_angle_deg']+=1.0; p.write_text(json.dumps(d,indent=2)+'\n')
+          PY
+          if python tools/verify_animation_source_authority_rebind.py --host assets/modular-equipment-case-001/source.json --contract assets/modular-equipment-case-001/source-authority-motion-rebind-002.json --prior-sequence-evidence /tmp/axm-prior-sequence/lid-latch-motion-evidence.json --source-interface .source-rig/assets/modular-equipment-case-001/front-latch-pivot-interface-001.json --source-rig-receipt /tmp/axm-negative/source-rig.json --exact-head "$EXACT_HEAD_SHA" --out /tmp/neg1; then exit 1; fi
+          if python tools/verify_animation_source_authority_rebind.py --host assets/modular-equipment-case-001/source.json --contract /tmp/axm-negative/contract.json --prior-sequence-evidence /tmp/axm-prior-sequence/lid-latch-motion-evidence.json --source-interface .source-rig/assets/modular-equipment-case-001/front-latch-pivot-interface-001.json --source-rig-receipt /tmp/axm-source-rig/front-latch-source-rig-binding-evidence.json --exact-head "$EXACT_HEAD_SHA" --out /tmp/neg2; then exit 1; fi
+          if python tools/verify_animation_source_authority_rebind.py --host assets/modular-equipment-case-001/source.json --contract assets/modular-equipment-case-001/source-authority-motion-rebind-002.json --prior-sequence-evidence /tmp/axm-negative/prior.json --source-interface .source-rig/assets/modular-equipment-case-001/front-latch-pivot-interface-001.json --source-rig-receipt /tmp/axm-source-rig/front-latch-source-rig-binding-evidence.json --exact-head "$EXACT_HEAD_SHA" --out /tmp/neg3; then exit 1; fi
+          echo "all source-authority rebind negative controls rejected as expected"
+      - name: Rebuild exact Technical Art UC rigid-scene donor output
+        run: |
+          set -euo pipefail
+          rm -rf .technical-art/rigid-proof/generated
+          mkdir -p .technical-art/rigid-proof/generated
+          (
+            cd .technical-art
+            PYTHONPATH=../.uc/src python tools/build_object_uc_rigid_scene_handoff.py \
+              --uc-root ../.uc \
+              --expected-uc-commit "$UC_HEAD" \
+              --out rigid-proof/generated
+          )
+      - name: Derive proof-local source-authority observer from exact prior v3 observer
+        run: |
+          set -euo pipefail
+          rm -rf animation-proof/generated
+          mkdir -p animation-proof/generated
+          cp .technical-art/rigid-proof/generated/object-rigid-components-rebound.glb animation-proof/generated/
+          cp .technical-art/rigid-proof/generated/uc-rigid-scene-handoff-receipt.json animation-proof/generated/
+          cp /tmp/axm-prior-sequence/lid-latch-motion-evidence.json animation-proof/generated/
+          cp /tmp/axm-source-rig/front-latch-source-rig-binding-evidence.json animation-proof/generated/
+          cp /tmp/axm-animation-source-rebind/animation-source-authority-rebind-evidence.json animation-proof/generated/
+          printf '%s\n' "$EXACT_HEAD_SHA" > animation-proof/generated/exact-animation-head.txt
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          prior=json.loads(Path('/tmp/axm-prior-sequence/lid-latch-motion-evidence.json').read_text())
+          rig=json.loads(Path('/tmp/axm-source-rig/front-latch-source-rig-binding-evidence.json').read_text())
+          mapping=json.loads(Path('/tmp/axm-animation-source-rebind/animation-source-authority-rebind-evidence.json').read_text())['station_identity_map']
+          current_to_historical={row['current_source_station_id']:row['historical_animation_station_id'] for row in mapping}
+          expected_components={(row['lever_component'],row['keeper_component']) for row in mapping}
+          observed_components={(row['lever_component'],row['keeper_component']) for row in rig['station_results']}
+          if observed_components != expected_components:
+            raise SystemExit('proof-local label adapter component identity mismatch')
+          adapter=json.loads(json.dumps(rig))
+          adapter['proof_local_adapter_schema']='axm.object-animation-station-label-adapter/v0.1'
+          adapter['proof_local_adapter_result']='PASS_EXACT_COMPONENT_PAIR_STATION_LABEL_ADAPTER'
+          adapter['proof_local_adapter_truth_boundary']='This proof-local view changes only station labels so the historical Animation observer can consume the newer source-authority receipt. It preserves exact lever/keeper component pairs, pivots, source heads, result metrics and numeric evidence. It is not a source contract, not a Rigging rewrite, and not a claim that historical and current station labels are identical.'
+          for row in adapter['station_results']:
+            current=str(row['station_id'])
+            if current not in current_to_historical:
+              raise SystemExit(f'unmapped current source station: {current}')
+            row['current_source_station_id']=current
+            row['station_id']=current_to_historical[current]
+          Path('animation-proof/generated/front-latch-source-rig-binding-animation-label-adapter.json').write_text(json.dumps(adapter,indent=2,sort_keys=True)+'\n')
+
+          source=Path('.prior-animation/animation-proof/observe_interpolation_v3.gd').read_text()
+          replacements={
+            'res://generated/front-latch-articulation.receipt.json':'res://generated/front-latch-source-rig-binding-animation-label-adapter.json',
+            'res://animationplayer-interpolation-v3-receipt.json':'res://animationplayer-source-authority-rebind-v4-receipt.json',
+            'axm.object-animationplayer-interpolation-proof/v0.3':'axm.object-animationplayer-source-authority-rebind-proof/v0.4',
+            'FAIL_TARGET_HOST_LINEAR_INTERPOLATION_PROOF':'FAIL_TARGET_HOST_SOURCE_AUTHORITY_REBIND',
+            'PASS_BOUNDED_FRONT_LATCH_LEVER_ARTICULATION':'PASS_SOURCE_OWNED_FRONT_LATCH_RIG_REBIND',
+            'rig_row["pivot_m"]':'rig_row["pivot_origin_m"]',
+            'animation_interp_v3_pivot_':'animation_source_rebind_v4_pivot_',
+            'PASS_TARGET_HOST_LINEAR_INTERPOLATION_SUBSAMPLE_FIDELITY':'PASS_TARGET_HOST_SOURCE_AUTHORITY_REBIND_LINEAR_INTERPOLATION',
+            'interp-v3-':'source-rebind-v4-',
+            'AXM OBJECT ANIMATIONPLAYER INTERPOLATION V3':'AXM OBJECT ANIMATION SOURCE AUTHORITY REBIND V4'
+          }
+          for old,new in replacements.items():
+            if old not in source:
+              raise SystemExit(f'missing expected observer token: {old}')
+            source=source.replace(old,new)
+          Path('animation-proof/generated/observe_source_rebind_v4.gd').write_text(source)
+          PY
+      - name: Download pinned Godot 4.7.2
+        env:
+          GODOT_URL: https://github.com/godotengine/godot-builds/releases/download/4.7.2-stable/Godot_v4.7.2-stable_linux.x86_64.zip
+          GODOT_SHA256: cadd3204e728a35d3f13adb7fd0d7902636b79f6b95c40c265eb73b6c35329e4
+        run: |
+          set -euo pipefail
+          mkdir -p .godot-bin
+          curl --fail --location --retry 3 --retry-delay 2 "$GODOT_URL" --output .godot-bin/godot.zip
+          echo "$GODOT_SHA256  .godot-bin/godot.zip" | sha256sum --check --strict
+          unzip -q .godot-bin/godot.zip -d .godot-bin
+          chmod +x .godot-bin/Godot_v4.7.2-stable_linux.x86_64
+          .godot-bin/Godot_v4.7.2-stable_linux.x86_64 --version
+      - name: Install virtual display when needed
+        run: |
+          if ! command -v xvfb-run >/dev/null 2>&1; then
+            sudo apt-get update
+            sudo apt-get install -y xvfb
+          fi
+      - name: Observe rebound source-authority motion through real AnimationPlayer
+        run: |
+          set -euo pipefail
+          rm -f animation-proof/animationplayer-source-authority-rebind-v4-receipt.json animation-proof/source-rebind-v4-*.png
+          xvfb-run --auto-servernum --server-args="-screen 0 1000x760x24" \
+            .godot-bin/Godot_v4.7.2-stable_linux.x86_64 \
+            --display-driver x11 \
+            --rendering-method gl_compatibility \
+            --path animation-proof \
+            --script generated/observe_source_rebind_v4.gd
+      - name: Validate exact target-host source-authority rebind evidence
+        run: |
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          root=Path('animation-proof')
+          r=json.loads((root/'animationplayer-source-authority-rebind-v4-receipt.json').read_text())
+          a=json.loads((root/'generated/animation-source-authority-rebind-evidence.json').read_text())
+          s=json.loads((root/'generated/front-latch-source-rig-binding-evidence.json').read_text())
+          sa=json.loads((root/'generated/front-latch-source-rig-binding-animation-label-adapter.json').read_text())
+          assert a['result']=='PASS_ANIMATION_SOURCE_AUTHORITY_REBIND_MOTION_EQUIVALENCE',a
+          assert a['exact_receiving_head']==os.environ['EXACT_HEAD_SHA'],a
+          assert a['source_owned_lever_geometry_comparison_count']==202 and a['source_owned_lever_geometry_mismatch_count']==0,a
+          assert a['release_threshold_delta_deg']==0.0 and a['terminal_keeper_z_separation_delta_m']==0.0,a
+          assert a['motion_change'] is False and a['retimed'] is False and a['retargeted'] is False and a['key_count_changed'] is False,a
+          assert a['station_label_equality_required'] is False and a['station_component_identity_equality_required'] is True,a
+          assert s['result']=='PASS_SOURCE_OWNED_FRONT_LATCH_RIG_REBIND',s
+          assert s['source_interface_head']==os.environ['SOURCE_INTERFACE_HEAD'],s
+          assert s['binding_sha256']==os.environ['SOURCE_RIG_BINDING_SHA256'],s
+          assert sa['proof_local_adapter_result']=='PASS_EXACT_COMPONENT_PAIR_STATION_LABEL_ADAPTER',sa
+          assert sorted(row['current_source_station_id'] for row in sa['station_results'])==['left','right'],sa
+          assert sorted(row['station_id'] for row in sa['station_results'])==['front-latch-left','front-latch-right'],sa
+          assert r['state']=='PASS_TARGET_HOST_SOURCE_AUTHORITY_REBIND_LINEAR_INTERPOLATION',r
+          assert r['animation_sequence_head']==os.environ['PRIOR_ANIMATION_HEAD'],r
+          assert r['sample_rate_hz']==40 and r['duration_s']==2.5 and r['endpoint_inclusive_sample_count']==101,r
+          assert r['half_step_observation_count']==100,r
+          assert r['animationplayer_track_count']==3 and r['animationplayer_key_counts']==[101,101,101],r
+          assert r['neutral_pivot_wrapper_max_drift_m']<=1e-6,r
+          assert r['max_lid_linear_residual_deg']<=1e-4 and r['max_latch_linear_residual_deg']<=1e-4,r
+          assert r['max_lid_analytic_smoothstep_error_deg']<=0.09 and r['max_latch_analytic_smoothstep_error_deg']<=0.35,r
+          assert r['ordering_violation_count']==0 and r['overshoot_violation_count']==0,r
+          assert r['truth_boundary']['runtime_controller_or_state_machine'] is False,r
+          assert r['truth_boundary']['gameplay_acceptance'] is False,r
+          for index in [4,20,49,70,95]:
+            p=root/f'source-rebind-v4-{index:03d}.png'
+            assert p.stat().st_size>3000,p
+          print(json.dumps({'animation_rebind':a,'target_host':r},indent=2))
+          PY
+      - name: Retain exact source-authority Animation evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: object-animation-source-authority-rebind-${{ github.event.pull_request.head.sha || github.sha }}
+          path: |
+            assets/modular-equipment-case-001/source-authority-motion-rebind-002.json
+            .source-rig/assets/modular-equipment-case-001/front-latch-pivot-interface-001.json
+            .source-rig/assets/modular-equipment-case-001/front-latch-source-rig-binding-002.json
+            animation-proof/generated/object-rigid-components-rebound.glb
+            animation-proof/generated/uc-rigid-scene-handoff-receipt.json
+            animation-proof/generated/lid-latch-motion-evidence.json
+            animation-proof/generated/front-latch-source-rig-binding-evidence.json
+            animation-proof/generated/front-latch-source-rig-binding-animation-label-adapter.json
+            animation-proof/generated/animation-source-authority-rebind-evidence.json
+            animation-proof/generated/observe_source_rebind_v4.gd
+            animation-proof/generated/exact-animation-head.txt
+            animation-proof/animationplayer-source-authority-rebind-v4-receipt.json
+            animation-proof/source-rebind-v4-*.png
+          if-no-files-found: warn
+          retention-days: 30

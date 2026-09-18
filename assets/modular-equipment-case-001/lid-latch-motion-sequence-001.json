@@ -1,0 +1,65 @@
+{
+  "schema": "axm.object-lid-latch-motion-sequence/v0.1",
+  "sequence_id": "lid-latch-open-hold-close-001",
+  "asset_id": "modular-equipment-case-001",
+  "host_source_sha256": "49b1f9ed9865893d6de6f1ec8f069576732df694853fde4e3fcff366de32644a",
+  "sample_rate_hz": 40,
+  "duration_s": 2.5,
+  "base_lid_clip": {
+    "clip_id": "lid-open-hold-close-001",
+    "clip_digest": "9e149195ab315f83f2d6f7d76f374f4be245567f77402de3e8a1d40ab79ef340",
+    "duration_s": 2.0,
+    "start_offset_s": 0.25,
+    "policy": "COPY_EXACT_AUTHORED_SAMPLES_UNRETIMED"
+  },
+  "latch_rig_dependency": {
+    "exact_head": "3b667ff5d30c46ec2fe7da7679518970f8610018",
+    "plan_path": "assets/modular-equipment-case-001/front-latch-articulation-001.json",
+    "plan_sha256": "81c27ab7b73ed9a43cb3f554b56c3f4294b893712075e33d13f5b02e008455db",
+    "required_result": "PASS_BOUNDED_FRONT_LATCH_LEVER_ARTICULATION",
+    "required_terminal_angle_deg": 50.0
+  },
+  "ownership_dependency": {
+    "exact_head": "d3fa10a270faae7925811f44f03381fe5c5d0215",
+    "contract_path": "assets/modular-equipment-case-001/front-latch-ownership-001.json",
+    "contract_sha256": "0702e4180f858d29c42ff8c38a61eaa16278d6848c8ce6f3ecfae172969ca8ae"
+  },
+  "phases": [
+    {
+      "id": "release_latches",
+      "start_s": 0.0,
+      "end_s": 0.25,
+      "lid_policy": "HOLD_NEUTRAL",
+      "latch_start_angle_deg": 0.0,
+      "latch_end_angle_deg": 50.0,
+      "easing": "smoothstep"
+    },
+    {
+      "id": "play_exact_lid_clip",
+      "start_s": 0.25,
+      "end_s": 2.25,
+      "lid_policy": "COPY_EXACT_AUTHORED_SAMPLES_UNRETIMED",
+      "latch_start_angle_deg": 50.0,
+      "latch_end_angle_deg": 50.0,
+      "easing": "constant"
+    },
+    {
+      "id": "reengage_latches",
+      "start_s": 2.25,
+      "end_s": 2.5,
+      "lid_policy": "HOLD_NEUTRAL",
+      "latch_start_angle_deg": 50.0,
+      "latch_end_angle_deg": 0.0,
+      "easing": "smoothstep"
+    }
+  ],
+  "ordering_contract": {
+    "lid_may_move_only_when_latch_angle_deg": 50.0,
+    "latch_may_enter_below_rig_separation_threshold_only_when_lid_angle_deg": 0.0,
+    "meaning": "animation ordering against the exact Rigging proof-volume certificate only, not a physical release or controller state machine"
+  },
+  "repeat_policy": "OMIT_DUPLICATE_ENDPOINT_ON_REPEAT",
+  "motion_truth_label": "STYLIZED_MECHANICAL_SEQUENCE_REVIEW_NOT_LATCH_CONTROLLER",
+  "failure_policy": "FAIL_CLOSED_NO_RETIME_NO_RIG_REDERIVATION_NO_CONTROLLER_PROMOTION",
+  "truth_boundary": "This sequence composes the exact existing lid clip with the exact Rigging review-only latch lever envelope using explicit release-before-lid and lid-neutral-before-reengage ordering. It does not prove a physical latch mechanism, full-component collision freedom, target-engine playback, controller/state-machine behavior, gameplay timing, final motion direction or production readiness."
+}
