@@ -1,0 +1,287 @@
+name: Object Animation hinge knuckle parent motion rebind v2
+
+on:
+  pull_request:
+    paths:
+      - 'assets/modular-equipment-case-001/source.json'
+      - 'assets/modular-equipment-case-001/lid-motion-clip.json'
+      - 'assets/modular-equipment-case-001/lid-latch-motion-sequence-001.json'
+      - 'assets/modular-equipment-case-001/hinge-knuckle-parent-motion-rebind-001.json'
+      - 'tools/build_lid_motion_evidence.py'
+      - 'tools/build_lid_latch_motion_evidence.py'
+      - 'tools/verify_animation_hinge_knuckle_parent_motion.py'
+      - 'animation-proof/observe_hinge_knuckle_parent_motion.gd'
+      - '.github/workflows/object-animation-hinge-knuckle-parent-motion-v2.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  RIGGING_PARENT_HEAD: 16b32c5ac6d52d768d64f0fac9fedfe4ee9f24fe
+  OWNER_STACK_HEAD: 172dd9ff5ed1fee3a21cd460c607f07ee0da7520
+  OWNER_STACK_BLOB: e4e7c95769c0827a6a019afd672ff4b20cd13541
+  LID_RIG_HEAD: 4b72c9918c5fc1e89bd18a0be24fb4afac6e7775
+  PREVIOUS_RIGGING_HEAD: 9d5fb18d8eb2222694e86025641256a30f57c485
+  LATCH_RIG_HEAD: 3b667ff5d30c46ec2fe7da7679518970f8610018
+  LATCH_OWNERSHIP_HEAD: d3fa10a270faae7925811f44f03381fe5c5d0215
+  LATCH_RIG_PLAN_SHA256: 81c27ab7b73ed9a43cb3f554b56c3f4294b893712075e33d13f5b02e008455db
+  LATCH_OWNERSHIP_SHA256: 0702e4180f858d29c42ff8c38a61eaa16278d6848c8ce6f3ecfae172969ca8ae
+  KNOWN_SUCCESSOR_HEAD: 178d93e8976a741271d7f47ab4865519de925657
+
+jobs:
+  hinge-knuckle-parent-motion-v2:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout exact Animation PR head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+
+      - name: Bind exact Animation head
+        run: echo "EXACT_HEAD_SHA=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
+
+      - name: Checkout current Rigging parent authority
+        uses: actions/checkout@v4
+        with:
+          repository: mike-axiom-mir/axm-object-design
+          ref: ${{ env.RIGGING_PARENT_HEAD }}
+          path: .rigging-parent
+          fetch-depth: 1
+
+      - name: Checkout exact source owner-stack authority
+        uses: actions/checkout@v4
+        with:
+          repository: mike-axiom-mir/axm-object-design
+          ref: ${{ env.OWNER_STACK_HEAD }}
+          path: .owner-stack
+          fetch-depth: 1
+
+      - name: Checkout historical lid-rig donor
+        uses: actions/checkout@v4
+        with:
+          repository: mike-axiom-mir/axm-object-design
+          ref: ${{ env.LID_RIG_HEAD }}
+          path: .lid-rig
+          fetch-depth: 1
+
+      - name: Checkout historical latch-rig donor
+        uses: actions/checkout@v4
+        with:
+          repository: mike-axiom-mir/axm-object-design
+          ref: ${{ env.LATCH_RIG_HEAD }}
+          path: .latch-rig
+          fetch-depth: 1
+
+      - name: Checkout historical latch ownership donor
+        uses: actions/checkout@v4
+        with:
+          repository: mike-axiom-mir/axm-object-design
+          ref: ${{ env.LATCH_OWNERSHIP_HEAD }}
+          path: .latch-ownership
+          fetch-depth: 1
+
+      - name: Checkout known unconsumed bored-knuckle successor
+        uses: actions/checkout@v4
+        with:
+          repository: mike-axiom-mir/axm-object-design
+          ref: ${{ env.KNOWN_SUCCESSOR_HEAD }}
+          path: .known-successor
+          fetch-depth: 1
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Verify exact donors and full Object suite
+        run: |
+          set -euo pipefail
+          test "$(git -C .rigging-parent rev-parse HEAD)" = "$RIGGING_PARENT_HEAD"
+          test "$(git -C .owner-stack rev-parse HEAD)" = "$OWNER_STACK_HEAD"
+          test "$(git -C .lid-rig rev-parse HEAD)" = "$LID_RIG_HEAD"
+          test "$(git -C .latch-rig rev-parse HEAD)" = "$LATCH_RIG_HEAD"
+          test "$(git -C .latch-ownership rev-parse HEAD)" = "$LATCH_OWNERSHIP_HEAD"
+          test "$(git -C .known-successor rev-parse HEAD)" = "$KNOWN_SUCCESSOR_HEAD"
+          test "$(git -C .owner-stack rev-parse ${OWNER_STACK_HEAD}:assets/modular-equipment-case-001/hinge-knuckle-owner-stack-001.json)" = "$OWNER_STACK_BLOB"
+          echo "$LATCH_OWNERSHIP_SHA256  .latch-ownership/assets/modular-equipment-case-001/front-latch-ownership-001.json" | sha256sum -c -
+          echo "$LATCH_RIG_PLAN_SHA256  .latch-rig/assets/modular-equipment-case-001/front-latch-articulation-001.json" | sha256sum -c -
+          python -m compileall -q tools tests
+          python -m unittest discover -s tests -v
+
+      - name: Rebuild unchanged 101-key Animation sequence
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/axm-parent-lid /tmp/axm-parent-latch-rig /tmp/axm-parent-sequence
+          python tools/build_lid_motion_evidence.py \
+            --source assets/modular-equipment-case-001/source.json \
+            --rig .lid-rig/assets/modular-equipment-case-001/articulation.json \
+            --clip assets/modular-equipment-case-001/lid-motion-clip.json \
+            --out /tmp/axm-parent-lid \
+            --exact-head "$EXACT_HEAD_SHA"
+          PYTHONPATH="$PWD/tools" python .latch-rig/tools/verify_front_latch_articulation.py \
+            --host assets/modular-equipment-case-001/source.json \
+            --ownership .latch-ownership/assets/modular-equipment-case-001/front-latch-ownership-001.json \
+            --plan .latch-rig/assets/modular-equipment-case-001/front-latch-articulation-001.json \
+            --out /tmp/axm-parent-latch-rig
+          python tools/build_lid_latch_motion_evidence.py \
+            --source assets/modular-equipment-case-001/source.json \
+            --sequence assets/modular-equipment-case-001/lid-latch-motion-sequence-001.json \
+            --motion-evidence /tmp/axm-parent-lid/lid-motion-evidence.json \
+            --ownership .latch-ownership/assets/modular-equipment-case-001/front-latch-ownership-001.json \
+            --rig-receipt /tmp/axm-parent-latch-rig/front-latch-articulation.receipt.json \
+            --rig-head "$LATCH_RIG_HEAD" \
+            --rig-plan-sha256 "$LATCH_RIG_PLAN_SHA256" \
+            --out /tmp/axm-parent-sequence \
+            --exact-head "$EXACT_HEAD_SHA"
+          grep -q 'PASS_ORDERED_LATCH_RELEASE_LID_CLIP_REENGAGE_SEQUENCE' /tmp/axm-parent-sequence/lid-latch-motion-evidence.json
+          grep -q '"sequence_digest": "0a3523cf792264f610881552fd2ebd438aabdfd05e30e92af9dbb33ded1fa2d3"' /tmp/axm-parent-sequence/lid-latch-motion-evidence.json
+          grep -q '"endpoint_inclusive_sample_count": 101' /tmp/axm-parent-sequence/lid-latch-motion-evidence.json
+
+      - name: Rebuild current Rigging parent receipt
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/axm-hinge-parent-rigging
+          (
+            cd .rigging-parent
+            python tools/verify_hinge_knuckle_rig_parent_binding.py \
+              --source assets/modular-equipment-case-001/source.json \
+              --owner-stack ../.owner-stack/assets/modular-equipment-case-001/hinge-knuckle-owner-stack-001.json \
+              --lid-plan ../.lid-rig/assets/modular-equipment-case-001/articulation.json \
+              --observed-owner-stack-head "$OWNER_STACK_HEAD" \
+              --observed-owner-stack-blob "$OWNER_STACK_BLOB" \
+              --observed-lid-rig-head "$LID_RIG_HEAD" \
+              --observed-previous-rigging-head "$PREVIOUS_RIGGING_HEAD" \
+              --out /tmp/axm-hinge-parent-rigging
+          )
+          grep -q 'PASS_SOURCE_OWNED_HINGE_KNUCKLE_PARENT_BINDING_CONTINUOUS_0_TO_110' /tmp/axm-hinge-parent-rigging/receipt.json
+
+      - name: Build exact Animation parent-motion rebind input
+        run: |
+          set -euo pipefail
+          rm -rf animation-proof/generated/hinge-knuckle-parent-motion
+          python tools/verify_animation_hinge_knuckle_parent_motion.py \
+            --contract assets/modular-equipment-case-001/hinge-knuckle-parent-motion-rebind-001.json \
+            --source assets/modular-equipment-case-001/source.json \
+            --sequence-evidence /tmp/axm-parent-sequence/lid-latch-motion-evidence.json \
+            --rigging-receipt /tmp/axm-hinge-parent-rigging/receipt.json \
+            --lid-plan .lid-rig/assets/modular-equipment-case-001/articulation.json \
+            --known-successor .known-successor/assets/modular-equipment-case-001/hinge-bored-knuckle-source-successor-001.json \
+            --exact-head "$EXACT_HEAD_SHA" \
+            --out animation-proof/generated/hinge-knuckle-parent-motion
+          cp /tmp/axm-hinge-parent-rigging/receipt.json animation-proof/generated/hinge-knuckle-parent-motion/rigging-parent-receipt.json
+          cp /tmp/axm-parent-sequence/lid-latch-motion-evidence.json animation-proof/generated/hinge-knuckle-parent-motion/sequence-evidence.json
+          grep -q 'PASS_OBJECT_ANIMATION_HINGE_KNUCKLE_PARENT_MOTION_REBIND_INPUT' animation-proof/generated/hinge-knuckle-parent-motion/structural-receipt.json
+          grep -q '"known_unconsumed_successor_adopted": false' animation-proof/generated/hinge-knuckle-parent-motion/structural-receipt.json
+
+      - name: Prove fail-closed successor-adoption boundary
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          src=Path('assets/modular-equipment-case-001/hinge-knuckle-parent-motion-rebind-001.json')
+          row=json.loads(src.read_text())
+          row['known_unconsumed_source_successor']['adopted_by_this_animation_contract']=True
+          Path('/tmp/bad-parent-motion-contract.json').write_text(json.dumps(row,indent=2)+'\n')
+          PY
+          code=0
+          python tools/verify_animation_hinge_knuckle_parent_motion.py \
+            --contract /tmp/bad-parent-motion-contract.json \
+            --source assets/modular-equipment-case-001/source.json \
+            --sequence-evidence /tmp/axm-parent-sequence/lid-latch-motion-evidence.json \
+            --rigging-receipt /tmp/axm-hinge-parent-rigging/receipt.json \
+            --lid-plan .lid-rig/assets/modular-equipment-case-001/articulation.json \
+            --known-successor .known-successor/assets/modular-equipment-case-001/hinge-bored-knuckle-source-successor-001.json \
+            --exact-head "$EXACT_HEAD_SHA" \
+            --out /tmp/bad-parent-motion-out > /tmp/bad-contract.out 2> /tmp/bad-contract.err || code=$?
+          test "$code" -ne 0
+          grep -q 'silently adopted bored-knuckle successor' /tmp/bad-contract.err
+
+      - name: Download pinned Godot 4.7.2
+        env:
+          GODOT_URL: https://github.com/godotengine/godot-builds/releases/download/4.7.2-stable/Godot_v4.7.2-stable_linux.x86_64.zip
+          GODOT_SHA256: cadd3204e728a35d3f13adb7fd0d7902636b79f6b95c40c265eb73b6c35329e4
+        run: |
+          set -euo pipefail
+          mkdir -p .godot-bin
+          curl --fail --location --retry 3 --retry-delay 2 "$GODOT_URL" --output .godot-bin/godot.zip
+          echo "$GODOT_SHA256  .godot-bin/godot.zip" | sha256sum --check --strict
+          unzip -q .godot-bin/godot.zip -d .godot-bin
+          chmod +x .godot-bin/Godot_v4.7.2-stable_linux.x86_64
+          .godot-bin/Godot_v4.7.2-stable_linux.x86_64 --version
+
+      - name: Prove wrong parent fails real AnimationPlayer motion
+        run: |
+          set -euo pipefail
+          rm -f animation-proof/hinge-knuckle-parent-motion-godot-receipt.json
+          code=0
+          (
+            cd animation-proof
+            AXM_MUTATE_PARENT=b1 ../.godot-bin/Godot_v4.7.2-stable_linux.x86_64 \
+              --headless \
+              --path . \
+              --script observe_hinge_knuckle_parent_motion.gd
+          ) > /tmp/godot-parent-negative.log 2>&1 || code=$?
+          test "$code" -ne 0
+          grep -q 'PARENT_MOTION_MISMATCH' /tmp/godot-parent-negative.log
+          cp /tmp/godot-parent-negative.log animation-proof/hinge-knuckle-parent-motion-negative.log
+
+      - name: Observe exact parent motion in real Godot AnimationPlayer
+        run: |
+          set -euo pipefail
+          rm -f animation-proof/hinge-knuckle-parent-motion-godot-receipt.json
+          (
+            cd animation-proof
+            ../.godot-bin/Godot_v4.7.2-stable_linux.x86_64 \
+              --headless \
+              --path . \
+              --script observe_hinge_knuckle_parent_motion.gd
+          )
+          test -s animation-proof/hinge-knuckle-parent-motion-godot-receipt.json
+
+      - name: Validate bounded target-host result and truth boundary
+        run: |
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          structural=json.loads(Path('animation-proof/generated/hinge-knuckle-parent-motion/structural-receipt.json').read_text())
+          target=json.loads(Path('animation-proof/hinge-knuckle-parent-motion-godot-receipt.json').read_text())
+          assert structural['result']=='PASS_OBJECT_ANIMATION_HINGE_KNUCKLE_PARENT_MOTION_REBIND_INPUT'
+          assert target['result']=='PASS_OBJECT_ANIMATION_GODOT_HINGE_KNUCKLE_PARENT_MOTION_REBIND'
+          assert target['exact_animation_head']==os.environ['EXACT_HEAD_SHA']
+          assert target['rigging_parent_head']==os.environ['RIGGING_PARENT_HEAD']
+          assert target['known_unconsumed_hard_surface_successor_head']==os.environ['KNOWN_SUCCESSOR_HEAD']
+          assert target['sample_rate_hz']==40 and target['duration_s']==2.5
+          assert target['endpoint_inclusive_sample_count']==101 and target['observed_sample_count']==101
+          assert target['animationplayer_key_count']==101
+          assert target['peak_lid_open_angle_deg']==100.0
+          assert target['maximum_world_position_residual_m']<=1e-6
+          assert target['maximum_body_knuckle_world_drift_m']<=1e-6
+          assert target['maximum_lid_knuckle_world_move_m']>=0.001
+          assert target['endpoint_parent_motion_closure_m']<=1e-6
+          assert target['truth_boundary']['bored_knuckle_successor_adopted'] is False
+          assert target['truth_boundary']['technical_art_target_host_parenting_accepted'] is False
+          assert target['truth_boundary']['runtime_controller_or_state_machine_accepted'] is False
+          assert target['truth_boundary']['physics_or_collision_accepted'] is False
+          assert target['truth_boundary']['gameplay_accepted'] is False
+          assert target['truth_boundary']['final_visual_motion_accepted'] is False
+          print(json.dumps(target, indent=2))
+          PY
+
+      - name: Retain exact Animation parent-motion evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: object-animation-hinge-knuckle-parent-motion-v2-${{ github.event.pull_request.head.sha || github.sha }}
+          path: |
+            assets/modular-equipment-case-001/hinge-knuckle-parent-motion-rebind-001.json
+            animation-proof/generated/hinge-knuckle-parent-motion/structural-receipt.json
+            animation-proof/generated/hinge-knuckle-parent-motion/godot-input.json
+            animation-proof/hinge-knuckle-parent-motion-godot-receipt.json
+            animation-proof/hinge-knuckle-parent-motion-negative.log
+            animation-proof/generated/hinge-knuckle-parent-motion/rigging-parent-receipt.json
+            animation-proof/generated/hinge-knuckle-parent-motion/sequence-evidence.json
+          if-no-files-found: warn
+          retention-days: 30
