@@ -1,0 +1,94 @@
+{
+  "schema": "axm.object-hinge-bored-knuckle-relative-facet-phase-source-successor/v0.1",
+  "asset_id": "modular-equipment-case-001",
+  "successor_id": "modular-equipment-case-001/hinge-bored-knuckle-relative-facet-phase-source-successor-003",
+  "units": "meters",
+  "prerequisite_identity": {
+    "legacy_host_source_sha256": "49b1f9ed9865893d6de6f1ec8f069576732df694853fde4e3fcff366de32644a",
+    "successor002_id": "modular-equipment-case-001/hinge-bored-knuckle-phase-invariant-source-successor-002",
+    "successor002_head": "a6d18b9fe729304dc4d95d962ed27527adce211f",
+    "successor002_contract_git_blob_sha1": "7e078189d5c80508b28932563326cd5629c4efa6",
+    "owner_stack_contract_git_blob_sha1": "e4e7c95769c0827a6a019afd672ff4b20cd13541",
+    "axial_stop_contract_git_blob_sha1": "ded14bcde58be76f339608e659173905e66e64c1",
+    "radial_capture_id": "modular-equipment-case-001/hinge-bored-knuckle-axial-stop-capture-001",
+    "radial_capture_contract_git_blob_sha1": "193fe78d0a8ad63af5c92a83624807b435a8da08",
+    "axial_bracket_id": "modular-equipment-case-001/hinge-bored-knuckle-axial-stop-bracket-001",
+    "axial_bracket_contract_git_blob_sha1": "186aafe3b5b5991dfa4d85bf8f6e6147142f43c8"
+  },
+  "art_direction_return": {
+    "direction": 47,
+    "coordination_repository": "mike-axiom-mir/axm-create-me",
+    "coordination_commit": "8a751070c0d02ff772ef78a514ac4e1d0c3568ea",
+    "packet_path": "studio/direction/OBJECT_HINGE_RELATIVE_FACET_PHASE_DIRECTION_047.md",
+    "packet_git_blob_sha1": "fa3fbace84720f2e262c7b70fed84682850ca611",
+    "materials_pr": 6,
+    "materials_exact_head": "134e9a7622868acbd184519eade15996ab20fbbe",
+    "materials_artifact_id": 10536492694,
+    "materials_artifact_sha256": "7f20f3285dff37dcb6d769870d687699bde0f9d579c8c453913a7308daa5756a",
+    "visual_reference": "#7E868AFF / metallic 0.88 / roughness 0.32",
+    "qa_review_id": 5245562753,
+    "art_review_id": 5245661337,
+    "remaining_witness": "rear-three-quarter hinge pixels at L>=0.90 remain 1625 -> 1625 with the same five connected near-white components",
+    "request": "ONE_LID_VS_BODY_RELATIVE_12_GON_FACET_PHASE_ONLY_SUCCESSOR",
+    "single_candidate_only": true,
+    "no_phase_sweep": true
+  },
+  "successor_semantics": "SOURCE_OWNED_ALTERNATE_HINGE_KNUCKLE_OWNER_GROUP_RELATIVE_FACET_PHASE_ONLY_EXPLICIT_RECEIVER_REBIND_REQUIRED",
+  "replacement_scope": "HINGE_KNUCKLE_CROSS_SECTION_ORIENTATION_ONLY",
+  "source_owned_successor": {
+    "segments": 12,
+    "hinge_axis": [1, 0, 0],
+    "owner_group_phase_deg": {
+      "body": 0.0,
+      "lid": 15.0
+    },
+    "relative_lid_minus_body_phase_deg": 15.0,
+    "phase_choice_method": "HALF_ONE_12_GON_SECTOR_SINGLE_CANDIDATE_NO_SWEEP",
+    "phase_choice_reason": "A regular 12-gon repeats every 30 degrees; one 15-degree half-sector owner-group offset maximizes the angular separation from the predecessor synchronized facet-normal set without changing any radius, segment count, center, axial span, bore dimension, stop envelope or non-hinge geometry. This is one authored hypothesis, not a search or optimum claim.",
+    "rotate_outer_and_bore_cross_sections_together": true,
+    "body_owned_knuckle_count": 3,
+    "lid_owned_knuckle_count": 2,
+    "automatic_default_replacement": false,
+    "automatic_downstream_adoption": false,
+    "legacy_host_source_rewritten": false,
+    "successor002_rewritten": false
+  },
+  "frozen_geometry": {
+    "knuckle_outer_circumradius_m": 0.021,
+    "bore_circumradius_m": 0.010352761804100828,
+    "source_pin_circumradius_m": 0.009,
+    "pin_length_m": 0.70,
+    "stop_radius_m": 0.013,
+    "knuckle_ids_centers_lengths": [
+      {"id": "b0", "owner": "body", "center_x_m": -0.28, "length_m": 0.10},
+      {"id": "l0", "owner": "lid", "center_x_m": -0.14, "length_m": 0.10},
+      {"id": "b1", "owner": "body", "center_x_m": 0.0, "length_m": 0.10},
+      {"id": "l1", "owner": "lid", "center_x_m": 0.14, "length_m": 0.10},
+      {"id": "b2", "owner": "body", "center_x_m": 0.28, "length_m": 0.10}
+    ]
+  },
+  "required_reproof": {
+    "minimum_pin_bore_phase_independent_clearance_m": 0.001,
+    "minimum_faceted_knuckle_wall_m": 0.010,
+    "minimum_static_axial_gap_each_side_m": 0.014,
+    "radial_stop_capture_must_remain_positive": true,
+    "stop_must_remain_inside_outer_knuckle_inradius": true,
+    "closed_oriented_annular_topology_must_remain": true
+  },
+  "authority": {
+    "hard_surface_source_successor_authorized": true,
+    "materials_adoption_authorized": false,
+    "geometry_adoption_authorized": false,
+    "rig_parenting_authorized": false,
+    "animation_authorized": false,
+    "technical_art_or_scene_adoption_authorized": false,
+    "runtime_or_physics_authorized": false,
+    "manufacturing_fit_authorized": false,
+    "full_component_collision_authorized": false,
+    "visual_acceptance_authorized": false,
+    "uc_or_profession_fabric_promotion_authorized": false
+  },
+  "reusable_rule": "FACET_ORIENTATION_IS_AN_INDEPENDENT_SOURCE_DEGREE_OF_FREEDOM__WHEN_REPEATED_REGULAR_POLYGON_COMPONENTS_SHARE_PHASE__A_BOUNDED_OWNER_GROUP_RELATIVE_PHASE_SUCCESSOR_MUST_ROTATE_COMPLETE_CROSS_SECTIONS_AND_REPROVE_CLEARANCE_CAPTURE_AND_TOPOLOGY_BEFORE_VISUAL_RECEIVE",
+  "intent": "Answer Art Direction 047 with one and only one source-owned geometry hypothesis: preserve the three body-owned successor002 knuckles at the existing zero-phase reference and rotate both outer and bore 12-gon cross-sections of the two lid-owned knuckles together by +15 degrees around the unchanged +X hinge centerline. Preserve all dimensions, axial placement, ownership, pin/stop envelopes, source/default state and unrelated geometry. Re-prove source structural invariants before any Materials, Geometry, Rigging, Technical Art, Runtime or visual receiver may opt in.",
+  "truth_boundary": "This contract proves only one alternate source-owned relative facet-orientation candidate for the exact five successor002 hinge knuckles plus revalidation of its source-space annular topology, arbitrary-pin-phase radial clearance, radial stop-capture envelope and static axial bracket. It does not prove that facet phase causes or repairs the observed highlight stripe; it does not establish Materials, Geometry, Rigging, Animation, Technical Art, Runtime, physics, collision, manufacturing, load, friction, wear, visual acceptance, source/default adoption, CANON, production readiness, game readiness or Hard-Surface mastery."
+}
