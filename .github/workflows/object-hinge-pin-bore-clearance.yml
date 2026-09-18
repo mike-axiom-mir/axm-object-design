@@ -49,17 +49,26 @@ jobs:
             --owner-contract assets/modular-equipment-case-001/hinge-knuckle-owner-stack-001.json \
             --successor-contract assets/modular-equipment-case-001/hinge-bored-knuckle-source-successor-001.json \
             --out evidence/hinge-pin-bore-clearance
+          python tools/verify_hinge_bored_knuckle_phase_invariant_successor.py \
+            --host assets/modular-equipment-case-001/source.json \
+            --bore-contract assets/modular-equipment-case-001/hinge-pin-bore-clearance-001.json \
+            --annular-contract assets/modular-equipment-case-001/hinge-pin-annular-mesh-001.json \
+            --owner-contract assets/modular-equipment-case-001/hinge-knuckle-owner-stack-001.json \
+            --predecessor-successor-contract assets/modular-equipment-case-001/hinge-bored-knuckle-source-successor-001.json \
+            --phase-invariant-successor-contract assets/modular-equipment-case-001/hinge-bored-knuckle-phase-invariant-source-successor-002.json \
+            --out evidence/hinge-pin-bore-clearance
           cp assets/modular-equipment-case-001/source.json evidence/hinge-pin-bore-clearance/host-source.json
           cp assets/modular-equipment-case-001/hinge-pin-bore-clearance-001.json evidence/hinge-pin-bore-clearance/bore-clearance-contract.json
           cp assets/modular-equipment-case-001/hinge-pin-annular-mesh-001.json evidence/hinge-pin-bore-clearance/annular-mesh-contract.json
           cp assets/modular-equipment-case-001/hinge-knuckle-owner-stack-001.json evidence/hinge-pin-bore-clearance/owner-stack-contract.json
           cp assets/modular-equipment-case-001/hinge-bored-knuckle-source-successor-001.json evidence/hinge-pin-bore-clearance/bored-knuckle-source-successor-contract.json
+          cp assets/modular-equipment-case-001/hinge-bored-knuckle-phase-invariant-source-successor-002.json evidence/hinge-pin-bore-clearance/phase-invariant-source-successor-contract.json
           git rev-parse HEAD > evidence/hinge-pin-bore-clearance/exact-head.txt
       - name: Upload retained evidence
         if: matrix.python-version == '3.11'
         uses: actions/upload-artifact@v4
         with:
-          name: modular-equipment-case-001-hinge-bore-owner-stack-successor-evidence
+          name: modular-equipment-case-001-hinge-phase-invariant-successor-evidence
           path: evidence/hinge-pin-bore-clearance
           if-no-files-found: error
           retention-days: 30
