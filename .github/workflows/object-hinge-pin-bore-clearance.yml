@@ -87,6 +87,10 @@ jobs:
             --bracket-contract assets/modular-equipment-case-001/hinge-bored-knuckle-axial-stop-bracket-001.json \
             --contract assets/modular-equipment-case-001/hinge-bored-knuckle-relative-facet-phase-source-successor-003.json \
             --out evidence/hinge-pin-bore-clearance
+          python tools/verify_hinge_relative_facet_phase_disposition_048.py \
+            --successor003 assets/modular-equipment-case-001/hinge-bored-knuckle-relative-facet-phase-source-successor-003.json \
+            --disposition assets/modular-equipment-case-001/hinge-bored-knuckle-relative-facet-phase-disposition-048.json \
+            --out evidence/hinge-pin-bore-clearance
           cp assets/modular-equipment-case-001/source.json evidence/hinge-pin-bore-clearance/host-source.json
           cp assets/modular-equipment-case-001/hinge-pin-bore-clearance-001.json evidence/hinge-pin-bore-clearance/bore-clearance-contract.json
           cp assets/modular-equipment-case-001/hinge-pin-annular-mesh-001.json evidence/hinge-pin-bore-clearance/annular-mesh-contract.json
@@ -97,6 +101,7 @@ jobs:
           cp assets/modular-equipment-case-001/hinge-bored-knuckle-axial-stop-capture-001.json evidence/hinge-pin-bore-clearance/axial-stop-capture-contract.json
           cp assets/modular-equipment-case-001/hinge-bored-knuckle-axial-stop-bracket-001.json evidence/hinge-pin-bore-clearance/axial-stop-bracket-contract.json
           cp assets/modular-equipment-case-001/hinge-bored-knuckle-relative-facet-phase-source-successor-003.json evidence/hinge-pin-bore-clearance/relative-facet-phase-successor-contract.json
+          cp assets/modular-equipment-case-001/hinge-bored-knuckle-relative-facet-phase-disposition-048.json evidence/hinge-pin-bore-clearance/relative-facet-phase-disposition-048.json
           git rev-parse HEAD > evidence/hinge-pin-bore-clearance/exact-head.txt
       - name: Upload retained evidence
         if: matrix.python-version == '3.11'
