@@ -1,0 +1,91 @@
+{
+  "schema": "axm.object-hinge-knuckle-owner-partition-successor003-rebind/v0.1",
+  "family_id": "modular-equipment-case-001-hinge-knuckle-owner-partition-successor003-rebind-001",
+  "asset_id": "modular-equipment-case-001",
+  "procedural_predecessor": {
+    "exact_head": "9b6956d9e913bd3b34ce3d1b41cf718dda17d8e8",
+    "family_id": "modular-equipment-case-001-hinge-knuckle-owner-partition-successor002-rebind-001",
+    "family_digest": "33cce498a91de77ece64bda50bc6b70caca2f76ccadc06d1fd8f29b7c62e2782",
+    "artifact_id": 10528058522,
+    "artifact_sha256": "37c44b0365e44888825a2e66dd399030932a710249090ef11568b7ddca4febd3",
+    "variant_mesh_digests": {
+      "full": "ad93a0e9e027254aae1223290dd81892185ce4b343a4c300414abef457edda97",
+      "body-only": "80650f5b39ab29b458b079d51673e748d599a52b7f6f5cd4973c03c35b0697f2",
+      "lid-only": "7a32852d7a74814186b5dcae9e2a774b018201032b502be85dfb00448e1646ed"
+    }
+  },
+  "hard_surface_owner_head": "ef1dfc2f2c1adbe3c90ba089c66ac09d223df25c",
+  "donor_paths": {
+    "host": "assets/modular-equipment-case-001/source.json",
+    "successor002_contract": "assets/modular-equipment-case-001/hinge-bored-knuckle-phase-invariant-source-successor-002.json",
+    "owner_stack_contract": "assets/modular-equipment-case-001/hinge-knuckle-owner-stack-001.json",
+    "axial_stop_contract": "assets/modular-equipment-case-001/hinge-pin-axial-stop-001.json",
+    "capture_contract": "assets/modular-equipment-case-001/hinge-bored-knuckle-axial-stop-capture-001.json",
+    "bracket_contract": "assets/modular-equipment-case-001/hinge-bored-knuckle-axial-stop-bracket-001.json",
+    "successor003_contract": "assets/modular-equipment-case-001/hinge-bored-knuckle-relative-facet-phase-source-successor-003.json",
+    "successor003_verifier": "tools/verify_hinge_bored_knuckle_relative_facet_phase_successor.py"
+  },
+  "donor_git_blobs": {
+    "host": "018e36bb08539f212d2c65e6408566e3540fd983",
+    "successor002_contract": "7e078189d5c80508b28932563326cd5629c4efa6",
+    "owner_stack_contract": "e4e7c95769c0827a6a019afd672ff4b20cd13541",
+    "axial_stop_contract": "ded14bcde58be76f339608e659173905e66e64c1",
+    "capture_contract": "193fe78d0a8ad63af5c92a83624807b435a8da08",
+    "bracket_contract": "186aafe3b5b5991dfa4d85bf8f6e6147142f43c8",
+    "successor003_contract": "e7a44523ea80e567a745cd61af7fd7005757cc12",
+    "successor003_verifier": "bcb816c97cf5ae50afe38e295fb01a931f0034a5"
+  },
+  "expected_source_successor": {
+    "successor_id": "modular-equipment-case-001/hinge-bored-knuckle-relative-facet-phase-source-successor-003",
+    "segments": 12,
+    "body_phase_deg": 0.0,
+    "lid_phase_deg": 15.0,
+    "relative_lid_minus_body_phase_deg": 15.0,
+    "owner_sequence": ["body", "lid", "body", "lid", "body"]
+  },
+  "owner_allowlist": ["body", "lid"],
+  "variants": [
+    {
+      "id": "full",
+      "owners": ["body", "lid"],
+      "expected_knuckle_ids": ["b0", "l0", "b1", "l1", "b2"],
+      "expected_knuckles": 5,
+      "expected_vertices": 240,
+      "expected_triangles": 480,
+      "expected_changed_from_successor002": true
+    },
+    {
+      "id": "body-only",
+      "owners": ["body"],
+      "expected_knuckle_ids": ["b0", "b1", "b2"],
+      "expected_knuckles": 3,
+      "expected_vertices": 144,
+      "expected_triangles": 288,
+      "expected_changed_from_successor002": false
+    },
+    {
+      "id": "lid-only",
+      "owners": ["lid"],
+      "expected_knuckle_ids": ["l0", "l1"],
+      "expected_knuckles": 2,
+      "expected_vertices": 96,
+      "expected_triangles": 192,
+      "expected_changed_from_successor002": true
+    }
+  ],
+  "failure_policy": "FAIL_CLOSED_NO_DONOR_DRIFT_NO_PREDECESSOR_ERASURE_NO_PHASE_COLLAPSE_NO_FALSE_IDENTITY_RELATION_NO_UNKNOWN_OR_DUPLICATE_OWNER_NO_SOURCE_RIG_VISUAL_OR_DOWNSTREAM_ADOPTION",
+  "authority": {
+    "hard_surface_source_successor_rewritten": false,
+    "procedural_predecessor_rewritten": false,
+    "automatic_default_replacement": false,
+    "materials_adoption_authorized": false,
+    "rig_parenting_authorized": false,
+    "animation_authorized": false,
+    "technical_art_adoption_authorized": false,
+    "runtime_or_physics_authorized": false,
+    "visual_acceptance_authorized": false,
+    "automatic_downstream_adoption": false
+  },
+  "intent": "Rebind the existing deterministic body/lid knuckle partition operation to Hard Surface's exact source successor 003 without creating a phase generator or phase sweep. Execute the exact source-owned relative-facet-phase verifier, adapt only its donor group labels into the already-proven partition helper's historical group vocabulary, and retain three materially different owner partitions. Preserve successor002 as exact historical evidence, require the zero-phase body-only partition to remain byte-identical to successor002 after canonical partition labeling, and require the +15 degree lid-only and full partitions to change.",
+  "truth_boundary": "This rebind proves only deterministic owner partitions of the exact Hard Surface successor003 candidate after its source-owned verifier passes. It does not choose or optimize facet phase, prove the visual highlight issue is repaired, rewrite or default-adopt successor003, erase successor002 evidence, authorize Materials, Rigging, Animation, Technical Art, Runtime/physics, manufacturing fit, collision, visual acceptance, CANON or production readiness."
+}

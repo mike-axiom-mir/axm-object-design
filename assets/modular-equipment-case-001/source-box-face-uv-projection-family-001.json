@@ -1,0 +1,62 @@
+{
+  "schema": "axm.object-source-box-face-uv-projection-family/v0.1",
+  "family_id": "object-source-box-face-uv-projection-001",
+  "source_face_family": {
+    "path": "assets/modular-equipment-case-001/source-box-face-extraction-family-001.json",
+    "schema": "axm.object-source-box-face-extraction-family/v0.1",
+    "required_result": "PASS_BOUNDED_SOURCE_BOX_FACE_EXTRACTION_FAMILY"
+  },
+  "materials_donor": {
+    "repository": "mike-axiom-mir/axm-object-design",
+    "pull_request": 6,
+    "head": "ad2378f18be55efa1f8e6dba9d8823c6b5d500e1",
+    "family_contract_path": "lookdev/service_dark_uv_density_family_001.json",
+    "family_contract_git_blob_sha": "beef371f1c0179052955f9bb43505e9829e3a9bb",
+    "front_rebind_path": "lookdev/front_service_panel_uv_source_identity_rebind_001.json",
+    "front_rebind_git_blob_sha": "09bcb29d45677e7bc0b7b05adcfc592bc26bbd83",
+    "front_review_path": "lookdev/front_service_panel_uv_review_001.json",
+    "front_review_git_blob_sha": "c473d20a466b97ea2e7d513a4efe78533245de77"
+  },
+  "parameter_contract": {
+    "maximum_surfaces": 2,
+    "variants_per_surface": 2,
+    "allowed_axes": ["x", "y", "z"],
+    "surface_discovery": "FORBIDDEN",
+    "fallback": "FORBIDDEN",
+    "ordering": "DECLARED_SURFACE_THEN_CANDIDATE_CONTROL"
+  },
+  "retained_members": [
+    {
+      "surface_id": "lid_inner_service_surface",
+      "face_output": "lid-inner-service-surface.json",
+      "materials_binding": "inner_lid_target",
+      "negative_control_source": "family_contract.negative_control"
+    },
+    {
+      "surface_id": "front_service_panel_outer_service_surface",
+      "face_output": "front-service-panel-outer-service-surface.json",
+      "materials_binding": "front_service_panel_reference",
+      "negative_control_source": "front_review.negative_control"
+    }
+  ],
+  "failure_policy": "FAIL_CLOSED_EXACT_SOURCE_FACE_AND_EXACT_MATERIALS_REVIEW_ONLY_NO_DISCOVERY_NO_FALLBACK",
+  "purpose": "Proceduralize only the repeated source-local planar UV coordinate projection already reviewed by Materials across two exact Hard-Surface-owned box faces. Materials keeps authority over density/orientation review values and negative-control meaning; Procedural derives deterministic UV coordinates for both exact face geometries and both exact density variants without source adoption.",
+  "truth_boundary": {
+    "derived_review_uv_coordinates_only": true,
+    "hard_surface_source_authority_preserved": true,
+    "materials_review_authority_preserved": true,
+    "source_geometry_changed": false,
+    "source_uv_authored": false,
+    "production_uv_adopted": false,
+    "material_assignment_changed": false,
+    "texture_asset_authored": false,
+    "surface_discovery": false,
+    "fallback": false,
+    "arbitrary_mesh_unwrap": false,
+    "runtime_or_engine_acceptance": false,
+    "art_direction_or_visual_qa_acceptance": false,
+    "uc_or_profession_fabric_promotion": false,
+    "canon": false,
+    "production_readiness": false
+  }
+}

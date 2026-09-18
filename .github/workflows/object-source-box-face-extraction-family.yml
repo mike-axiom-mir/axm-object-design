@@ -1,0 +1,103 @@
+name: Object source box-face extraction family evidence
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  procedural:
+    strategy:
+      matrix:
+        python-version: ['3.11', '3.13']
+    runs-on: ubuntu-latest
+    env:
+      AXM_STICKER_FABRIC_ROOT: _donor/axm-sticker-fabric
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+      - name: Checkout exact Sticker Fabric dependency for inherited Procedural tests
+        uses: actions/checkout@v4
+        with:
+          repository: mike-axiom-mir/axm-sticker-fabric
+          ref: 3aa93b0132eea9becefb20c716c6ec1a023ad28b
+          path: _donor/axm-sticker-fabric
+      - name: Checkout exact Hard-Surface source-authority donor
+        uses: actions/checkout@v4
+        with:
+          repository: mike-axiom-mir/axm-object-design
+          ref: fcae744a8bdbcb765c32758e9da03fe54ffe4dbc
+          path: _donor/object-hard-surface
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Compile
+        run: python -m compileall tools tests
+      - name: Test full repository suite
+        run: python -m unittest discover -s tests -v
+      - name: Materialize exact Materials review donors
+        if: matrix.python-version == '3.11'
+        run: |
+          mkdir -p evidence/source-box-face-extraction-family
+          git fetch origin 8e92324648d837a92b7c3e0b1107df1f58f9aa61 --depth=1
+          lid_blob="$(git rev-parse 8e92324648d837a92b7c3e0b1107df1f58f9aa61:lookdev/inner_lid_surface_review_001.json)"
+          test "$lid_blob" = "cc90cd2c4c0f8eaf6b93d190436bc278c0fa1c83"
+          git show 8e92324648d837a92b7c3e0b1107df1f58f9aa61:lookdev/inner_lid_surface_review_001.json > /tmp/inner_lid_surface_review_001.json
+          git fetch origin 04c521a5a7e31bef54093c818108fd6c2080ca0e --depth=1
+          panel_blob="$(git rev-parse 04c521a5a7e31bef54093c818108fd6c2080ca0e:lookdev/front_service_panel_uv_review_001.json)"
+          test "$panel_blob" = "c473d20a466b97ea2e7d513a4efe78533245de77"
+          git show 04c521a5a7e31bef54093c818108fd6c2080ca0e:lookdev/front_service_panel_uv_review_001.json > /tmp/front_service_panel_uv_review_001.json
+          printf '%s\n' 8e92324648d837a92b7c3e0b1107df1f58f9aa61 > evidence/source-box-face-extraction-family/lid-materials-review-head.txt
+          printf '%s\n' "$lid_blob" > evidence/source-box-face-extraction-family/lid-materials-review-blob.txt
+          printf '%s\n' 04c521a5a7e31bef54093c818108fd6c2080ca0e > evidence/source-box-face-extraction-family/panel-materials-review-head.txt
+          printf '%s\n' "$panel_blob" > evidence/source-box-face-extraction-family/panel-materials-review-blob.txt
+      - name: Build exact bounded source box-face extraction family
+        if: matrix.python-version == '3.11'
+        run: |
+          python tools/build_source_box_face_extraction_family.py \
+            --family assets/modular-equipment-case-001/source-box-face-extraction-family-001.json \
+            --hard-surface-root _donor/object-hard-surface \
+            --review lid_inner_service_surface=/tmp/inner_lid_surface_review_001.json \
+            --review front_service_panel_outer_service_surface=/tmp/front_service_panel_uv_review_001.json \
+            --out evidence/source-box-face-extraction-family
+          cp assets/modular-equipment-case-001/source-box-face-extraction-family-001.json evidence/source-box-face-extraction-family/family-profile.json
+          cp _donor/object-hard-surface/assets/modular-equipment-case-001/source.json evidence/source-box-face-extraction-family/host-source.json
+          cp _donor/object-hard-surface/assets/modular-equipment-case-001/lid-inner-surface-identity-001.json evidence/source-box-face-extraction-family/lid-inner-surface-contract.json
+          cp _donor/object-hard-surface/assets/modular-equipment-case-001/front-service-panel-outer-surface-identity-001.json evidence/source-box-face-extraction-family/front-service-panel-surface-contract.json
+          cp _donor/object-hard-surface/tools/verify_lid_inner_surface_identity.py evidence/source-box-face-extraction-family/lid-inner-authority-verifier.py
+          cp _donor/object-hard-surface/tools/verify_front_service_panel_outer_surface_identity.py evidence/source-box-face-extraction-family/front-service-panel-authority-verifier.py
+          git rev-parse HEAD > evidence/source-box-face-extraction-family/exact-head.txt
+          git -C _donor/object-hard-surface rev-parse HEAD > evidence/source-box-face-extraction-family/hard-surface-donor-head.txt
+      - name: Assert materially different outputs and failure bounds
+        if: matrix.python-version == '3.11'
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          summary = json.loads(Path('evidence/source-box-face-extraction-family/summary.json').read_text())
+          assert summary['result'] == 'PASS_BOUNDED_SOURCE_BOX_FACE_EXTRACTION_FAMILY'
+          assert summary['retained_output_count'] == 2
+          assert summary['distinct_component_count'] == 2
+          assert summary['distinct_selector_axis_count'] == 2
+          assert summary['distinct_mesh_digest_count'] == 2
+          assert {row['selector_axis'] for row in summary['outputs']} == {'y', 'z'}
+          assert all(row['vertex_count'] == 4 for row in summary['outputs'])
+          assert all(row['triangle_count'] == 2 for row in summary['outputs'])
+          assert len(summary['negative_controls']) == 4
+          assert all(row['result'] == 'HOLD_INVALID_SOURCE_BOX_FACE_EXTRACTION_FAMILY' for row in summary['negative_controls'])
+          assert summary['truth_boundary']['hard_surface_semantics_rewritten'] is False
+          assert summary['truth_boundary']['source_geometry_changed'] is False
+          print('PASS_OBJECT_SOURCE_BOX_FACE_EXTRACTION_FAMILY')
+          PY
+      - name: Upload retained evidence
+        if: matrix.python-version == '3.11'
+        uses: actions/upload-artifact@v4
+        with:
+          name: object-source-box-face-extraction-family-001-evidence
+          path: evidence/source-box-face-extraction-family
+          if-no-files-found: error
+          retention-days: 30

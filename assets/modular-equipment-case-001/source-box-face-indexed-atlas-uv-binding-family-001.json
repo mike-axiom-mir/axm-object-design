@@ -1,0 +1,60 @@
+{
+  "schema": "axm.object-source-box-face-indexed-atlas-uv-binding-family/v0.1",
+  "family_id": "object-source-box-face-indexed-atlas-uv-binding-001",
+  "prerequisites": {
+    "indexed_uv_family": {
+      "schema": "axm.object-source-box-face-indexed-uv-binding-family/v0.1",
+      "path": "assets/modular-equipment-case-001/source-box-face-indexed-uv-binding-family-001.json",
+      "profile_git_blob_sha": "37ba5191ae3ce79714736a2ab197b487dd18dd62",
+      "builder_path": "tools/build_source_box_face_indexed_uv_binding_family.py",
+      "builder_git_blob_sha": "c7d925c37154aa10db964f2770db637e7e0850eb",
+      "required_result": "PASS_BOUNDED_SOURCE_BOX_FACE_INDEXED_UV_BINDING_FAMILY"
+    },
+    "atlas_layout_family": {
+      "schema": "axm.object-source-box-face-atlas-layout-family/v0.1",
+      "path": "assets/modular-equipment-case-001/source-box-face-atlas-layout-family-001.json",
+      "profile_git_blob_sha": "27e5a05af153d432f6d84b73d6215a71b530e1a1",
+      "builder_path": "tools/build_source_box_face_atlas_layout_family.py",
+      "builder_git_blob_sha": "9d29da35dc3e44cc19060025541188c0d3b20eb9",
+      "required_result": "PASS_BOUNDED_SOURCE_BOX_FACE_ATLAS_LAYOUT_FAMILY"
+    }
+  },
+  "parameter_contract": {
+    "maximum_surfaces": 2,
+    "exact_variant_id": "materials_candidate_isotropic",
+    "binding_domain": "SOURCE_GLOBAL_TRIANGLE_AND_VERTEX_INDEX_SPACE",
+    "atlas_mapping": "EXACT_DECLARED_ATLAS_LAYOUT_ONLY",
+    "surface_discovery": "FORBIDDEN",
+    "fallback": "FORBIDDEN",
+    "source_index_rewrite": "FORBIDDEN",
+    "automatic_source_uv_adoption": "FORBIDDEN",
+    "automatic_current_world_uv0_adoption": "FORBIDDEN",
+    "ordering": "CANONICAL_SURFACE_ID_FOR_DIGEST"
+  },
+  "retained_surface_ids": [
+    "lid_inner_service_surface",
+    "front_service_panel_outer_service_surface"
+  ],
+  "failure_policy": "FAIL_CLOSED_EXACT_INDEXED_REVIEW_UV_AND_DECLARED_ATLAS_LAYOUT_ONLY_NO_DISCOVERY_NO_INDEX_REWRITE_NO_FALLBACK_NO_UV0_ADOPTION",
+  "purpose": "Proceduralize the repeated final source-side handoff from exact source-global triangle/vertex identity to the exact Materials-declared atlas coordinates for the two already-owned service faces. This composes existing indexed review-UV evidence with existing declared atlas-layout evidence; it does not author source UV0, create current-world UV0, search atlas packing, or adopt any material/receiver state.",
+  "truth_boundary": {
+    "derived_source_index_to_declared_atlas_uv_binding_only": true,
+    "hard_surface_source_authority_preserved": true,
+    "materials_review_uv_and_atlas_authority_preserved": true,
+    "source_geometry_changed": false,
+    "source_triangle_or_vertex_indices_rewritten": false,
+    "source_uv_authored": false,
+    "production_source_uv_adopted": false,
+    "current_world_uv0_authored": false,
+    "current_world_uv0_adopted": false,
+    "materials_atlas_adopted": false,
+    "automatic_atlas_pack_search": false,
+    "surface_discovery": false,
+    "fallback": false,
+    "runtime_or_engine_acceptance": false,
+    "art_direction_or_visual_qa_acceptance": false,
+    "uc_or_profession_fabric_promotion": false,
+    "canon": false,
+    "production_readiness": false
+  }
+}

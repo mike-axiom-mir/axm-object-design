@@ -1,0 +1,57 @@
+{
+  "schema": "axm.object-source-box-face-uv-metric-domain-rebind-family/v0.1",
+  "family_id": "object-source-box-face-uv-metric-domain-rebind-001",
+  "previous_source_frame_family": {
+    "path": "assets/modular-equipment-case-001/source-box-face-uv-source-frame-rebind-family-001.json",
+    "git_blob_sha": "0f57ebb01fc21e02f0d2123390e9562d39e86783",
+    "schema": "axm.object-source-box-face-uv-source-frame-rebind-family/v0.1",
+    "required_result": "PASS_BOUNDED_SOURCE_BOX_FACE_UV_SOURCE_FRAME_REBIND_FAMILY"
+  },
+  "hard_surface_metric_donor": {
+    "repository": "mike-axiom-mir/axm-object-design",
+    "pull_request": 26,
+    "head": "f7c64d08e4e2a0d6954291d8b4e064d7345ab658",
+    "path": "assets/modular-equipment-case-001/service-surface-metric-domains-001.json",
+    "git_blob_sha": "2b425e2a12c648c20c2ad948f44489c4ac1a51e6",
+    "schema": "axm.object-hard-surface-service-surface-metric-domain/v0.1"
+  },
+  "parameter_contract": {
+    "maximum_surfaces": 2,
+    "variants_per_surface": 2,
+    "metric_units": "meters",
+    "source_metric_domain_authority": "HARD_SURFACE_EXACT_SOURCE_DOMAIN",
+    "uv_density_and_origin_authority": "MATERIALS_VIA_PREVIOUS_PROCEDURAL_FAMILY",
+    "surface_discovery": "FORBIDDEN",
+    "fallback": "FORBIDDEN",
+    "metric_extent_guessing_from_geometry": "FORBIDDEN_FOR_AUTHORITY_DECISION",
+    "automatic_source_uv_adoption": "FORBIDDEN"
+  },
+  "retained_surface_ids": [
+    "lid_inner_service_surface",
+    "front_service_panel_outer_service_surface"
+  ],
+  "failure_policy": "FAIL_CLOSED_EXACT_HARD_SURFACE_METRIC_DOMAIN_AND_PREVIOUS_UV_FAMILY_ONLY_NO_GEOMETRY_METRIC_GUESSING_NO_FALLBACK",
+  "purpose": "Rebind the bounded service-surface UV family to the new exact Hard-Surface-owned physical metric domains. Generate expected rectangular UV corner sets directly from source-owned metric bounds plus the already-owned Materials density, and require all four previous review UV outputs to match before passing. Hard Surface owns physical extent; Materials keeps UV density/origin/packing/appearance authority.",
+  "truth_boundary": {
+    "derived_review_uv_metric_binding_only": true,
+    "hard_surface_metric_domain_authority_consumed": true,
+    "materials_uv_authority_preserved": true,
+    "previous_procedural_output_continuity_required": true,
+    "source_geometry_changed": false,
+    "source_surface_identity_changed": false,
+    "source_metric_domain_rewritten": false,
+    "source_uv_authored": false,
+    "production_uv_adopted": false,
+    "material_assignment_changed": false,
+    "texture_asset_authored": false,
+    "surface_discovery": false,
+    "metric_extent_guessing_for_authority": false,
+    "fallback": false,
+    "arbitrary_mesh_unwrap": false,
+    "runtime_or_engine_acceptance": false,
+    "art_direction_or_visual_qa_acceptance": false,
+    "uc_or_profession_fabric_promotion": false,
+    "canon": false,
+    "production_readiness": false
+  }
+}

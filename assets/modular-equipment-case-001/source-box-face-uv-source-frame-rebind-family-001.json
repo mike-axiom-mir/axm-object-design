@@ -1,0 +1,55 @@
+{
+  "schema": "axm.object-source-box-face-uv-source-frame-rebind-family/v0.1",
+  "family_id": "object-source-box-face-uv-source-frame-rebind-001",
+  "previous_uv_family": {
+    "path": "assets/modular-equipment-case-001/source-box-face-uv-projection-family-001.json",
+    "git_blob_sha": "193ab5340953601d6d88f38b3fa480221821c93b",
+    "schema": "axm.object-source-box-face-uv-projection-family/v0.1",
+    "required_result": "PASS_BOUNDED_SOURCE_BOX_FACE_UV_PROJECTION_FAMILY"
+  },
+  "hard_surface_frame_donor": {
+    "repository": "mike-axiom-mir/axm-object-design",
+    "pull_request": 26,
+    "head": "6a9593b942e7cda4befe8106bfb8cc260e3e6b5f",
+    "path": "assets/modular-equipment-case-001/service-surface-reference-frames-001.json",
+    "git_blob_sha": "ffb0671eac025f0d39eeb412b58e0ae017e21d99",
+    "schema": "axm.object-hard-surface-service-surface-reference-frames/v0.1"
+  },
+  "parameter_contract": {
+    "maximum_surfaces": 2,
+    "variants_per_surface": 2,
+    "source_frame_axes": "EXACT_POSITIVE_CARDINAL_PRIMARY_SECONDARY_ONLY",
+    "uv_density_and_origin_authority": "MATERIALS_FROM_PREVIOUS_UV_FAMILY",
+    "surface_discovery": "FORBIDDEN",
+    "fallback": "FORBIDDEN",
+    "axis_guessing_from_geometry": "FORBIDDEN",
+    "automatic_source_uv_adoption": "FORBIDDEN"
+  },
+  "retained_surface_ids": [
+    "lid_inner_service_surface",
+    "front_service_panel_outer_service_surface"
+  ],
+  "failure_policy": "FAIL_CLOSED_EXACT_HARD_SURFACE_FRAME_AND_PREVIOUS_UV_FAMILY_ONLY_NO_AXIS_GUESSING_NO_FALLBACK",
+  "purpose": "Repair the existing bounded planar UV projection path so source-space U/V orientation is derived from the new exact Hard-Surface-owned service-surface reference frames rather than rediscovered from primitive geometry or locally repeated axis declarations. Materials still owns UV density, origin, packing and appearance. The rebound generator must reproduce all four previous review UV outputs exactly before it may pass.",
+  "truth_boundary": {
+    "derived_review_uv_coordinates_only": true,
+    "hard_surface_reference_frame_authority_consumed": true,
+    "materials_uv_authority_preserved": true,
+    "previous_procedural_output_continuity_required": true,
+    "source_geometry_changed": false,
+    "source_surface_identity_changed": false,
+    "source_uv_authored": false,
+    "production_uv_adopted": false,
+    "material_assignment_changed": false,
+    "texture_asset_authored": false,
+    "surface_discovery": false,
+    "axis_guessing_from_geometry": false,
+    "fallback": false,
+    "arbitrary_mesh_unwrap": false,
+    "runtime_or_engine_acceptance": false,
+    "art_direction_or_visual_qa_acceptance": false,
+    "uc_or_profession_fabric_promotion": false,
+    "canon": false,
+    "production_readiness": false
+  }
+}

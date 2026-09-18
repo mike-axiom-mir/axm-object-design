@@ -1,0 +1,121 @@
+name: Object service-module orientation semantics guard
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  procedural:
+    strategy:
+      matrix:
+        python-version: ['3.11', '3.13']
+    runs-on: ubuntu-latest
+    env:
+      AXM_STICKER_FABRIC_ROOT: _donor/axm-sticker-fabric
+      AXM_GEOMETRY_ORIENTATION_ROOT: _donor/object-geometry-orientation
+      AXM_HARD_SURFACE_BOUNDARY_ROOT: _donor/object-hard-surface-boundary
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+      - name: Checkout exact Sticker Fabric shared placement owner
+        uses: actions/checkout@v4
+        with:
+          repository: mike-axiom-mir/axm-sticker-fabric
+          ref: 3aa93b0132eea9becefb20c716c6ec1a023ad28b
+          path: _donor/axm-sticker-fabric
+      - name: Checkout exact Geometry rigid-shell orientation owner
+        uses: actions/checkout@v4
+        with:
+          repository: mike-axiom-mir/axm-object-design
+          ref: 606d8189a3bf4502141d8038f08d35d421829dde
+          path: _donor/object-geometry-orientation
+      - name: Checkout exact Hard Surface exterior-intent boundary owner
+        uses: actions/checkout@v4
+        with:
+          repository: mike-axiom-mir/axm-object-design
+          ref: 77a4058b305fab7fd04dab94781b9460f089727e
+          path: _donor/object-hard-surface-boundary
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Compile
+        run: python -m compileall tools tests
+      - name: Test full repository suite
+        run: python -m unittest discover -s tests -v
+      - name: Rebuild exact historical oriented configuration family
+        if: matrix.python-version == '3.11'
+        run: |
+          python tools/build_service_module_oriented_configuration_family.py \
+            --host assets/modular-equipment-case-001/source.json \
+            --module assets/modular-equipment-case-001/utility-module-001.json \
+            --registration assets/modular-equipment-case-001/utility-module-registration-key-001.json \
+            --profile assets/modular-equipment-case-001/service-module-configuration-family-001.json \
+            --contract assets/modular-equipment-case-001/service-module-oriented-configuration-family-001.json \
+            --sticker-root _donor/axm-sticker-fabric \
+            --geometry-root _donor/object-geometry-orientation \
+            --out evidence/service-module-orientation-semantics-guard/legacy-oriented-family
+      - name: Build semantic repair guard evidence
+        if: matrix.python-version == '3.11'
+        run: |
+          python tools/verify_service_module_orientation_semantics.py \
+            --contract assets/modular-equipment-case-001/service-module-orientation-semantics-guard-001.json \
+            --legacy-summary evidence/service-module-orientation-semantics-guard/legacy-oriented-family/summary.json \
+            --repo-root . \
+            --hard-surface-root _donor/object-hard-surface-boundary \
+            --out evidence/service-module-orientation-semantics-guard/guard
+          git rev-parse HEAD > evidence/service-module-orientation-semantics-guard/exact-head.txt
+          git -C _donor/object-geometry-orientation rev-parse HEAD > evidence/service-module-orientation-semantics-guard/geometry-owner-head.txt
+          git -C _donor/object-hard-surface-boundary rev-parse HEAD > evidence/service-module-orientation-semantics-guard/hard-surface-boundary-head.txt
+      - name: Truth-gate semantic separation and four-output continuity
+        if: matrix.python-version == '3.11'
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          root = Path('evidence/service-module-orientation-semantics-guard')
+          summary = json.loads((root / 'guard' / 'summary.json').read_text())
+          assert summary['result'] == 'PASS_SERVICE_MODULE_ORIENTATION_SEMANTICS_GUARD'
+          assert summary['decision'] == 'PASS_LEGACY_GENERATED_MESHES_UNCHANGED__ALGEBRAIC_SIGN_ONLY__NO_SOURCE_EXTERIOR_OR_RENDERER_FRONT_FACE_TRANSFER'
+          assert summary['candidate_mesh_outputs_unchanged_from_legacy'] is True
+          assert summary['legacy_observation']['family_digest'] == '3196e0d972d8bcaf9f43db35acf2cd2e9cc9cce7e1b3aabb3c6160ce4b3f99c7'
+          assert summary['legacy_observation']['configuration_ids'] == ['empty', 'left-only', 'right-only', 'bilateral']
+          assert summary['legacy_observation']['materially_distinct_candidate_mesh_count'] == 4
+          assert summary['legacy_observation']['nonempty_configuration_count'] == 3
+          assert summary['legacy_observation']['total_generated_module_instances'] == 4
+          assert summary['legacy_observation']['total_flipped_faces'] == 48
+          assert summary['legacy_family_artifact_id'] == 10521790461
+          assert summary['legacy_family_artifact_sha256'] == '380e4868ea2593b64ffeb2d7b2a3ca92119d27c247bc12e645fffccc926cadd2'
+          semantics = summary['orientation_semantics']
+          assert semantics['positive_signed_volume_interpretation'] == 'ALGEBRAIC_ORIENTATION_IN_THE_EXACT_GENERATED_MESH_COORDINATE_FRAME_ONLY'
+          assert semantics['source_exterior_intent_claimed'] is False
+          assert semantics['source_exterior_intent_consumed'] is False
+          assert semantics['hard_surface_authority_transferred'] is False
+          assert semantics['renderer_front_face_selected'] is False
+          assert semantics['receiver_culling_adopted'] is False
+          assert semantics['automatic_source_or_downstream_adoption'] is False
+          assert summary['hard_surface_boundary']['hard_surface_component_count'] == 31
+          assert summary['hard_surface_boundary']['renderer_front_face_authoritative'] is False
+          assert len(summary['negative_controls']) == 6
+          expected = {
+              'empty': 'd485a11fd819e6f90c2d1842b0534178093270d8cc4de18744ebcd10bd377351',
+              'left-only': 'c2b3f91736e78bc723a21779511c2aa277577e92325050fff69b62e43af883fe',
+              'right-only': '81b5e1faad4ae5043598f37c4135cabe5ac373ac670f55301bd11d5a765a43eb',
+              'bilateral': 'da9e68cba190691b06a9f30d829a76f2c53a8d23d4c9ad21ca48ad47ac472862',
+          }
+          assert summary['legacy_observation']['candidate_mesh_digests'] == expected
+          print('PASS_OBJECT_SERVICE_MODULE_ORIENTATION_SEMANTICS_GUARD_TRUTH_GATE')
+          PY
+      - name: Upload retained evidence
+        if: matrix.python-version == '3.11'
+        uses: actions/upload-artifact@v4
+        with:
+          name: object-service-module-orientation-semantics-guard-001-evidence
+          path: evidence/service-module-orientation-semantics-guard
+          if-no-files-found: error
+          retention-days: 30

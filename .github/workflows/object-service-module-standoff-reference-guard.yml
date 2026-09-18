@@ -1,0 +1,111 @@
+name: Object service-module standoff reference guard evidence
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  procedural:
+    strategy:
+      matrix:
+        python-version: ['3.11', '3.13']
+    runs-on: ubuntu-latest
+    env:
+      AXM_STICKER_FABRIC_ROOT: _donor/axm-sticker-fabric
+      AXM_OBJECT_STANDOFF_OWNER_ROOT: _donor/object-hard-surface-standoff
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+
+      - name: Checkout exact Sticker Fabric shared placement donor
+        uses: actions/checkout@v4
+        with:
+          repository: mike-axiom-mir/axm-sticker-fabric
+          ref: 3aa93b0132eea9becefb20c716c6ec1a023ad28b
+          path: _donor/axm-sticker-fabric
+
+      - name: Checkout exact Hard Surface standoff-reference owner
+        uses: actions/checkout@v4
+        with:
+          repository: mike-axiom-mir/axm-object-design
+          ref: e9076b546dab2e12ba2c3649fd0021a62841be10
+          path: _donor/object-hard-surface-standoff
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Assert exact owner identities
+        run: |
+          set -euo pipefail
+          test "$(git -C _donor/axm-sticker-fabric rev-parse HEAD)" = "3aa93b0132eea9becefb20c716c6ec1a023ad28b"
+          test "$(git -C _donor/object-hard-surface-standoff rev-parse HEAD)" = "e9076b546dab2e12ba2c3649fd0021a62841be10"
+          test "$(git -C _donor/object-hard-surface-standoff rev-parse HEAD:assets/modular-equipment-case-001/utility-module-001-standoff-reference.json)" = "d8e3b9bbc4157b7f3c7f750f19e58de470b8f1ea"
+
+      - name: Compile
+        run: python -m compileall tools tests
+
+      - name: Test full repository suite with exact donors
+        run: python -m unittest discover -s tests -v
+
+      - name: Build exact bounded standoff-reference guard evidence
+        if: matrix.python-version == '3.11'
+        run: |
+          set -euo pipefail
+          python tools/verify_service_module_configuration_standoff_guard.py \
+            --host assets/modular-equipment-case-001/source.json \
+            --module assets/modular-equipment-case-001/utility-module-001.json \
+            --registration assets/modular-equipment-case-001/utility-module-registration-key-001.json \
+            --profile assets/modular-equipment-case-001/service-module-configuration-family-001.json \
+            --guard assets/modular-equipment-case-001/service-module-standoff-reference-guard-001.json \
+            --sticker-root _donor/axm-sticker-fabric \
+            --owner-root _donor/object-hard-surface-standoff \
+            --out evidence/service-module-standoff-reference-guard
+          cp assets/modular-equipment-case-001/service-module-standoff-reference-guard-001.json evidence/service-module-standoff-reference-guard/guard-contract.json
+          cp assets/modular-equipment-case-001/service-module-configuration-family-001.json evidence/service-module-standoff-reference-guard/configuration-family-profile.json
+          git rev-parse HEAD > evidence/service-module-standoff-reference-guard/exact-procedural-head.txt
+          git -C _donor/object-hard-surface-standoff rev-parse HEAD > evidence/service-module-standoff-reference-guard/exact-hard-surface-owner-head.txt
+          git -C _donor/object-hard-surface-standoff rev-parse HEAD:assets/modular-equipment-case-001/utility-module-001-standoff-reference.json > evidence/service-module-standoff-reference-guard/exact-hard-surface-policy-blob.txt
+
+      - name: Assert bounded result and retained variation pressure
+        if: matrix.python-version == '3.11'
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          root = Path('evidence/service-module-standoff-reference-guard')
+          summary = json.loads((root / 'summary.json').read_text())
+          assert summary['result'] == 'PASS_PROCEDURAL_CONFIGURATION_STANDOFF_SEMANTIC_GUARD'
+          assert summary['decision'] == 'PASS_EXISTING_CONFIGURATION_FAMILY_WITH_EXPLICIT_HARD_SURFACE_STANDOFF_REFERENCE_GUARD__NO_SOURCE_REWRITE_OR_ADOPTION'
+          assert summary['owner_identity']['head'] == 'e9076b546dab2e12ba2c3649fd0021a62841be10'
+          assert summary['owner_identity']['policy_git_blob'] == 'd8e3b9bbc4157b7f3c7f750f19e58de470b8f1ea'
+          assert summary['reference_feature'] == 'module_nearest_host_facing_body_face'
+          assert summary['observed_body_local_x_interval_m'] == [0.03, 0.125]
+          assert summary['retained_output_count'] == 4
+          assert summary['distinct_configuration_digests'] == 4
+          assert summary['distinct_mesh_digests'] == 4
+          assert summary['canonical_reverse_bilateral_match'] is True
+          assert summary['negative_control_count'] == 6
+          assert all(row['result'] == 'HOLD_STANDOFF_SEMANTIC_GUARD' for row in summary['negative_controls'])
+          assert [row['module_instance_count'] for row in summary['retained_outputs']] == [0, 1, 1, 2]
+          assert all(abs(row['physical_body_clearance_beyond_plate_m'] - 0.018) <= 1e-12 for row in summary['socket_clearances'])
+          assert summary['truth_boundary']['hard_surface_reference_feature_authority_preserved'] is True
+          assert summary['truth_boundary']['source_geometry_rewritten'] is False
+          assert summary['truth_boundary']['automatic_downstream_rebind'] is False
+          print(summary['result'])
+          PY
+
+      - name: Upload retained evidence
+        if: matrix.python-version == '3.11'
+        uses: actions/upload-artifact@v4
+        with:
+          name: object-service-module-standoff-reference-guard-001-evidence
+          path: evidence/service-module-standoff-reference-guard
+          if-no-files-found: error
+          retention-days: 30

@@ -1,0 +1,124 @@
+name: Object source box-face UV projection family evidence
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  procedural:
+    strategy:
+      matrix:
+        python-version: ['3.11', '3.13']
+    runs-on: ubuntu-latest
+    env:
+      AXM_STICKER_FABRIC_ROOT: _donor/axm-sticker-fabric
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+      - name: Checkout exact Sticker Fabric dependency for inherited Procedural tests
+        uses: actions/checkout@v4
+        with:
+          repository: mike-axiom-mir/axm-sticker-fabric
+          ref: 3aa93b0132eea9becefb20c716c6ec1a023ad28b
+          path: _donor/axm-sticker-fabric
+      - name: Checkout exact Hard-Surface source-authority donor
+        uses: actions/checkout@v4
+        with:
+          repository: mike-axiom-mir/axm-object-design
+          ref: fcae744a8bdbcb765c32758e9da03fe54ffe4dbc
+          path: _donor/object-hard-surface
+      - name: Checkout exact Materials UV-family donor
+        uses: actions/checkout@v4
+        with:
+          repository: mike-axiom-mir/axm-object-design
+          ref: ad2378f18be55efa1f8e6dba9d8823c6b5d500e1
+          path: _donor/object-materials
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Compile
+        run: python -m compileall tools tests
+      - name: Test full repository suite
+        run: python -m unittest discover -s tests -v
+      - name: Materialize exact review inputs for source-face prerequisite
+        if: matrix.python-version == '3.11'
+        run: |
+          mkdir -p evidence/source-box-face-uv-projection-family/source-faces
+          git fetch origin 8e92324648d837a92b7c3e0b1107df1f58f9aa61 --depth=1
+          lid_blob="$(git rev-parse 8e92324648d837a92b7c3e0b1107df1f58f9aa61:lookdev/inner_lid_surface_review_001.json)"
+          test "$lid_blob" = "cc90cd2c4c0f8eaf6b93d190436bc278c0fa1c83"
+          git show 8e92324648d837a92b7c3e0b1107df1f58f9aa61:lookdev/inner_lid_surface_review_001.json > /tmp/inner_lid_surface_review_001.json
+          git fetch origin 04c521a5a7e31bef54093c818108fd6c2080ca0e --depth=1
+          panel_blob="$(git rev-parse 04c521a5a7e31bef54093c818108fd6c2080ca0e:lookdev/front_service_panel_uv_review_001.json)"
+          test "$panel_blob" = "c473d20a466b97ea2e7d513a4efe78533245de77"
+          git show 04c521a5a7e31bef54093c818108fd6c2080ca0e:lookdev/front_service_panel_uv_review_001.json > /tmp/front_service_panel_uv_review_001.json
+      - name: Rebuild exact source-owned face prerequisite
+        if: matrix.python-version == '3.11'
+        run: |
+          python tools/build_source_box_face_extraction_family.py \
+            --family assets/modular-equipment-case-001/source-box-face-extraction-family-001.json \
+            --hard-surface-root _donor/object-hard-surface \
+            --review lid_inner_service_surface=/tmp/inner_lid_surface_review_001.json \
+            --review front_service_panel_outer_service_surface=/tmp/front_service_panel_uv_review_001.json \
+            --out evidence/source-box-face-uv-projection-family/source-faces
+      - name: Build exact bounded source-face UV projection family
+        if: matrix.python-version == '3.11'
+        run: |
+          mkdir -p evidence/source-box-face-uv-projection-family/uv-family
+          python tools/build_source_box_face_uv_projection_family.py \
+            --family assets/modular-equipment-case-001/source-box-face-uv-projection-family-001.json \
+            --materials-root _donor/object-materials \
+            --face-root evidence/source-box-face-uv-projection-family/source-faces \
+            --out evidence/source-box-face-uv-projection-family/uv-family
+          cp assets/modular-equipment-case-001/source-box-face-uv-projection-family-001.json evidence/source-box-face-uv-projection-family/family-profile.json
+          cp assets/modular-equipment-case-001/source-box-face-extraction-family-001.json evidence/source-box-face-uv-projection-family/source-face-family-profile.json
+          cp _donor/object-materials/lookdev/service_dark_uv_density_family_001.json evidence/source-box-face-uv-projection-family/materials-family-contract.json
+          cp _donor/object-materials/lookdev/front_service_panel_uv_source_identity_rebind_001.json evidence/source-box-face-uv-projection-family/front-service-panel-rebind.json
+          cp _donor/object-materials/lookdev/front_service_panel_uv_review_001.json evidence/source-box-face-uv-projection-family/front-service-panel-review.json
+          git rev-parse HEAD > evidence/source-box-face-uv-projection-family/exact-head.txt
+          git -C _donor/object-hard-surface rev-parse HEAD > evidence/source-box-face-uv-projection-family/hard-surface-donor-head.txt
+          git -C _donor/object-materials rev-parse HEAD > evidence/source-box-face-uv-projection-family/materials-donor-head.txt
+      - name: Assert multiple materially different UV outputs and failure bounds
+        if: matrix.python-version == '3.11'
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          summary = json.loads(Path('evidence/source-box-face-uv-projection-family/uv-family/summary.json').read_text())
+          assert summary['result'] == 'PASS_BOUNDED_SOURCE_BOX_FACE_UV_PROJECTION_FAMILY'
+          assert summary['surface_count'] == 2
+          assert summary['variant_output_count'] == 4
+          assert summary['distinct_source_geometry_count'] == 2
+          assert summary['distinct_basis_plane_count'] == 2
+          assert summary['distinct_uv_payload_count'] == 4
+          assert summary['distinct_candidate_uv_span_count'] == 2
+          assert summary['candidate_isotropic_count'] == 2
+          assert summary['negative_three_x_anisotropy_count'] == 2
+          assert len(summary['negative_controls']) == 5
+          assert all(row['result'] == 'HOLD_INVALID_SOURCE_BOX_FACE_UV_PROJECTION_FAMILY' for row in summary['negative_controls'])
+          candidates = [row for row in summary['outputs'] if row['variant_id'] == 'materials_candidate_isotropic']
+          controls = [row for row in summary['outputs'] if row['variant_id'] != 'materials_candidate_isotropic']
+          assert {row['basis'] for row in candidates} == {
+              'SOURCE_LOCAL_X_TO_U__SOURCE_LOCAL_Y_TO_V',
+              'SOURCE_LOCAL_X_TO_U__SOURCE_LOCAL_Z_TO_V',
+          }
+          assert all(abs(row['density_anisotropy'] - 1.0) < 1e-12 for row in candidates)
+          assert all(abs(row['density_anisotropy'] - 3.0) < 1e-12 for row in controls)
+          assert summary['truth_boundary']['source_uv_authored'] is False
+          assert summary['truth_boundary']['production_uv_adopted'] is False
+          assert summary['truth_boundary']['materials_review_authority_rewritten'] is False
+          print('PASS_OBJECT_SOURCE_BOX_FACE_UV_PROJECTION_FAMILY')
+          PY
+      - name: Upload retained evidence
+        if: matrix.python-version == '3.11'
+        uses: actions/upload-artifact@v4
+        with:
+          name: object-source-box-face-uv-projection-family-001-evidence
+          path: evidence/source-box-face-uv-projection-family
+          if-no-files-found: error
+          retention-days: 30

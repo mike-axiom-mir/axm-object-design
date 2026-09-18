@@ -1,0 +1,58 @@
+{
+  "schema": "axm.object-source-box-face-atlas-layout-family/v0.1",
+  "family_id": "object-source-box-face-atlas-layout-001",
+  "source_uv_family": {
+    "path": "assets/modular-equipment-case-001/source-box-face-uv-projection-family-001.json",
+    "schema": "axm.object-source-box-face-uv-projection-family/v0.1",
+    "required_result": "PASS_BOUNDED_SOURCE_BOX_FACE_UV_PROJECTION_FAMILY",
+    "profile_git_blob_sha": "193ab5340953601d6d88f38b3fa480221821c93b",
+    "builder_path": "tools/build_source_box_face_uv_projection_family.py",
+    "builder_git_blob_sha": "126c593c2aafcff3ba895ca264d11a01c4c5fdd9"
+  },
+  "materials_donor": {
+    "repository": "mike-axiom-mir/axm-object-design",
+    "pull_request": 6,
+    "head": "4c12a0a57f6aa8778cff41efad321e13567c6c91",
+    "atlas_contract_path": "lookdev/service_dark_atlas_pack_review_001.json",
+    "atlas_contract_git_blob_sha": "2b95fcc1fcc523576eca08dbf47a140a727ab598"
+  },
+  "parameter_contract": {
+    "maximum_surfaces": 2,
+    "surface_discovery": "FORBIDDEN",
+    "fallback": "FORBIDDEN",
+    "packing_search": "FORBIDDEN",
+    "placement_policy": "EXACT_MATERIALS_DECLARED_RECTS_ONLY",
+    "tile_policy": "DECLARED_RECT_PLUS_DECLARED_PADDING",
+    "ordering": "PROFILE_DECLARED_CANONICAL_SURFACE_ORDER"
+  },
+  "retained_members": [
+    {
+      "surface_id": "lid_inner_service_surface",
+      "uv_output": "lid-inner-service-surface-materials-candidate-isotropic.json"
+    },
+    {
+      "surface_id": "front_service_panel_outer_service_surface",
+      "uv_output": "front-service-panel-outer-service-surface-materials-candidate-isotropic.json"
+    }
+  ],
+  "failure_policy": "FAIL_CLOSED_EXACT_UV_AND_EXACT_MATERIALS_ATLAS_NO_DISCOVERY_NO_PACK_SEARCH_NO_FALLBACK",
+  "purpose": "Proceduralize only the repeated conversion from the two exact Procedural planar review-UV outputs into the exact Materials-declared atlas rectangles and padded tile envelopes. Materials keeps authority over 512px, 500px-per-meter, 16px padding and rectangle choice; Procedural supplies deterministic coordinate conversion, canonical replay and fail-closed evidence without inventing an automatic packer.",
+  "truth_boundary": {
+    "derived_review_atlas_coordinates_only": true,
+    "hard_surface_source_authority_preserved": true,
+    "materials_atlas_authority_preserved": true,
+    "source_geometry_changed": false,
+    "source_uv_authored": false,
+    "production_uv_adopted": false,
+    "materials_atlas_adopted": false,
+    "automatic_atlas_pack_search": false,
+    "arbitrary_mesh_unwrap": false,
+    "texture_asset_authored": false,
+    "target_import_transport_accepted": false,
+    "runtime_cost_accepted": false,
+    "art_direction_or_visual_qa_final_accepted": false,
+    "uc_or_profession_fabric_promotion": false,
+    "canon": false,
+    "production_readiness": false
+  }
+}

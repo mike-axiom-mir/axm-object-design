@@ -1,0 +1,54 @@
+{
+  "schema": "axm.object-service-module-orientation-semantics-guard/v0.1",
+  "guard_id": "service-module-orientation-semantics-guard-001",
+  "asset_id": "modular-equipment-case-001",
+  "module_asset_id": "utility-module-001",
+  "legacy_oriented_family": {
+    "repository": "mike-axiom-mir/axm-object-design",
+    "procedural_head": "bdcc35bc663ec5166aaf7d6eeefd715707c33482",
+    "generator_path": "tools/build_service_module_oriented_configuration_family.py",
+    "generator_git_blob": "027502fa8893bd71e442f710472d589996f69491",
+    "contract_path": "assets/modular-equipment-case-001/service-module-oriented-configuration-family-001.json",
+    "contract_git_blob": "f8760327968907788589885e272ad9d2c53ccca8",
+    "family_schema": "axm.object-service-module-oriented-configuration-family/v0.1",
+    "family_digest": "3196e0d972d8bcaf9f43db35acf2cd2e9cc9cce7e1b3aabb3c6160ce4b3f99c7",
+    "artifact_id": 10521790461,
+    "artifact_sha256": "380e4868ea2593b64ffeb2d7b2a3ca92119d27c247bc12e645fffccc926cadd2",
+    "expected_candidate_mesh_digests": {
+      "empty": "d485a11fd819e6f90c2d1842b0534178093270d8cc4de18744ebcd10bd377351",
+      "left-only": "c2b3f91736e78bc723a21779511c2aa277577e92325050fff69b62e43af883fe",
+      "right-only": "81b5e1faad4ae5043598f37c4135cabe5ac373ac670f55301bd11d5a765a43eb",
+      "bilateral": "da9e68cba190691b06a9f30d829a76f2c53a8d23d4c9ad21ca48ad47ac472862"
+    }
+  },
+  "hard_surface_boundary_evidence": {
+    "repository": "mike-axiom-mir/axm-object-design",
+    "pull_request": 34,
+    "head": "77a4058b305fab7fd04dab94781b9460f089727e",
+    "contract_path": "assets/modular-equipment-case-001/rigid-shell-exterior-intent-001.json",
+    "contract_git_blob": "a9f3c40868f7d77c524738155178af51c91b947e",
+    "scope": "HOST_SOURCE_EXTERIOR_INTENT_AUTHORITY_BOUNDARY_ONLY__NOT_UTILITY_MODULE_PROOF_BODY_ADOPTION"
+  },
+  "orientation_semantics": {
+    "positive_signed_volume_interpretation": "ALGEBRAIC_ORIENTATION_IN_THE_EXACT_GENERATED_MESH_COORDINATE_FRAME_ONLY",
+    "source_exterior_intent_claimed": false,
+    "source_exterior_intent_consumed": false,
+    "hard_surface_authority_transferred": false,
+    "renderer_front_face_selected": false,
+    "receiver_culling_adopted": false,
+    "automatic_source_or_downstream_adoption": false
+  },
+  "retained_configuration_ids": [
+    "empty",
+    "left-only",
+    "right-only",
+    "bilateral"
+  ],
+  "failure_policy": "FAIL_CLOSED_ON_LEGACY_FAMILY_OR_MESH_IDENTITY_DRIFT_HARD_SURFACE_BOUNDARY_DRIFT_OR_ANY_PROMOTION_OF_ALGEBRAIC_SIGN_TO_SOURCE_EXTERIOR_RENDERER_FRONT_FACE_CULLING_OR_ADOPTION",
+  "provenance": {
+    "method": "AXM self-authored semantic repair guard around the exact retained Procedural oriented configuration family; generated mesh bytes remain owned by the historical family and are not regenerated under new source semantics",
+    "external_assets": [],
+    "external_geometry": false
+  },
+  "truth_boundary": "A PASS proves that all four exact retained Procedural configuration outputs still rebuild to the exact historical candidate mesh identities while positive signed volume is interpreted only as an algebraic orientation diagnostic in the generated mesh coordinate frame. Fresh Hard-Surface source exterior intent remains a separate owner boundary and is not transferred to the utility-module proof body. Renderer front-face/culling policy and all source, Technical-Art, Runtime, Art/QA, gameplay, CANON and production adoption remain unclaimed."
+}
