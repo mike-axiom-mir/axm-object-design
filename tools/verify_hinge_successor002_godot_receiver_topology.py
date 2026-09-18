@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+from collections import Counter
 from pathlib import Path
 from typing import Any
 
@@ -38,6 +39,38 @@ def receiver_reversed_indices(source_indices: list[int]) -> list[int]:
     return out
 
 
+def exact_position_quotient(
+    positions: list[list[float]], indices: list[int]
+) -> tuple[list[list[float]], list[int], dict[str, int]]:
+    if any(len(value) != 3 for value in positions):
+        raise AssertionError("malformed position tuple")
+    if any(index < 0 or index >= len(positions) for index in indices):
+        raise AssertionError("index out of range")
+
+    class_by_position: dict[tuple[float, float, float], int] = {}
+    logical_positions: list[list[float]] = []
+    serialized_to_logical: list[int] = []
+    for position in positions:
+        key = (float(position[0]), float(position[1]), float(position[2]))
+        logical = class_by_position.get(key)
+        if logical is None:
+            logical = len(logical_positions)
+            class_by_position[key] = logical
+            logical_positions.append([key[0], key[1], key[2]])
+        serialized_to_logical.append(logical)
+
+    remapped = [serialized_to_logical[index] for index in indices]
+    multiplicities = Counter(serialized_to_logical)
+    return logical_positions, remapped, {
+        "serialized_vertices": len(positions),
+        "serialized_indices": len(indices),
+        "serialized_unique_indices": len(set(indices)),
+        "exact_position_classes": len(logical_positions),
+        "minimum_exact_position_class_multiplicity": min(multiplicities.values(), default=0),
+        "maximum_exact_position_class_multiplicity": max(multiplicities.values(), default=0),
+    }
+
+
 def require_report(report: dict[str, Any], expected: dict[str, Any], label: str) -> None:
     for key, value in expected.items():
         if report.get(key) != value:
@@ -46,12 +79,19 @@ def require_report(report: dict[str, Any], expected: dict[str, Any], label: str)
         raise AssertionError(f"{label} is not a closed orientable indexed vertex-manifold")
 
 
+def require_corner_expansion(observed: dict[str, int], expected: dict[str, Any], label: str) -> None:
+    for key, value in expected.items():
+        if observed.get(key) != value:
+            raise AssertionError(f"{label} corner expansion drift: {key}: {observed.get(key)!r} != {value!r}")
+
+
 def verify_component(
     source_positions: list[list[float]],
     source_indices: list[int],
     target_positions: list[list[float]],
     target_indices: list[int],
-    expected: dict[str, Any],
+    expected_topology: dict[str, Any],
+    expected_corner_expansion: dict[str, Any],
     label: str,
 ) -> dict[str, Any]:
     if len(source_positions) != len(target_positions):
@@ -67,12 +107,23 @@ def verify_component(
     if target_indices != expected_target:
         raise AssertionError(f"{label} receiver-local triangle reversal drift")
 
-    source_faces = faces_from_indices(source_indices)
-    target_faces = faces_from_indices(target_indices)
-    source_report = inspect_topology(source_positions, source_faces, range(len(source_positions)))
-    target_report = inspect_topology(target_positions, target_faces, range(len(target_positions)))
-    require_report(source_report, expected, f"{label} source")
-    require_report(target_report, expected, f"{label} target")
+    source_logical_positions, source_logical_indices, source_corner = exact_position_quotient(source_positions, source_indices)
+    target_logical_positions, target_logical_indices, target_corner = exact_position_quotient(target_positions, target_indices)
+    require_corner_expansion(source_corner, expected_corner_expansion, f"{label} source")
+    require_corner_expansion(target_corner, expected_corner_expansion, f"{label} target")
+
+    source_report = inspect_topology(
+        source_logical_positions,
+        faces_from_indices(source_logical_indices),
+        range(len(source_logical_positions)),
+    )
+    target_report = inspect_topology(
+        target_logical_positions,
+        faces_from_indices(target_logical_indices),
+        range(len(target_logical_positions)),
+    )
+    require_report(source_report, expected_topology, f"{label} source quotient")
+    require_report(target_report, expected_topology, f"{label} target quotient")
 
     keys = (
         "vertices",
@@ -94,10 +145,14 @@ def verify_component(
 
     return {
         "name": label,
+        "source_corner_expansion": source_corner,
+        "target_corner_expansion": target_corner,
         "source": source_report,
         "target": target_report,
         "receiver_reversed_triangles": len(target_indices) // 3,
         "source_indices_equal_after_import": False,
+        "exact_position_quotient_diagnostic_only": True,
+        "receiver_vertices_rewritten_or_merged": False,
         "target_host_triangle_index_transform": INDEX_TRANSFORM,
         "topology_class_equal_after_receiver_transform": True,
     }
@@ -111,6 +166,16 @@ def aggregate(reports: list[dict[str, Any]], side: str) -> dict[str, int]:
         "triangle_components": sum(int(item[side]["triangle_components"]) for item in reports),
         "euler_characteristic_sum": sum(int(item[side]["euler_characteristic"]) for item in reports),
         "orientable_genus_sum": sum(int(item[side]["orientable_genus"]) for item in reports),
+    }
+
+
+def serialized_aggregate(reports: list[dict[str, Any]], side: str) -> dict[str, int]:
+    corner_key = f"{side}_corner_expansion"
+    return {
+        "serialized_vertices": sum(int(item[corner_key]["serialized_vertices"]) for item in reports),
+        "serialized_indices": sum(int(item[corner_key]["serialized_indices"]) for item in reports),
+        "exact_position_classes": sum(int(item[corner_key]["exact_position_classes"]) for item in reports),
+        "receiver_reversed_triangles": sum(int(item["receiver_reversed_triangles"]) for item in reports),
     }
 
 
@@ -151,10 +216,16 @@ def evaluate(
     authority = contract.get("geometry_authority", {})
     if authority.get("receiver_topology_revalidation_is_observation_only") is not True:
         raise AssertionError("Geometry observation-only boundary drift")
+    if authority.get("exact_position_quotient_is_diagnostic_only") is not True:
+        raise AssertionError("Geometry exact-position quotient boundary drift")
     if authority.get("source_topology_pass_transferred_without_retest") is not False:
         raise AssertionError("source Geometry PASS transfer boundary drift")
     for key, value in authority.items():
-        if key not in {"receiver_topology_revalidation_is_observation_only", "source_topology_pass_transferred_without_retest"} and value is not False:
+        if key not in {
+            "receiver_topology_revalidation_is_observation_only",
+            "exact_position_quotient_is_diagnostic_only",
+            "source_topology_pass_transferred_without_retest",
+        } and value is not False:
             raise AssertionError(f"Geometry authority expansion: {key}")
 
     expected_components = tuple(contract.get("components", []))
@@ -163,7 +234,8 @@ def evaluate(
     if set(source_primitives) != set(expected_components) or set(target_components) != set(expected_components):
         raise AssertionError("receiver component identity drift")
 
-    expected_per_component = contract.get("expected_per_component", {})
+    expected_topology = contract.get("expected_per_component", {})
+    expected_corner = contract.get("expected_corner_expansion_per_component", {})
     reports: list[dict[str, Any]] = []
     for name in expected_components:
         source = source_primitives[name]
@@ -174,25 +246,31 @@ def evaluate(
                 [int(value) for value in source.get("indices", [])],
                 target.get("vertices", []),
                 [int(value) for value in target.get("indices", [])],
-                expected_per_component,
+                expected_topology,
+                expected_corner,
                 name,
             )
         )
 
     source_aggregate = aggregate(reports, "source")
     target_aggregate = aggregate(reports, "target")
-    receiver_reversed_triangles = sum(int(item["receiver_reversed_triangles"]) for item in reports)
     expected_aggregate = contract.get("expected_aggregate", {})
     for label, observed in (("source", source_aggregate), ("target", target_aggregate)):
         for key, value in expected_aggregate.items():
-            if key == "receiver_reversed_triangles":
-                continue
             if observed.get(key) != value:
                 raise AssertionError(f"{label} aggregate topology drift: {key}")
-    if receiver_reversed_triangles != expected_aggregate.get("receiver_reversed_triangles"):
-        raise AssertionError("receiver reversed-triangle count drift")
     if source_aggregate != target_aggregate:
         raise AssertionError("source/target aggregate topology class drift")
+
+    source_serialized = serialized_aggregate(reports, "source")
+    target_serialized = serialized_aggregate(reports, "target")
+    expected_serialized = contract.get("expected_serialized_aggregate", {})
+    for label, observed in (("source", source_serialized), ("target", target_serialized)):
+        for key, value in expected_serialized.items():
+            if observed.get(key) != value:
+                raise AssertionError(f"{label} serialized aggregate drift: {key}")
+    if source_serialized != target_serialized:
+        raise AssertionError("source/target serialized representation aggregate drift")
 
     source_receipt_aggregate = source_geometry.get("successor_aggregate", {})
     for key in ("vertices", "triangles", "unique_edges", "triangle_components", "euler_characteristic_sum", "orientable_genus_sum"):
@@ -215,9 +293,12 @@ def evaluate(
         "components": reports,
         "source_aggregate": source_aggregate,
         "target_aggregate": target_aggregate,
-        "receiver_reversed_triangles": receiver_reversed_triangles,
+        "source_serialized_aggregate": source_serialized,
+        "target_serialized_aggregate": target_serialized,
         "source_topology_pass_transferred_without_retest": False,
         "receiver_topology_revalidated": True,
+        "exact_position_quotient_diagnostic_only": True,
+        "receiver_vertices_rewritten_or_merged": False,
         "automatic_downstream_adoption": False,
         "reusable_rule": RULE,
         "truth_boundary": contract["truth_boundary"],
