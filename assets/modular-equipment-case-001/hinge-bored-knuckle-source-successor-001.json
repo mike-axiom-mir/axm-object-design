@@ -1,0 +1,42 @@
+{
+  "schema": "axm.object-hinge-bored-knuckle-source-successor/v0.1",
+  "asset_id": "modular-equipment-case-001",
+  "successor_id": "modular-equipment-case-001/hinge-bored-knuckle-source-successor-001",
+  "units": "meters",
+  "legacy_host_source_sha256": "49b1f9ed9865893d6de6f1ec8f069576732df694853fde4e3fcff366de32644a",
+  "annular_mesh_contract_git_blob_sha1": "39a52ad5ba8497a8a524d764bbf6744bb11cf54a",
+  "bore_clearance_contract_git_blob_sha1": "e94fbc0d960d949f49fc3a05edba74b706f2a87e",
+  "owner_stack_contract_git_blob_sha1": "e4e7c95769c0827a6a019afd672ff4b20cd13541",
+  "successor_semantics": "SOURCE_OWNED_ALTERNATE_HINGE_KNUCKLE_GEOMETRY_EXPLICIT_RECEIVER_REBIND_REQUIRED",
+  "replacement_scope": "HINGE_KNUCKLE_GEOMETRY_ONLY",
+  "preserve_exact_source_facts": [
+    "hinge +X axis and origin derivation",
+    "five knuckle ids, centers, lengths and body/lid ownership",
+    "0.021 m knuckle outer circumradius",
+    "0.009 m pin circumradius",
+    "12-segment angular phase",
+    "0.70 m source pin length",
+    "all non-hinge-knuckle host geometry and interface semantics"
+  ],
+  "source_owned_successor": {
+    "knuckle_geometry": "exact faceting-aware annular mesh defined by hinge-pin-annular-mesh-001.json",
+    "pin_geometry": "legacy source pin retained unchanged",
+    "minimum_pin_to_bore_surface_clearance_m": 0.001,
+    "automatic_default_replacement": false,
+    "automatic_downstream_adoption": false,
+    "legacy_host_source_rewritten": false
+  },
+  "authority": {
+    "hard_surface_source_successor_authorized": true,
+    "rig_parenting_authorized": false,
+    "animation_authorized": false,
+    "runtime_or_physics_authorized": false,
+    "manufacturing_fit_class_authorized": false,
+    "load_strength_wear_authorized": false,
+    "visual_acceptance_authorized": false,
+    "uc_or_profession_fabric_promotion_authorized": false
+  },
+  "reusable_rule": "DERIVED_MECHANICAL_REPAIR_BECOMES_A_SOURCE_SUCCESSOR_ONLY_BY_EXPLICIT_OWNER_DECISION__RECEIVERS_MUST_REBIND_AND_RETEST_INSTEAD_OF_INHERITING_PASS_BY_GEOMETRIC_SIMILARITY",
+  "intent": "Resolve the legacy proof source's solid-pin/solid-knuckle overlap without silently rewriting that historical source: source-own the already-proven faceting-aware annular knuckle geometry as an explicit alternate hinge-knuckle successor while preserving the exact pin, owner stack, axis and all unrelated host geometry. Downstream use is opt-in and must rebind by exact successor identity.",
+  "truth_boundary": "This contract authorizes only one Object-owned alternate hinge-knuckle source successor using the exact previously-proven annular geometry. It does not rewrite or invalidate the legacy source, auto-adopt the successor in Rigging/Animation/Technical Art/Runtime, prove manufacturing tolerance or fit class, bearing behavior, lubrication, retention force, loads, strength, fatigue, wear, sealing, machinability, full collision, gameplay, visual acceptance, CANON, production readiness or Hard-Surface mastery."
+}

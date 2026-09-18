@@ -1,0 +1,113 @@
+name: Object hinge construction evidence
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  structural:
+    strategy:
+      matrix:
+        python-version: ['3.11', '3.13']
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Compile
+        run: python -m compileall tools tests
+      - name: Test full repository suite
+        run: python -m unittest discover -s tests -v
+      - name: Build exact hinge construction evidence
+        if: matrix.python-version == '3.11'
+        run: |
+          mkdir -p evidence/hinge-pin-bore-clearance
+          python tools/verify_hinge_pin_bore_clearance.py \
+            --host assets/modular-equipment-case-001/source.json \
+            --contract assets/modular-equipment-case-001/hinge-pin-bore-clearance-001.json \
+            --out evidence/hinge-pin-bore-clearance
+          python tools/build_hinge_pin_annular_mesh.py \
+            --host assets/modular-equipment-case-001/source.json \
+            --bore-contract assets/modular-equipment-case-001/hinge-pin-bore-clearance-001.json \
+            --mesh-contract assets/modular-equipment-case-001/hinge-pin-annular-mesh-001.json \
+            --out evidence/hinge-pin-bore-clearance
+          python tools/verify_hinge_knuckle_owner_stack.py \
+            --host assets/modular-equipment-case-001/source.json \
+            --contract assets/modular-equipment-case-001/hinge-knuckle-owner-stack-001.json \
+            --out evidence/hinge-pin-bore-clearance
+          python tools/verify_hinge_bored_knuckle_source_successor.py \
+            --host assets/modular-equipment-case-001/source.json \
+            --bore-contract assets/modular-equipment-case-001/hinge-pin-bore-clearance-001.json \
+            --annular-contract assets/modular-equipment-case-001/hinge-pin-annular-mesh-001.json \
+            --owner-contract assets/modular-equipment-case-001/hinge-knuckle-owner-stack-001.json \
+            --successor-contract assets/modular-equipment-case-001/hinge-bored-knuckle-source-successor-001.json \
+            --out evidence/hinge-pin-bore-clearance
+          python tools/verify_hinge_bored_knuckle_phase_invariant_successor.py \
+            --host assets/modular-equipment-case-001/source.json \
+            --bore-contract assets/modular-equipment-case-001/hinge-pin-bore-clearance-001.json \
+            --annular-contract assets/modular-equipment-case-001/hinge-pin-annular-mesh-001.json \
+            --owner-contract assets/modular-equipment-case-001/hinge-knuckle-owner-stack-001.json \
+            --predecessor-successor-contract assets/modular-equipment-case-001/hinge-bored-knuckle-source-successor-001.json \
+            --phase-invariant-successor-contract assets/modular-equipment-case-001/hinge-bored-knuckle-phase-invariant-source-successor-002.json \
+            --out evidence/hinge-pin-bore-clearance
+          python tools/verify_hinge_bored_knuckle_axial_stop_capture.py \
+            --host assets/modular-equipment-case-001/source.json \
+            --bore-contract assets/modular-equipment-case-001/hinge-pin-bore-clearance-001.json \
+            --annular-contract assets/modular-equipment-case-001/hinge-pin-annular-mesh-001.json \
+            --owner-contract assets/modular-equipment-case-001/hinge-knuckle-owner-stack-001.json \
+            --predecessor-successor-contract assets/modular-equipment-case-001/hinge-bored-knuckle-source-successor-001.json \
+            --phase-invariant-successor-contract assets/modular-equipment-case-001/hinge-bored-knuckle-phase-invariant-source-successor-002.json \
+            --axial-stop-contract assets/modular-equipment-case-001/hinge-pin-axial-stop-001.json \
+            --capture-contract assets/modular-equipment-case-001/hinge-bored-knuckle-axial-stop-capture-001.json \
+            --out evidence/hinge-pin-bore-clearance
+          python tools/verify_hinge_bored_knuckle_axial_stop_bracket.py \
+            --host assets/modular-equipment-case-001/source.json \
+            --bore-contract assets/modular-equipment-case-001/hinge-pin-bore-clearance-001.json \
+            --annular-contract assets/modular-equipment-case-001/hinge-pin-annular-mesh-001.json \
+            --owner-contract assets/modular-equipment-case-001/hinge-knuckle-owner-stack-001.json \
+            --predecessor-successor-contract assets/modular-equipment-case-001/hinge-bored-knuckle-source-successor-001.json \
+            --phase-invariant-successor-contract assets/modular-equipment-case-001/hinge-bored-knuckle-phase-invariant-source-successor-002.json \
+            --axial-stop-contract assets/modular-equipment-case-001/hinge-pin-axial-stop-001.json \
+            --capture-contract assets/modular-equipment-case-001/hinge-bored-knuckle-axial-stop-capture-001.json \
+            --bracket-contract assets/modular-equipment-case-001/hinge-bored-knuckle-axial-stop-bracket-001.json \
+            --out evidence/hinge-pin-bore-clearance
+          python tools/verify_hinge_bored_knuckle_relative_facet_phase_successor.py \
+            --host assets/modular-equipment-case-001/source.json \
+            --successor002 assets/modular-equipment-case-001/hinge-bored-knuckle-phase-invariant-source-successor-002.json \
+            --owner-contract assets/modular-equipment-case-001/hinge-knuckle-owner-stack-001.json \
+            --axial-stop-contract assets/modular-equipment-case-001/hinge-pin-axial-stop-001.json \
+            --capture-contract assets/modular-equipment-case-001/hinge-bored-knuckle-axial-stop-capture-001.json \
+            --bracket-contract assets/modular-equipment-case-001/hinge-bored-knuckle-axial-stop-bracket-001.json \
+            --contract assets/modular-equipment-case-001/hinge-bored-knuckle-relative-facet-phase-source-successor-003.json \
+            --out evidence/hinge-pin-bore-clearance
+          python tools/verify_hinge_relative_facet_phase_disposition_048.py \
+            --successor003 assets/modular-equipment-case-001/hinge-bored-knuckle-relative-facet-phase-source-successor-003.json \
+            --disposition assets/modular-equipment-case-001/hinge-bored-knuckle-relative-facet-phase-disposition-048.json \
+            --out evidence/hinge-pin-bore-clearance
+          cp assets/modular-equipment-case-001/source.json evidence/hinge-pin-bore-clearance/host-source.json
+          cp assets/modular-equipment-case-001/hinge-pin-bore-clearance-001.json evidence/hinge-pin-bore-clearance/bore-clearance-contract.json
+          cp assets/modular-equipment-case-001/hinge-pin-annular-mesh-001.json evidence/hinge-pin-bore-clearance/annular-mesh-contract.json
+          cp assets/modular-equipment-case-001/hinge-knuckle-owner-stack-001.json evidence/hinge-pin-bore-clearance/owner-stack-contract.json
+          cp assets/modular-equipment-case-001/hinge-bored-knuckle-source-successor-001.json evidence/hinge-pin-bore-clearance/bored-knuckle-source-successor-contract.json
+          cp assets/modular-equipment-case-001/hinge-bored-knuckle-phase-invariant-source-successor-002.json evidence/hinge-pin-bore-clearance/phase-invariant-source-successor-contract.json
+          cp assets/modular-equipment-case-001/hinge-pin-axial-stop-001.json evidence/hinge-pin-bore-clearance/axial-stop-contract.json
+          cp assets/modular-equipment-case-001/hinge-bored-knuckle-axial-stop-capture-001.json evidence/hinge-pin-bore-clearance/axial-stop-capture-contract.json
+          cp assets/modular-equipment-case-001/hinge-bored-knuckle-axial-stop-bracket-001.json evidence/hinge-pin-bore-clearance/axial-stop-bracket-contract.json
+          cp assets/modular-equipment-case-001/hinge-bored-knuckle-relative-facet-phase-source-successor-003.json evidence/hinge-pin-bore-clearance/relative-facet-phase-successor-contract.json
+          cp assets/modular-equipment-case-001/hinge-bored-knuckle-relative-facet-phase-disposition-048.json evidence/hinge-pin-bore-clearance/relative-facet-phase-disposition-048.json
+          git rev-parse HEAD > evidence/hinge-pin-bore-clearance/exact-head.txt
+      - name: Upload retained evidence
+        if: matrix.python-version == '3.11'
+        uses: actions/upload-artifact@v4
+        with:
+          name: modular-equipment-case-001-hinge-relative-facet-phase-successor-evidence
+          path: evidence/hinge-pin-bore-clearance
+          if-no-files-found: error
+          retention-days: 30

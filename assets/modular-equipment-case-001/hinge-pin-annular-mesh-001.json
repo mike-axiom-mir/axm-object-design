@@ -1,0 +1,18 @@
+{
+  "schema": "axm.object-hinge-pin-annular-mesh/v0.1",
+  "asset_id": "modular-equipment-case-001",
+  "units": "meters",
+  "host_source_sha256": "49b1f9ed9865893d6de6f1ec8f069576732df694853fde4e3fcff366de32644a",
+  "bore_clearance_contract_sha256": "4dacff22053c39fcd037cdb568480dafdf78e52b18b9994965f1c396b344f4d7",
+  "expected_knuckle_count": 5,
+  "expected_segments": 12,
+  "source_pin_radius_m": 0.009,
+  "analytic_review_bore_radius_m": 0.010,
+  "mesh_bore_radius_m": 0.010035276180410082,
+  "minimum_mesh_surface_clearance_m": 0.001,
+  "minimum_mesh_knuckle_wall_m": 0.010,
+  "faceting_policy": "SAME_PHASE_REGULAR_N_GON_CIRCUMRADIUS_COMPENSATION_FOR_MINIMUM_SURFACE_GAP",
+  "candidate_semantics": "DERIVED_ANNULAR_KNUCKLE_REVIEW_MESH_NOT_ADOPTED_HOST_GEOMETRY",
+  "intent": "Turn the prior ideal-radius hinge bore review envelope into one exact source-bound 12-segment annular knuckle mesh candidate while compensating polygon faceting so the actual same-phase pin-to-bore surface gap remains at least 0.001 m. Preserve the host source unchanged and keep source adoption separate.",
+  "truth_boundary": "This contract proves only a derived source-bound annular knuckle review mesh with explicit faceting-aware geometric pin-to-bore surface clearance and closed/oriented candidate shell topology. It does not establish host-source adoption, source pin topology repair, manufacturing tolerance/class of fit, bearing behavior, lubrication, retention force, strength, fatigue, wear, sealing, full articulated collision, runtime physics, gameplay, final visual acceptance, CANON, production readiness or Hard-Surface mastery."
+}

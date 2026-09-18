@@ -1,0 +1,83 @@
+{
+  "schema": "axm.object-source-successor-review-disposition/v0.1",
+  "asset_id": "modular-equipment-case-001",
+  "source_successor_id": "modular-equipment-case-001/hinge-bored-knuckle-relative-facet-phase-source-successor-003",
+  "source_successor_exact_head": "ef1dfc2f2c1adbe3c90ba089c66ac09d223df25c",
+  "source_successor_contract_git_blob_sha1": "e7a44523ea80e567a745cd61af7fd7005757cc12",
+  "source_pr": 25,
+  "review_identity": {
+    "art_direction": 48,
+    "coordination_repository": "mike-axiom-mir/axm-create-me",
+    "coordination_commit": "f55363657ae63f88460559b3f0f210cd70a7cb57",
+    "packet_path": "studio/direction/OBJECT_HINGE_SHADING_NORMAL_DIRECTION_048.md",
+    "packet_git_blob_sha1": "910871c06902d9c5bb42a2246aa07bdfaa029045",
+    "materials_pr": 6,
+    "materials_exact_head": "5509084acbaca2a7d45f072203b98174c621d5ef",
+    "materials_workflow_run": 35327655651,
+    "materials_artifact_id": 10539926744,
+    "materials_artifact_sha256": "a0b33464768670b1f9d204ba1ac2e0a5a54327a6ddc5d681132fd68306469309",
+    "art_return_comment_id": 5727865756,
+    "renderer": "Godot 4.7.2-stable / GL Compatibility / X11 / llvmpipe"
+  },
+  "review_outcome": {
+    "structural_status": "PASS_SOURCE_OWNED_HINGE_RELATIVE_FACET_PHASE_SUCCESSOR",
+    "visual_disposition": "REJECTED_FOR_CURRENT_HINGE_HIGHLIGHT_REPAIR",
+    "primary_rear_three_quarter": {
+      "result": "FAIL",
+      "near_white_l_ge_0_90_control": 1625,
+      "near_white_l_ge_0_90_candidate": 1633,
+      "mask_iou": 0.9902260232,
+      "direct_read": "PRIMARY_REPEATED_BRIGHT_RAIL_REMAINS_VISUALLY_DOMINANT"
+    },
+    "rear_grazing_non_regression": {
+      "result": "FAIL",
+      "near_white_l_ge_0_90_control": 0,
+      "near_white_l_ge_0_90_candidate": 158,
+      "fully_white_control": 0,
+      "fully_white_candidate": 158
+    },
+    "side_three_quarter_reference": {
+      "result": "PASS",
+      "near_white_l_ge_0_90_control": 0,
+      "near_white_l_ge_0_90_candidate": 0
+    }
+  },
+  "disposition": {
+    "source_successor_retained": true,
+    "source_successor_structurally_valid": true,
+    "adopted_for_current_visual_repair": false,
+    "automatic_default_replacement": false,
+    "automatic_downstream_adoption": false,
+    "phase_sweep_authorized": false,
+    "second_phase_candidate_authorized": false,
+    "source_geometry_rewrite_authorized": false,
+    "current_review_reference": {
+      "source_successor": "modular-equipment-case-001/hinge-bored-knuckle-phase-invariant-source-successor-002",
+      "relative_owner_phase": "SYNCHRONIZED_PREDECESSOR_PHASE",
+      "hardware_steel_base_color": "#7E868AFF",
+      "hardware_steel_metallic": 0.88,
+      "hardware_steel_roughness": 0.32
+    },
+    "next_owner": {
+      "specialist": "Technical Art / UC Integration",
+      "object_pr": 16,
+      "requested_candidate": "ONE_REVIEW_ONLY_HINGE_OUTER_CYLINDER_ANALYTIC_RADIAL_NORMAL_CANDIDATE",
+      "hard_surface_geometry_mutation_requested": false
+    }
+  },
+  "authority": {
+    "hard_surface_second_phase_candidate_authorized": false,
+    "materials_retune_authorized": false,
+    "technical_art_review_candidate_authorized": true,
+    "source_default_adoption_authorized": false,
+    "geometry_adoption_authorized": false,
+    "rigging_adoption_authorized": false,
+    "animation_adoption_authorized": false,
+    "runtime_or_physics_adoption_authorized": false,
+    "visual_acceptance_authorized": false,
+    "uc_or_profession_fabric_promotion_authorized": false
+  },
+  "reusable_rule": "A_STRUCTURALLY_VALID_SOURCE_SUCCESSOR_CAN_FAIL_ITS_RECEIVING_OBJECTIVE__RETAIN_THE_EXACT_FAILED_SUCCESSOR_AND_REVIEW_RECEIPT__FREEZE_THE_LAST_ACCEPTABLE_REFERENCE__AND_DO_NOT_SEARCH_ANOTHER_SOURCE_DEGREE_OF_FREEDOM_WITHOUT_A_NEW_OWNER_RETURN",
+  "intent": "Record the exact Art Direction 048 disposition of source successor003 without rewriting or deleting the structurally valid source experiment. Preserve the failed visual A/B as first-class evidence, freeze successor002 plus the accepted review material as the current visual reference, forbid a phase sweep or second phase candidate, and return the next bounded hypothesis to Technical Art rather than mutating source geometry by cadence.",
+  "truth_boundary": "This disposition records an external receiving decision against the exact source successor identity. It does not turn Art metrics into universal thresholds, invalidate successor003 structural evidence, authorize Technical Art implementation from Hard Surface, adopt successor002 as source/default, or establish final normals, materials, runtime behavior, CANON, production readiness, game readiness or specialist mastery."
+}

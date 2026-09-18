@@ -1,0 +1,16 @@
+{
+  "schema": "axm.object-hinge-pin-bore-clearance/v0.1",
+  "asset_id": "modular-equipment-case-001",
+  "units": "meters",
+  "host_source_sha256": "49b1f9ed9865893d6de6f1ec8f069576732df694853fde4e3fcff366de32644a",
+  "hinge_axis": [1, 0, 0],
+  "expected_knuckle_count": 5,
+  "expected_segments": 12,
+  "pin_radius_m": 0.009,
+  "bore_radius_m": 0.010,
+  "minimum_radial_clearance_m": 0.001,
+  "minimum_knuckle_wall_m": 0.010,
+  "candidate_semantics": "DERIVED_SOURCE_COMPATIBLE_REVIEW_BORE_NOT_ADOPTED_HOST_GEOMETRY",
+  "intent": "Bound one exact coaxial bore envelope around the existing source-owned hinge pin so Hard Surface can distinguish the current solid proof-cylinder overlap from a geometrically feasible pin-through-knuckle construction candidate without rewriting the host source or claiming engineering tolerance.",
+  "truth_boundary": "This contract proves only an exact source-bound coaxial radial-clearance and remaining-wall review envelope. It does not establish host-source adoption, manufacturing tolerance, bearing fit, lubrication, retention force, strength, fatigue, wear, sealing, full-component collision, runtime physics, gameplay, final visual acceptance, CANON, production readiness or Hard-Surface mastery."
+}
