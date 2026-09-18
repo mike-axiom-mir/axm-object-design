@@ -1,0 +1,239 @@
+name: Object Technical Art UC Animation authority bridge evidence
+
+on:
+  pull_request:
+    paths:
+      - 'tools/build_uc_animation_runtime_bridge.py'
+      - 'tools/verify_uc_runtime_animation_authority_bridge.py'
+      - 'assets/modular-equipment-case-001/source-authority-motion-rebind-002.json'
+      - '.github/workflows/object-technical-art-uc-animation-authority-bridge.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  ANIMATION_AUTHORITY_HEAD: 6c81740c7895c90d6bb3a617d74f0863c52053f6
+  PRIOR_TECHNICAL_ART_HEAD: c52aa38e9c11a7f02e47a5bb5ab772a1746ff412
+  PRIOR_ANIMATION_HEAD: 5cb073f9fcf825014556ed165ee081e1eca71cdc
+  LID_RIG_HEAD: 4b72c9918c5fc1e89bd18a0be24fb4afac6e7775
+  HISTORICAL_LATCH_RIG_HEAD: 3b667ff5d30c46ec2fe7da7679518970f8610018
+  HISTORICAL_OWNERSHIP_HEAD: d3fa10a270faae7925811f44f03381fe5c5d0215
+  SOURCE_RIG_HEAD: a1acd2bcb2074f41e536562f2673508e2cb0a4d5
+  SOURCE_INTERFACE_HEAD: 6086f39a3da344c57a68653f90d040e03e04cec2
+  SOURCE_INTERFACE_SHA256: bcbbe098371eb702bc9289a97370744093105925202eda6036bdced6e25e34d3
+  SOURCE_RIG_BINDING_SHA256: 615f8ff34cc0897fd399345301efce1ca9cb0aa58e86caca92b914049b89adce
+  UC_RUNTIME_HEAD: dde8d952161788f8bf21118f91edd3163e51277d
+  UC_RUNTIME_MODULE_GIT_BLOB_SHA: a5f1bf407eb6c4b5be1c5e7f19bed1001ff94173
+
+jobs:
+  exact-animation-authority-to-uc-clock-bridge:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout exact Technical Art head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+      - name: Bind exact receiving head
+        run: echo "EXACT_HEAD_SHA=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
+      - name: Checkout exact prior Animation choreography donor
+        uses: actions/checkout@v4
+        with:
+          repository: mike-axiom-mir/axm-object-design
+          ref: ${{ env.PRIOR_ANIMATION_HEAD }}
+          path: .prior-animation
+      - name: Checkout exact current source-rig authority donor
+        uses: actions/checkout@v4
+        with:
+          repository: mike-axiom-mir/axm-object-design
+          ref: ${{ env.SOURCE_RIG_HEAD }}
+          path: .source-rig
+      - name: Checkout exact historical latch-rig donor
+        uses: actions/checkout@v4
+        with:
+          repository: mike-axiom-mir/axm-object-design
+          ref: ${{ env.HISTORICAL_LATCH_RIG_HEAD }}
+          path: .historical-rig
+      - name: Checkout exact historical ownership donor
+        uses: actions/checkout@v4
+        with:
+          repository: mike-axiom-mir/axm-object-design
+          ref: ${{ env.HISTORICAL_OWNERSHIP_HEAD }}
+          path: .ownership
+      - name: Checkout exact lid-rig donor
+        uses: actions/checkout@v4
+        with:
+          repository: mike-axiom-mir/axm-object-design
+          ref: ${{ env.LID_RIG_HEAD }}
+          path: .lid-rig
+      - name: Checkout exact UC animation runtime donor
+        uses: actions/checkout@v4
+        with:
+          repository: mike-axiom-mir/axm-universal-creation
+          ref: ${{ env.UC_RUNTIME_HEAD }}
+          path: .uc-runtime
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Prove exact ancestry and donor identities
+        run: |
+          set -euo pipefail
+          git merge-base --is-ancestor "$ANIMATION_AUTHORITY_HEAD" "$EXACT_HEAD_SHA"
+          git merge-base --is-ancestor "$PRIOR_TECHNICAL_ART_HEAD" "$EXACT_HEAD_SHA"
+          test "$(git -C .source-rig rev-parse HEAD)" = "$SOURCE_RIG_HEAD"
+          test "$(git -C .uc-runtime rev-parse HEAD)" = "$UC_RUNTIME_HEAD"
+          test "$(git -C .uc-runtime hash-object src/axm_uc/game_animation_runtime.py)" = "$UC_RUNTIME_MODULE_GIT_BLOB_SHA"
+          echo "$SOURCE_INTERFACE_SHA256  .source-rig/assets/modular-equipment-case-001/front-latch-pivot-interface-001.json" | sha256sum -c -
+          echo "$SOURCE_RIG_BINDING_SHA256  .source-rig/assets/modular-equipment-case-001/front-latch-source-rig-binding-002.json" | sha256sum -c -
+      - name: Run exact Object structural suite
+        run: |
+          python -m compileall -q tools tests
+          python -m unittest discover -s tests -v
+      - name: Rebuild exact prior Animation choreography evidence
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/axm-prior-lid-motion /tmp/axm-prior-latch-rig /tmp/axm-prior-sequence
+          python .prior-animation/tools/build_lid_motion_evidence.py \
+            --source .prior-animation/assets/modular-equipment-case-001/source.json \
+            --rig .lid-rig/assets/modular-equipment-case-001/articulation.json \
+            --clip .prior-animation/assets/modular-equipment-case-001/lid-motion-clip.json \
+            --out /tmp/axm-prior-lid-motion \
+            --exact-head "$PRIOR_ANIMATION_HEAD"
+          PYTHONPATH=".historical-rig/tools" python .historical-rig/tools/verify_front_latch_articulation.py \
+            --host .prior-animation/assets/modular-equipment-case-001/source.json \
+            --ownership .ownership/assets/modular-equipment-case-001/front-latch-ownership-001.json \
+            --plan .historical-rig/assets/modular-equipment-case-001/front-latch-articulation-001.json \
+            --out /tmp/axm-prior-latch-rig
+          python .prior-animation/tools/build_lid_latch_motion_evidence.py \
+            --source .prior-animation/assets/modular-equipment-case-001/source.json \
+            --sequence .prior-animation/assets/modular-equipment-case-001/lid-latch-motion-sequence-001.json \
+            --motion-evidence /tmp/axm-prior-lid-motion/lid-motion-evidence.json \
+            --ownership .ownership/assets/modular-equipment-case-001/front-latch-ownership-001.json \
+            --rig-receipt /tmp/axm-prior-latch-rig/front-latch-articulation.receipt.json \
+            --rig-head "$HISTORICAL_LATCH_RIG_HEAD" \
+            --rig-plan-sha256 81c27ab7b73ed9a43cb3f554b56c3f4294b893712075e33d13f5b02e008455db \
+            --out /tmp/axm-prior-sequence \
+            --exact-head "$PRIOR_ANIMATION_HEAD"
+      - name: Rebuild current source-owned Rigging acceptance
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/axm-source-rig
+          PYTHONPATH=".source-rig/tools" python .source-rig/tools/verify_front_latch_source_rig_binding.py \
+            --host assets/modular-equipment-case-001/source.json \
+            --ownership .ownership/assets/modular-equipment-case-001/front-latch-ownership-001.json \
+            --interface .source-rig/assets/modular-equipment-case-001/front-latch-pivot-interface-001.json \
+            --historical-plan .historical-rig/assets/modular-equipment-case-001/front-latch-articulation-001.json \
+            --binding .source-rig/assets/modular-equipment-case-001/front-latch-source-rig-binding-002.json \
+            --out /tmp/axm-source-rig
+      - name: Re-prove Animation source authority on this exact receiving head
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/axm-animation-source-rebind
+          python tools/verify_animation_source_authority_rebind.py \
+            --host assets/modular-equipment-case-001/source.json \
+            --contract assets/modular-equipment-case-001/source-authority-motion-rebind-002.json \
+            --prior-sequence-evidence /tmp/axm-prior-sequence/lid-latch-motion-evidence.json \
+            --source-interface .source-rig/assets/modular-equipment-case-001/front-latch-pivot-interface-001.json \
+            --source-rig-receipt /tmp/axm-source-rig/front-latch-source-rig-binding-evidence.json \
+            --exact-head "$EXACT_HEAD_SHA" \
+            --out /tmp/axm-animation-source-rebind
+      - name: Rebuild same exact sequence for UC runtime addressing
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/axm-current-lid-motion /tmp/axm-current-latch-rig /tmp/axm-current-sequence
+          python tools/build_lid_motion_evidence.py \
+            --source assets/modular-equipment-case-001/source.json \
+            --rig .lid-rig/assets/modular-equipment-case-001/articulation.json \
+            --clip assets/modular-equipment-case-001/lid-motion-clip.json \
+            --out /tmp/axm-current-lid-motion \
+            --exact-head "$EXACT_HEAD_SHA"
+          PYTHONPATH=".historical-rig/tools" python .historical-rig/tools/verify_front_latch_articulation.py \
+            --host assets/modular-equipment-case-001/source.json \
+            --ownership .ownership/assets/modular-equipment-case-001/front-latch-ownership-001.json \
+            --plan .historical-rig/assets/modular-equipment-case-001/front-latch-articulation-001.json \
+            --out /tmp/axm-current-latch-rig
+          python tools/build_lid_latch_motion_evidence.py \
+            --source assets/modular-equipment-case-001/source.json \
+            --sequence assets/modular-equipment-case-001/lid-latch-motion-sequence-001.json \
+            --motion-evidence /tmp/axm-current-lid-motion/lid-motion-evidence.json \
+            --ownership .ownership/assets/modular-equipment-case-001/front-latch-ownership-001.json \
+            --rig-receipt /tmp/axm-current-latch-rig/front-latch-articulation.receipt.json \
+            --rig-head "$HISTORICAL_LATCH_RIG_HEAD" \
+            --rig-plan-sha256 81c27ab7b73ed9a43cb3f554b56c3f4294b893712075e33d13f5b02e008455db \
+            --out /tmp/axm-current-sequence \
+            --exact-head "$EXACT_HEAD_SHA"
+      - name: Execute exact UC runtime clock binding
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/axm-uc-bridge && mkdir -p /tmp/axm-uc-bridge
+          python tools/build_uc_animation_runtime_bridge.py \
+            --uc-root .uc-runtime \
+            --expected-uc-commit "$UC_RUNTIME_HEAD" \
+            --sequence-evidence /tmp/axm-current-sequence/lid-latch-motion-evidence.json \
+            --out /tmp/axm-uc-bridge/uc-animation-runtime-bridge.json \
+            --exact-object-head "$EXACT_HEAD_SHA"
+      - name: Compose exact authority-to-runtime Technical Art receipt
+        run: |
+          set -euo pipefail
+          rm -rf animation-proof/authority-bridge && mkdir -p animation-proof/authority-bridge
+          python tools/verify_uc_runtime_animation_authority_bridge.py \
+            --repo-root . \
+            --authority-contract assets/modular-equipment-case-001/source-authority-motion-rebind-002.json \
+            --animation-rebind-evidence /tmp/axm-animation-source-rebind/animation-source-authority-rebind-evidence.json \
+            --runtime-bridge /tmp/axm-uc-bridge/uc-animation-runtime-bridge.json \
+            --animation-authority-head "$ANIMATION_AUTHORITY_HEAD" \
+            --prior-technical-art-head "$PRIOR_TECHNICAL_ART_HEAD" \
+            --exact-head "$EXACT_HEAD_SHA" \
+            --out animation-proof/authority-bridge/uc-animation-source-authority-bridge.json
+          cp /tmp/axm-animation-source-rebind/animation-source-authority-rebind-evidence.json animation-proof/authority-bridge/
+          cp /tmp/axm-uc-bridge/uc-animation-runtime-bridge.json animation-proof/authority-bridge/
+          printf '%s\n' "$EXACT_HEAD_SHA" > animation-proof/authority-bridge/exact-technical-art-head.txt
+      - name: Negative controls reject authority or sequence drift
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/axm-negative && mkdir -p /tmp/axm-negative
+          cp /tmp/axm-uc-bridge/uc-animation-runtime-bridge.json /tmp/axm-negative/runtime.json
+          cp /tmp/axm-animation-source-rebind/animation-source-authority-rebind-evidence.json /tmp/axm-negative/rebind.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('/tmp/axm-negative/runtime.json'); d=json.loads(p.read_text()); d['object_sequence_digest']='0'*64; p.write_text(json.dumps(d,indent=2)+'\n')
+          p=Path('/tmp/axm-negative/rebind.json'); d=json.loads(p.read_text()); d['current_source_rig_head']='0'*40; p.write_text(json.dumps(d,indent=2)+'\n')
+          PY
+          common="--repo-root . --authority-contract assets/modular-equipment-case-001/source-authority-motion-rebind-002.json --animation-authority-head $ANIMATION_AUTHORITY_HEAD --prior-technical-art-head $PRIOR_TECHNICAL_ART_HEAD --exact-head $EXACT_HEAD_SHA"
+          if python tools/verify_uc_runtime_animation_authority_bridge.py $common --animation-rebind-evidence /tmp/axm-animation-source-rebind/animation-source-authority-rebind-evidence.json --runtime-bridge /tmp/axm-negative/runtime.json --out /tmp/neg-runtime.json; then exit 1; fi
+          if python tools/verify_uc_runtime_animation_authority_bridge.py $common --animation-rebind-evidence /tmp/axm-negative/rebind.json --runtime-bridge /tmp/axm-uc-bridge/uc-animation-runtime-bridge.json --out /tmp/neg-rig.json; then exit 1; fi
+          echo 'authority and sequence drift rejected as expected'
+      - name: Validate retained composite scope
+        run: |
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          r=json.loads(Path('animation-proof/authority-bridge/uc-animation-source-authority-bridge.json').read_text())
+          assert r['result']=='PASS_UC_RUNTIME_CLOCK_OVER_CURRENT_ANIMATION_SOURCE_AUTHORITY',r
+          assert r['exact_receiving_head']==os.environ['EXACT_HEAD_SHA'],r
+          assert r['animation_authority_head']==os.environ['ANIMATION_AUTHORITY_HEAD'],r
+          assert r['prior_technical_art_head']==os.environ['PRIOR_TECHNICAL_ART_HEAD'],r
+          assert r['source_interface_head']==os.environ['SOURCE_INTERFACE_HEAD'],r
+          assert r['source_rig_head']==os.environ['SOURCE_RIG_HEAD'],r
+          assert r['uc_runtime_commit']==os.environ['UC_RUNTIME_HEAD'],r
+          assert r['checkpoint_count']==5,r
+          assert r['motion_change'] is False and r['retimed'] is False and r['retargeted'] is False and r['key_count_changed'] is False,r
+          assert r['truth_boundary']['target_host_observed_by_this_composite_tool'] is False,r
+          print(json.dumps(r,indent=2))
+          PY
+      - name: Retain exact Technical Art authority bridge evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: object-technical-art-uc-animation-authority-bridge-${{ github.event.pull_request.head.sha || github.sha }}
+          path: |
+            assets/modular-equipment-case-001/source-authority-motion-rebind-002.json
+            animation-proof/authority-bridge/animation-source-authority-rebind-evidence.json
+            animation-proof/authority-bridge/uc-animation-runtime-bridge.json
+            animation-proof/authority-bridge/uc-animation-source-authority-bridge.json
+            animation-proof/authority-bridge/exact-technical-art-head.txt
+          if-no-files-found: error
