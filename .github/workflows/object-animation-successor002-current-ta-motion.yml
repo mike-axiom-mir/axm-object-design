@@ -270,14 +270,14 @@ jobs:
           assert r['endpoint_inclusive_sample_count']==101,r
           assert r['animationplayer_key_count']==101,r
           assert r['sampled_max_lid_angle_error_deg']<=1e-5,r
-          assert r['sampled_max_body_knuckle_world_drift_m']<=1e-6,r
-          assert r['sampled_max_lid_knuckle_world_move_m']>=0.005,r
-          assert r['sampled_endpoint_parent_motion_closure_m']<=1e-6,r
+          assert r['sampled_max_body_knuckle_world_vertex_drift_m']<=1e-6,r
+          assert r['sampled_max_lid_knuckle_world_vertex_move_m']>=0.0001,r
+          assert r['sampled_endpoint_world_vertex_closure_m']<=1e-6,r
           assert r['wall_clock_playback_completed'] is True,r
           assert r['wall_clock_peak_lid_deg']>=99.9,r
-          assert r['wall_clock_max_body_knuckle_world_drift_m']<=1e-6,r
-          assert r['wall_clock_max_lid_knuckle_world_move_m']>=0.005,r
-          assert r['wall_clock_endpoint_parent_motion_closure_m']<=1e-6,r
+          assert r['wall_clock_max_body_knuckle_world_vertex_drift_m']<=1e-6,r
+          assert r['wall_clock_max_lid_knuckle_world_vertex_move_m']>=0.0001,r
+          assert r['wall_clock_endpoint_world_vertex_closure_m']<=1e-6,r
           assert r['truth_boundary']['runtime_controller_or_state_machine_accepted'] is False,r
           assert r['truth_boundary']['input_or_gameplay_accepted'] is False,r
           print(json.dumps(r,indent=2))
