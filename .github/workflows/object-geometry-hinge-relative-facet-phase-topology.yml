@@ -1,0 +1,127 @@
+name: Object Geometry relative facet-phase topology rebind evidence
+
+on:
+  pull_request:
+  push:
+    branches:
+      - studio/geometry-object-hinge-relative-facet-phase-topology-003
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ['3.11', '3.13']
+    runs-on: ubuntu-latest
+    env:
+      EXACT_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+      HARD_SURFACE_HEAD: ef1dfc2f2c1adbe3c90ba089c66ac09d223df25c
+      SUCCESSOR002_BLOB: 7e078189d5c80508b28932563326cd5629c4efa6
+      SUCCESSOR003_BLOB: e7a44523ea80e567a745cd61af7fd7005757cc12
+      SOURCE_VERIFIER_BLOB: bcb816c97cf5ae50afe38e295fb01a931f0034a5
+    steps:
+      - name: Checkout exact Geometry head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.EXACT_HEAD }}
+          fetch-depth: 0
+
+      - name: Verify exact Hard-Surface donor and Geometry-only delta
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$EXACT_HEAD"
+          git merge-base --is-ancestor "$HARD_SURFACE_HEAD" HEAD
+          test "$(git rev-parse "$HARD_SURFACE_HEAD:assets/modular-equipment-case-001/hinge-bored-knuckle-phase-invariant-source-successor-002.json")" = "$SUCCESSOR002_BLOB"
+          test "$(git rev-parse "$HARD_SURFACE_HEAD:assets/modular-equipment-case-001/hinge-bored-knuckle-relative-facet-phase-source-successor-003.json")" = "$SUCCESSOR003_BLOB"
+          test "$(git rev-parse "$HARD_SURFACE_HEAD:tools/verify_hinge_bored_knuckle_relative_facet_phase_successor.py")" = "$SOURCE_VERIFIER_BLOB"
+          test "$(git rev-parse "HEAD:assets/modular-equipment-case-001/hinge-bored-knuckle-phase-invariant-source-successor-002.json")" = "$SUCCESSOR002_BLOB"
+          test "$(git rev-parse "HEAD:assets/modular-equipment-case-001/hinge-bored-knuckle-relative-facet-phase-source-successor-003.json")" = "$SUCCESSOR003_BLOB"
+          test "$(git rev-parse "HEAD:tools/verify_hinge_bored_knuckle_relative_facet_phase_successor.py")" = "$SOURCE_VERIFIER_BLOB"
+          printf '%s\n' \
+            '.github/workflows/object-geometry-hinge-relative-facet-phase-topology.yml' \
+            'assets/modular-equipment-case-001/hinge-relative-facet-phase-topology-rebind-003.json' \
+            'tests/test_hinge_relative_facet_phase_topology_rebind.py' \
+            'tools/verify_hinge_relative_facet_phase_topology_rebind.py' \
+            > /tmp/expected-geometry-delta.txt
+          git diff --name-only "$HARD_SURFACE_HEAD"...HEAD | sort > /tmp/actual-geometry-delta.txt
+          sort -o /tmp/expected-geometry-delta.txt /tmp/expected-geometry-delta.txt
+          diff -u /tmp/expected-geometry-delta.txt /tmp/actual-geometry-delta.txt
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Compile and run complete Object suite
+        run: |
+          python -m compileall -q tools tests
+          python -m unittest discover -s tests -v
+
+      - name: Rebuild exact successor003 Geometry topology evidence
+        if: matrix.python-version == '3.11'
+        run: |
+          mkdir -p evidence/hinge-relative-facet-phase-topology-rebind-003
+          python tools/verify_hinge_relative_facet_phase_topology_rebind.py \
+            --host assets/modular-equipment-case-001/source.json \
+            --successor002 assets/modular-equipment-case-001/hinge-bored-knuckle-phase-invariant-source-successor-002.json \
+            --successor003 assets/modular-equipment-case-001/hinge-bored-knuckle-relative-facet-phase-source-successor-003.json \
+            --topology-contract assets/modular-equipment-case-001/hinge-relative-facet-phase-topology-rebind-003.json \
+            --source-verifier tools/verify_hinge_bored_knuckle_relative_facet_phase_successor.py \
+            --out evidence/hinge-relative-facet-phase-topology-rebind-003
+
+      - name: Truth-gate retained receipt
+        if: matrix.python-version == '3.11'
+        run: |
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          p=Path("evidence/hinge-relative-facet-phase-topology-rebind-003/hinge-relative-facet-phase-topology-rebind-receipt.json")
+          r=json.loads(p.read_text())
+          assert r["result"] == "PASS_OBJECT_RELATIVE_FACET_PHASE_SUCCESSOR_GENUS1_TOPOLOGY_REBIND", r
+          assert r["hard_surface_donor_head"] == os.environ["HARD_SURFACE_HEAD"], r
+          assert r["historical_pass_transferred"] is False, r
+          assert r["source_successor_mutated"] is False, r
+          assert r["changed_vertex_positions"] == 96, r
+          assert r["unchanged_vertex_positions"] == 144, r
+          assert abs(r["maximum_vertex_position_delta_m"] - 0.005482100073242167) <= 1e-12, r
+          assert r["face_connectivity_identical_to_successor002"] is True, r
+          assert r["group_order_and_ownership_identical_to_successor002"] is True, r
+          assert r["successor003_aggregate"] == {
+              "euler_characteristic_sum": 0,
+              "orientable_genus_sum": 5,
+              "triangle_components": 5,
+              "triangles": 480,
+              "unique_edges": 720,
+              "vertices": 240,
+          }, r
+          assert len(r["successor003_group_reports"]) == 5, r
+          assert all(row["orientable_genus"] == 1 for row in r["successor003_group_reports"]), r
+          assert r["technical_art_successor003_receiver_revalidated"] is False, r
+          assert r["rigging_successor003_revalidated"] is False, r
+          assert r["materials_successor003_adopted"] is False, r
+          assert r["automatic_downstream_adoption"] is False, r
+          PY
+
+      - name: Retain exact evidence bundle
+        if: matrix.python-version == '3.11'
+        run: |
+          cp assets/modular-equipment-case-001/hinge-relative-facet-phase-topology-rebind-003.json \
+            evidence/hinge-relative-facet-phase-topology-rebind-003/geometry-contract.json
+          cp assets/modular-equipment-case-001/hinge-bored-knuckle-relative-facet-phase-source-successor-003.json \
+            evidence/hinge-relative-facet-phase-topology-rebind-003/source-successor003-contract.json
+          cp assets/modular-equipment-case-001/hinge-bored-knuckle-phase-invariant-source-successor-002.json \
+            evidence/hinge-relative-facet-phase-topology-rebind-003/source-successor002-contract.json
+          printf '%s\n' "$EXACT_HEAD" > evidence/hinge-relative-facet-phase-topology-rebind-003/exact-geometry-head.txt
+          printf '%s\n' "$HARD_SURFACE_HEAD" > evidence/hinge-relative-facet-phase-topology-rebind-003/exact-hard-surface-head.txt
+
+      - name: Upload retained evidence
+        if: matrix.python-version == '3.11'
+        uses: actions/upload-artifact@v4
+        with:
+          name: object-geometry-relative-facet-phase-topology-${{ env.EXACT_HEAD }}
+          path: evidence/hinge-relative-facet-phase-topology-rebind-003
+          if-no-files-found: error
+          retention-days: 30

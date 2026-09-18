@@ -1,0 +1,60 @@
+{
+  "schema": "axm.object-hinge-relative-facet-phase-topology-rebind/v0.1",
+  "asset_id": "modular-equipment-case-001",
+  "successor_id": "modular-equipment-case-001/hinge-bored-knuckle-relative-facet-phase-source-successor-003",
+  "hard_surface_donor_head": "ef1dfc2f2c1adbe3c90ba089c66ac09d223df25c",
+  "predecessor_geometry_head": "d69b9f730edd00f8ed668665cb009a74c2da813a",
+  "source_identity": {
+    "successor002_contract_git_blob_sha1": "7e078189d5c80508b28932563326cd5629c4efa6",
+    "successor003_contract_git_blob_sha1": "e7a44523ea80e567a745cd61af7fd7005757cc12",
+    "successor003_builder_verifier_git_blob_sha1": "bcb816c97cf5ae50afe38e295fb01a931f0034a5"
+  },
+  "expected_phase": {
+    "body_deg": 0.0,
+    "lid_deg": 15.0,
+    "relative_lid_minus_body_deg": 15.0
+  },
+  "expected_delta_from_successor002": {
+    "unchanged_vertex_positions": 144,
+    "changed_vertex_positions": 96,
+    "maximum_vertex_position_delta_m": 0.005482100073242167,
+    "face_connectivity_identical": true,
+    "group_order_and_ownership_identical": true
+  },
+  "expected_per_knuckle": {
+    "vertices": 48,
+    "triangles": 96,
+    "unique_edges": 144,
+    "triangle_components": 1,
+    "boundary_edges": 0,
+    "non_manifold_edges": 0,
+    "orientation_conflicts": 0,
+    "degenerate_triangles": 0,
+    "isolated_vertices": 0,
+    "max_vertex_fan_components": 1,
+    "euler_characteristic": 0,
+    "orientable_genus": 1
+  },
+  "expected_aggregate": {
+    "vertices": 240,
+    "triangles": 480,
+    "unique_edges": 720,
+    "triangle_components": 5,
+    "euler_characteristic_sum": 0,
+    "orientable_genus_sum": 5
+  },
+  "geometry_authority": {
+    "source_successor_mutated": false,
+    "historical_pass_transferred": false,
+    "geometry_default_adoption_authorized": false,
+    "materials_adoption_authorized": false,
+    "rigging_adoption_authorized": false,
+    "animation_adoption_authorized": false,
+    "technical_art_receiver_adoption_authorized": false,
+    "runtime_or_physics_adoption_authorized": false,
+    "visual_acceptance_authorized": false,
+    "uc_or_profession_fabric_promotion_authorized": false
+  },
+  "reusable_rule": "OWNER_GROUP_FACET_PHASE_CHANGE_PRESERVES_THROUGH_BORE_TOPOLOGY_ONLY_AFTER_EXACT_SOURCE_SUCCESSOR_REBIND__STRUCTURAL_CLASS_DOES_NOT_TRANSFER_RECEIVER_ACCEPTANCE",
+  "truth_boundary": "This Geometry PASS, if produced, proves only that the exact source-owned successor003 five-knuckle candidate preserves the expected indexed closed orientable genus-1 through-bore topology class and unchanged connectivity/ownership while two lid-owned knuckles rotate their complete cross-sections by the exact source-owned phase. It does not prove visual improvement, target-host transport, renderer/front-face behavior, rigging or animation compatibility, collision, manufacturing behavior, runtime/device acceptance, source/default adoption, CANON, production readiness, game readiness, or Geometry mastery."
+}
