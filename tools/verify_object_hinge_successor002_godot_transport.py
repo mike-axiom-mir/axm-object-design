@@ -8,6 +8,17 @@ from typing import Any
 RESULT = "PASS_OBJECT_HINGE_SUCCESSOR002_CURRENT_UC_GODOT_TRIANGLE_TRANSPORT"
 COMPONENTS = ("hinge_body_b0", "hinge_lid_l0", "hinge_body_b1", "hinge_lid_l1", "hinge_body_b2")
 POSITION_TOLERANCE_M = 1e-6
+TARGET_HOST_TRIANGLE_INDEX_TRANSFORM = "GODOT_4_7_2_GLTFDOCUMENT_RECEIVER_LOCAL_[a,b,c]_TO_[a,c,b]"
+
+
+def target_host_indices(source_indices: list[int]) -> list[int]:
+    if len(source_indices) % 3:
+        raise AssertionError("source index payload is not triangulated")
+    out: list[int] = []
+    for offset in range(0, len(source_indices), 3):
+        a, b, c = source_indices[offset : offset + 3]
+        out.extend((a, c, b))
+    return out
 
 
 def read_json(path: Path) -> dict[str, Any]:
@@ -48,8 +59,11 @@ def verify(surface_path: Path, ta_receipt_path: Path, target_receipt_path: Path,
         obs_indices = [int(v) for v in obs.get("indices", [])]
         if len(exp_positions) != len(obs_positions):
             raise AssertionError(f"vertex count drift for {name}")
-        if exp_indices != obs_indices:
-            raise AssertionError(f"imported triangle index/winding drift for {name}")
+        expected_target_indices = target_host_indices(exp_indices)
+        if exp_indices == obs_indices:
+            raise AssertionError(f"receiver-local triangle reversal unexpectedly absent for {name}")
+        if expected_target_indices != obs_indices:
+            raise AssertionError(f"imported receiver-local triangle index transform drift for {name}")
         if len(exp_indices) != 288 or int(obs.get("triangle_count", 0)) != 96:
             raise AssertionError(f"triangle count drift for {name}")
         component_max = 0.0
@@ -64,7 +78,9 @@ def verify(surface_path: Path, ta_receipt_path: Path, target_receipt_path: Path,
         per_component[name] = {
             "vertices": len(exp_positions),
             "triangles": len(exp_indices) // 3,
-            "indices_exact": True,
+            "indices_exact_after_receiver_local_transform": True,
+            "source_indices_equal_after_import": False,
+            "target_host_triangle_index_transform": TARGET_HOST_TRIANGLE_INDEX_TRANSFORM,
             "maximum_position_delta_m": component_max,
         }
 
@@ -94,6 +110,9 @@ def verify(surface_path: Path, ta_receipt_path: Path, target_receipt_path: Path,
         "aggregate_triangles": sum(item["triangles"] for item in per_component.values()),
         "maximum_position_delta_m": max_position_delta,
         "index_and_winding_exact_for_all_five_components": True,
+        "index_exactness_scope": "Exact only after the observed receiver-local per-triangle [a,b,c] -> [a,c,b] transform; source indices are deliberately not relabelled as byte-equal after Godot import.",
+        "target_host_triangle_index_transform": TARGET_HOST_TRIANGLE_INDEX_TRANSFORM,
+        "source_indices_equal_after_import_for_any_component": False,
         "godot_state": target["state"],
         "review_transform_degrees_x": target["review_transform_degrees_x"],
         "maximum_world_vertex_movement_m": movement,
@@ -103,6 +122,7 @@ def verify(surface_path: Path, ta_receipt_path: Path, target_receipt_path: Path,
             "source_successor_default_adopted": False,
             "automatic_downstream_adoption": False,
             "generic_godot_or_uc_hinge_policy_claimed": False,
+            "universal_godot_winding_rule_claimed": False,
             "runtime_or_physics_accepted": False,
             "final_visual_or_art_accepted": False,
             "canon_or_production_accepted": False,
