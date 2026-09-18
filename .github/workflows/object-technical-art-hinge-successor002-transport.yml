@@ -6,6 +6,7 @@ on:
       - "contracts/object_hinge_successor002_ta_transport_rebind.json"
       - "tools/build_object_hinge_successor002_ta_transport_rebind.py"
       - "tools/verify_object_hinge_successor002_godot_transport.py"
+      - "tools/verify_ta_evidence_lane_continuity.py"
       - "rigid-proof/successor002_observe.gd"
       - ".github/workflows/object-technical-art-hinge-successor002-transport.yml"
   workflow_dispatch:
@@ -24,6 +25,7 @@ jobs:
         python-version: ["3.11", "3.13"]
     env:
       PREDECESSOR_TA_HEAD: dad13ce23a0fd8e0ec3e612ac1e72f01c5155284
+      PROVEN_SUCCESSOR002_TA_HEAD: f430d00d98e694dcf8302fd4df3c64a074f6f30e
       HARD_SURFACE_HEAD: a6d18b9fe729304dc4d95d962ed27527adce211f
       GEOMETRY_HEAD: 96abb2830ddabca9ed270b42a9447534d007ce64
       RIGGING_HEAD: cf377074f70ce7f7e386f1378c51705b3db4d305
@@ -44,28 +46,37 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
-      - name: Bind bounded Technical Art delta and run Object suite
+      - name: Bind successor002 evidence lane continuity and run Object suite
         run: |
           set -euo pipefail
           test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha || github.sha }}"
           git merge-base --is-ancestor "$PREDECESSOR_TA_HEAD" HEAD
-          python - <<'PY'
-          import subprocess
-          allowed={
-            '.github/workflows/object-technical-art-hinge-successor002-transport.yml',
-            'contracts/object_hinge_successor002_ta_transport_rebind.json',
-            'rigid-proof/successor002_observe.gd',
-            'tools/build_object_hinge_successor002_ta_transport_rebind.py',
-            'tools/verify_object_hinge_successor002_godot_transport.py',
-          }
-          changed=set(subprocess.check_output(['git','diff','--name-only','dad13ce23a0fd8e0ec3e612ac1e72f01c5155284','HEAD'],text=True).splitlines())
-          if changed != allowed:
-              raise SystemExit(f'bounded Technical Art delta drift: {sorted(changed)}')
-          PY
-          python -m json.tool contracts/object_hinge_successor002_ta_transport_rebind.json >/dev/null
-          python -m py_compile tools/build_object_hinge_successor002_ta_transport_rebind.py tools/verify_object_hinge_successor002_godot_transport.py
-          python -m unittest discover -s tests -v
+          git merge-base --is-ancestor "$PROVEN_SUCCESSOR002_TA_HEAD" HEAD
           mkdir -p rigid-proof/generated rigid-proof/successor002-owner
+          python tools/verify_ta_evidence_lane_continuity.py \
+            --baseline "$PROVEN_SUCCESSOR002_TA_HEAD" \
+            --protected contracts/object_hinge_successor002_ta_transport_rebind.json \
+            --protected rigid-proof/successor002_observe.gd \
+            --protected tools/build_object_hinge_successor002_ta_transport_rebind.py \
+            --protected tools/verify_object_hinge_successor002_godot_transport.py \
+            --receipt rigid-proof/successor002-owner/lane-continuity-receipt.json
+
+          printf '\n ' >> contracts/object_hinge_successor002_ta_transport_rebind.json
+          if python tools/verify_ta_evidence_lane_continuity.py \
+            --baseline "$PROVEN_SUCCESSOR002_TA_HEAD" \
+            --protected contracts/object_hinge_successor002_ta_transport_rebind.json \
+            --protected rigid-proof/successor002_observe.gd \
+            --protected tools/build_object_hinge_successor002_ta_transport_rebind.py \
+            --protected tools/verify_object_hinge_successor002_godot_transport.py; then
+            echo 'ERROR: lane continuity guard accepted a mutated protected file' >&2
+            exit 1
+          fi
+          git checkout -- contracts/object_hinge_successor002_ta_transport_rebind.json
+          echo PASS_PROTECTED_SUCCESSOR002_LANE_MUTATION_REJECTED > rigid-proof/successor002-owner/negative-lane-continuity-mutation.txt
+
+          python -m json.tool contracts/object_hinge_successor002_ta_transport_rebind.json >/dev/null
+          python -m py_compile tools/build_object_hinge_successor002_ta_transport_rebind.py tools/verify_object_hinge_successor002_godot_transport.py tools/verify_ta_evidence_lane_continuity.py
+          python -m unittest discover -s tests -v
           git rev-parse HEAD > rigid-proof/successor002-owner/exact-technical-art-head.txt
 
       - name: Checkout exact source and shared machinery owners
@@ -280,6 +291,7 @@ jobs:
             contracts/object_hinge_successor002_ta_transport_rebind.json
             tools/build_object_hinge_successor002_ta_transport_rebind.py
             tools/verify_object_hinge_successor002_godot_transport.py
+            tools/verify_ta_evidence_lane_continuity.py
             rigid-proof/successor002_observe.gd
             rigid-proof/successor002-owner/
             rigid-proof/generated/object-rigid-components.surface.json
