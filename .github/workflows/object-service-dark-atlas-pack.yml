@@ -1,0 +1,231 @@
+name: Object service-dark atlas pack evidence
+
+on:
+  push:
+    branches: [studio/materials-object-functional-surface-001]
+    paths:
+      - "lookdev/service_dark_atlas_pack_review_001.json"
+      - "lookdev/service_dark_uv_density_family_001.json"
+      - "lookdev-proof/service_dark_atlas_pack_observe.gd"
+      - "tools/build_object_service_dark_atlas_pack_evidence.py"
+      - ".github/workflows/object-service-dark-atlas-pack.yml"
+  pull_request:
+    paths:
+      - "lookdev/service_dark_atlas_pack_review_001.json"
+      - "lookdev-proof/service_dark_atlas_pack_observe.gd"
+      - "tools/build_object_service_dark_atlas_pack_evidence.py"
+      - ".github/workflows/object-service-dark-atlas-pack.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  exact-service-dark-atlas-pack:
+    runs-on: ubuntu-latest
+    timeout-minutes: 24
+    strategy:
+      matrix:
+        python-version: ['3.11', '3.13']
+    steps:
+      - name: Checkout exact Materials head
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Record exact head
+        run: |
+          mkdir -p lookdev-proof/generated
+          git rev-parse HEAD > lookdev-proof/generated/service-dark-atlas-pack-exact-head.txt
+          test "$(cat lookdev-proof/generated/service-dark-atlas-pack-exact-head.txt)" = "${{ github.event.pull_request.head.sha || github.sha }}"
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Compile and run complete Object suite
+        run: |
+          python -m compileall -q tools tests
+          python -m unittest discover -s tests -v
+
+      - name: Rebuild exact base material payload
+        run: python tools/build_object_material_lookdev_evidence.py
+
+      - name: Materialize exact Animation, Rigging and latch-ownership donors
+        env:
+          ANIMATION_COMMIT: 12a350fc38f67348f342cd0e53ed6b16383b789d
+          RIG_COMMIT: 4b72c9918c5fc1e89bd18a0be24fb4afac6e7775
+          LATCH_OWNERSHIP_COMMIT: d3fa10a270faae7925811f44f03381fe5c5d0215
+        run: |
+          set -euo pipefail
+          git fetch --no-tags origin \
+            studio/animation-object-lid-open-close-001 \
+            studio/rigging-object-lid-articulation-001 \
+            studio/hard-surface-front-latch-ownership-001
+          git cat-file -e "$ANIMATION_COMMIT^{commit}"
+          git cat-file -e "$RIG_COMMIT^{commit}"
+          git cat-file -e "$LATCH_OWNERSHIP_COMMIT^{commit}"
+          git show "$ANIMATION_COMMIT:assets/modular-equipment-case-001/lid-motion-clip.json" > lookdev-proof/generated/lid-motion-clip.json
+          git show "$RIG_COMMIT:assets/modular-equipment-case-001/articulation.json" > lookdev-proof/generated/articulation.json
+          git show "$LATCH_OWNERSHIP_COMMIT:assets/modular-equipment-case-001/front-latch-ownership-001.json" > lookdev-proof/generated/front-latch-ownership-001.json
+
+      - name: Rebuild exact owner-bound articulation payload
+        run: python tools/build_object_material_articulation_evidence.py
+
+      - name: Materialize exact source-owned inner-lid surface identity
+        env:
+          SOURCE_SURFACE_COMMIT: e67353416209604aa50ad3ba57f71336f4384349
+          SOURCE_SURFACE_PATH: assets/modular-equipment-case-001/lid-inner-surface-identity-001.json
+          SOURCE_SURFACE_BLOB: 873c03a73042213255c65df63cdff49edcf10a6c
+        run: |
+          set -euo pipefail
+          git fetch --no-tags origin "$SOURCE_SURFACE_COMMIT" --depth=1
+          git cat-file -e "$SOURCE_SURFACE_COMMIT^{commit}"
+          observed_blob="$(git rev-parse "$SOURCE_SURFACE_COMMIT:$SOURCE_SURFACE_PATH")"
+          test "$observed_blob" = "$SOURCE_SURFACE_BLOB"
+          git show "$SOURCE_SURFACE_COMMIT:$SOURCE_SURFACE_PATH" > lookdev-proof/generated/lid-inner-surface-identity-001.json
+
+      - name: Rebuild exact source-owned inner-lid material payload
+        run: |
+          python tools/build_object_inner_lid_material_evidence.py \
+            --source-surface-identity lookdev-proof/generated/lid-inner-surface-identity-001.json
+
+      - name: Rebuild exact shared service-dark UV-density payload
+        run: |
+          python tools/build_object_service_dark_uv_density_family_evidence.py \
+            --exact-head "$(git rev-parse HEAD)"
+
+      - name: Build bounded 500 px/m service-dark atlas payload
+        run: |
+          python tools/build_object_service_dark_atlas_pack_evidence.py \
+            --exact-head "$(git rev-parse HEAD)"
+
+      - name: Validate atlas packing payload
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          root=Path('lookdev-proof/generated')
+          r=json.loads((root/'service_dark_atlas_pack_build_receipt.json').read_text())
+          p=json.loads((root/'object_service_dark_atlas_pack_payload.json').read_text())
+          assert r['result']=='PASS_OBJECT_SERVICE_DARK_TWO_SURFACE_500_PPM_ATLAS_PACKET',r
+          assert r['exact_materials_head']=="${{ github.event.pull_request.head.sha || github.sha }}",r
+          assert r['atlas_size_px']==[512,512],r
+          assert r['pixels_per_meter']==500,r
+          assert r['meters_per_pixel']==0.002,r
+          assert r['texels_per_review_uv_unit']==25,r
+          assert r['padding_px']==16,r
+          assert r['surface_count']==2,r
+          surfaces={s['surface_id']:s for s in r['surfaces']}
+          assert surfaces['lid_inner_service_surface']['pixel_size']==[390,240],surfaces
+          assert surfaces['front_service_panel_outer_service_surface']['pixel_size']==[234,78],surfaces
+          assert p['atlas_pack_review']['art_direction_decision']=='PASS_ART_DIRECTION_OBJECT_SERVICE_DARK_0P05_M_PER_UV_REVIEW_SCALE_PREFERENCE_022',p
+          assert p['truth_boundary']['production_uv_adopted'] is False,p
+          assert p['truth_boundary']['production_texture_authored'] is False,p
+          print(json.dumps(r,indent=2))
+          PY
+
+      - name: Prove padding-policy drift fails closed
+        run: |
+          python - <<'PY'
+          import json, subprocess, sys, tempfile
+          from pathlib import Path
+          src=Path('lookdev/service_dark_atlas_pack_review_001.json')
+          data=json.loads(src.read_text())
+          data['atlas']['padding_px']=0
+          bad=Path(tempfile.mkdtemp())/'bad-atlas.json'
+          bad.write_text(json.dumps(data))
+          cmd=[
+            sys.executable,'tools/build_object_service_dark_atlas_pack_evidence.py',
+            '--contract',str(bad),
+            '--exact-head','NEGATIVE_CONTROL',
+            '--out',str(bad.parent/'out'),
+          ]
+          proc=subprocess.run(cmd,capture_output=True,text=True)
+          assert proc.returncode != 0,(proc.stdout,proc.stderr)
+          assert '16 px' in (proc.stdout+proc.stderr),(proc.stdout,proc.stderr)
+          print('padding-policy negative rejected as expected')
+          PY
+
+      - name: Download pinned Godot 4.7.2
+        if: matrix.python-version == '3.11'
+        env:
+          GODOT_URL: https://github.com/godotengine/godot-builds/releases/download/4.7.2-stable/Godot_v4.7.2-stable_linux.x86_64.zip
+          GODOT_SHA256: cadd3204e728a35d3f13adb7fd0d7902636b79f6b95c40c265eb73b6c35329e4
+        run: |
+          set -euo pipefail
+          mkdir -p .godot-bin
+          curl --fail --location --retry 3 --retry-delay 2 "$GODOT_URL" --output .godot-bin/godot.zip
+          echo "$GODOT_SHA256  .godot-bin/godot.zip" | sha256sum --check --strict
+          unzip -q .godot-bin/godot.zip -d .godot-bin
+          chmod +x .godot-bin/Godot_v4.7.2-stable_linux.x86_64
+          .godot-bin/Godot_v4.7.2-stable_linux.x86_64 --version
+
+      - name: Install virtual display when needed
+        if: matrix.python-version == '3.11'
+        run: |
+          if ! command -v xvfb-run >/dev/null 2>&1; then
+            sudo apt-get update
+            sudo apt-get install -y xvfb
+          fi
+
+      - name: Render exact padded-atlas diagnostic
+        if: matrix.python-version == '3.11'
+        run: |
+          set -euo pipefail
+          rm -f lookdev-proof/service-dark-atlas-pack-runtime-receipt.json lookdev-proof/service-dark-atlas-*.png
+          xvfb-run --auto-servernum --server-args="-screen 0 1000x760x24" \
+            .godot-bin/Godot_v4.7.2-stable_linux.x86_64 \
+            --display-driver x11 \
+            --rendering-method gl_compatibility \
+            --path lookdev-proof \
+            --script service_dark_atlas_pack_observe.gd
+
+      - name: Validate real target-host padded-atlas A-B
+        if: matrix.python-version == '3.11'
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          root=Path('lookdev-proof')
+          r=json.loads((root/'service-dark-atlas-pack-runtime-receipt.json').read_text())
+          assert r['state']=='PASS_TARGET_HOST_SERVICE_DARK_500_PPM_PADDED_ATLAS_DIAGNOSTIC',r
+          assert r['promotion_effect']=='NONE',r
+          assert r['representation_changed_pixels_total']==0,r
+          assert r['texture_changed_pixels_total']>0,r
+          assert r['padding_negative_changed_pixels_total']>0,r
+          assert set(r['poses'])=={'mid_open','peak_open'},r
+          for pose,contexts in r['poses'].items():
+            assert set(contexts)=={'three_quarter','front_interior'},(pose,contexts)
+            for context,row in contexts.items():
+              assert row['representation_difference']['changed_pixels']==0,(pose,context,row)
+              assert row['texture_difference']['changed_pixels']>0,(pose,context,row)
+              assert row['padding_negative_difference']['changed_pixels']>0,(pose,context,row)
+              for mode in ('legacy_family','atlas_uniform','atlas_padded','atlas_unpadded_negative'):
+                path=root/f'service-dark-atlas-{pose}-{context}-{mode}.png'
+                assert path.stat().st_size>2000,path
+          assert r['truth_boundary']['production_uv_adopted'] is False,r
+          assert r['truth_boundary']['production_texture_authored'] is False,r
+          assert r['truth_boundary']['runtime_cost_accepted'] is False,r
+          print(json.dumps(r,indent=2))
+          PY
+
+      - name: Retain exact service-dark atlas evidence
+        if: matrix.python-version == '3.11' && always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: object-service-dark-atlas-pack-001-${{ github.event.pull_request.head.sha || github.sha }}
+          path: |
+            lookdev/service_dark_atlas_pack_review_001.json
+            lookdev/service_dark_uv_density_family_001.json
+            lookdev-proof/service_dark_atlas_pack_observe.gd
+            lookdev-proof/generated/service-dark-atlas-pack-exact-head.txt
+            lookdev-proof/generated/object_service_dark_atlas_pack_payload.json
+            lookdev-proof/generated/service_dark_atlas_pack_build_receipt.json
+            lookdev-proof/service-dark-atlas-pack-runtime-receipt.json
+            lookdev-proof/service-dark-atlas-padded.png
+            lookdev-proof/service-dark-atlas-unpadded-negative.png
+            lookdev-proof/service-dark-atlas-*.png
+          if-no-files-found: warn
+          retention-days: 30

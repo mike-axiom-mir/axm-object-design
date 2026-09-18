@@ -1,0 +1,56 @@
+{
+  "schema": "axm.object-front-service-panel-uv-review/v0.1",
+  "asset_id": "modular-equipment-case-001",
+  "intent": "bounded Materials / LookDev UV-density and orientation candidate for the exact source-owned front_service_panel component; diagnostic only, with no source-face ownership, texture asset, decal art, material retune, or production adoption",
+  "target": {
+    "component_name": "front_service_panel",
+    "component_role": "service_panel",
+    "component_kind": "box",
+    "review_surface_selector": "source_local_min_y_face",
+    "source_surface_identity_owned": false,
+    "source_material_slot_authored": false,
+    "material_id": "service_dark"
+  },
+  "uv_candidate": {
+    "basis": "SOURCE_LOCAL_X_TO_U__SOURCE_LOCAL_Z_TO_V",
+    "origin": "SOURCE_FACE_MIN_X_MIN_Z",
+    "meters_per_uv_unit_u": 0.05,
+    "meters_per_uv_unit_v": 0.05,
+    "wrap_required_for_diagnostic": false,
+    "diagnostic_pattern": "PROCEDURAL_CHECKER_FROM_UV_NO_TEXTURE_ASSET"
+  },
+  "negative_control": {
+    "id": "three_x_v_density_stretch",
+    "policy": "KEEP_U_DENSITY__TRIPLE_V_DENSITY",
+    "meters_per_uv_unit_u": 0.05,
+    "meters_per_uv_unit_v": 0.016666666666666666,
+    "purpose": "prove the target-host diagnostic visibly distinguishes an anisotropic UV-density defect from the isotropic candidate"
+  },
+  "camera_contexts": [
+    "front_service",
+    "three_quarter",
+    "grazing_service"
+  ],
+  "provenance": {
+    "method": "self-authored deterministic source-local planar UV candidate",
+    "external_textures": [],
+    "external_material_assets": []
+  },
+  "truth_boundary": {
+    "source_geometry_changed": false,
+    "source_surface_identity_owned": false,
+    "source_material_slot_authored": false,
+    "production_uv_authored": false,
+    "texture_asset_authored": false,
+    "decal_art_authored": false,
+    "material_scalars_changed": false,
+    "arbitrary_surface_unwrap_proven": false,
+    "final_texel_density_accepted": false,
+    "target_import_transport_accepted": false,
+    "runtime_cost_accepted": false,
+    "art_direction_accepted": false,
+    "visual_qa_accepted": false,
+    "canon": false,
+    "production_ready": false
+  }
+}

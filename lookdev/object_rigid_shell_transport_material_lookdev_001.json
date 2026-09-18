@@ -1,0 +1,59 @@
+{
+  "schema": "axm.object-material-rigid-shell-transport-lookdev/v0.1",
+  "review_id": "modular-equipment-case-001-rigid-shell-transport-material-lookdev-001",
+  "asset_id": "modular-equipment-case-001",
+  "source_path": "assets/modular-equipment-case-001/source.json",
+  "source_sha256": "49b1f9ed9865893d6de6f1ec8f069576732df694853fde4e3fcff366de32644a",
+  "material_profile_path": "lookdev/object_material_profile_001.json",
+  "material_profile_sha256": "dc200229d6c25fa84063aa51f66103abc022efa54b2167e4432a5b47fc40360c",
+  "technical_art_owner": {
+    "repository": "mike-axiom-mir/axm-object-design",
+    "pull_request": 16,
+    "exact_head": "7fa10bff981e49c9ea3396b83c4c6d731a90d146",
+    "expected_result": "PASS_OBJECT_GEOMETRY33_SOURCE_EXTERIOR_TO_CURRENT_UC_GLTF_PARITY_BRIDGE_READY",
+    "geometry_exact_head": "606d8189a3bf4502141d8038f08d35d421829dde",
+    "hard_surface_exact_head": "77a4058b305fab7fd04dab94781b9460f089727e",
+    "uc_exact_head": "7be1a28c43a88c7e40f7d0c039aefd753d5e70d9",
+    "corrected_glb_sha256": "c3326180d7626b224e16d372c2ff5f6fe47a6c9d13241d8225cea7629e58bd83",
+    "unadapted_glb_sha256": "708926421688fbc9cc727aadb21023b4e543b174ac1434fd5387d732c2d498a2"
+  },
+  "receiver": {
+    "engine": "Godot",
+    "version": "4.7.2-stable",
+    "rendering_method": "gl_compatibility",
+    "camera_contexts": [
+      "front_service",
+      "three_quarter",
+      "rear_hinge"
+    ]
+  },
+  "comparison": {
+    "corrected_transport": "exact Technical-Art parity-corrected current-UC GLB",
+    "unadapted_negative": "exact Technical-Art no-parity-correction negative GLB",
+    "material_policy": "apply the existing self-authored Object scalar-PBR role family as receiver-local material overrides without editing either GLB",
+    "spatial_control": "compare the two exact GLBs unshaded with culling disabled; this isolates geometry coverage from lit normal/front-face response",
+    "lit_cull_control": "for each exact GLB compare backface-cull against its own two-sided lit reference in three fixed review contexts"
+  },
+  "provenance": {
+    "external_textures": [],
+    "external_material_assets": [],
+    "technical_art_glbs_rebuilt_from_exact_owner_head": true,
+    "materials_branch_reimplements_transport_parity_algorithm": false,
+    "materials_branch_edits_transport_glb_bytes": false
+  },
+  "truth_boundary": {
+    "source_geometry_changed": false,
+    "source_geometry_adopted": false,
+    "geometry_candidate_adopted": false,
+    "technical_art_transport_adopted": false,
+    "receiver_local_cull_adapter_adopted": false,
+    "material_scalars_changed": false,
+    "uvs_changed": false,
+    "textures_changed": false,
+    "runtime_acceptance": false,
+    "art_direction_acceptance": false,
+    "visual_qa_acceptance": false,
+    "canon": false,
+    "production_ready": false
+  }
+}

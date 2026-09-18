@@ -1,0 +1,224 @@
+name: Object material rigid-shell transport lookdev
+
+on:
+  push:
+    branches: [studio/materials-object-functional-surface-001]
+    paths:
+      - "lookdev/object_rigid_shell_transport_material_lookdev_001.json"
+      - "tools/verify_object_rigid_shell_transport_material_lookdev.py"
+      - "lookdev-proof/rigid_shell_transport_material_observe.gd"
+      - ".github/workflows/object-material-rigid-shell-transport-lookdev.yml"
+      - "lookdev/object_material_profile_001.json"
+      - "assets/modular-equipment-case-001/source.json"
+      - "tools/build_modular_case.py"
+  pull_request:
+    paths:
+      - "lookdev/object_rigid_shell_transport_material_lookdev_001.json"
+      - "tools/verify_object_rigid_shell_transport_material_lookdev.py"
+      - "lookdev-proof/rigid_shell_transport_material_observe.gd"
+      - ".github/workflows/object-material-rigid-shell-transport-lookdev.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  rigid-shell-transport-material-lookdev:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ['3.11', '3.13']
+    steps:
+      - name: Checkout exact Materials head
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Checkout exact Technical Art owner
+        uses: actions/checkout@v4
+        with:
+          repository: mike-axiom-mir/axm-object-design
+          ref: 7fa10bff981e49c9ea3396b83c4c6d731a90d146
+          path: .technical-art
+          fetch-depth: 1
+
+      - name: Checkout exact Geometry owner used by Technical Art
+        uses: actions/checkout@v4
+        with:
+          repository: mike-axiom-mir/axm-object-design
+          ref: 606d8189a3bf4502141d8038f08d35d421829dde
+          path: .geometry
+          fetch-depth: 1
+
+      - name: Checkout exact Hard Surface exterior-intent owner
+        uses: actions/checkout@v4
+        with:
+          repository: mike-axiom-mir/axm-object-design
+          ref: 77a4058b305fab7fd04dab94781b9460f089727e
+          path: .hard-surface
+          fetch-depth: 1
+
+      - name: Checkout exact UC donor used by Technical Art
+        uses: actions/checkout@v4
+        with:
+          repository: mike-axiom-mir/axm-universal-creation
+          ref: 7be1a28c43a88c7e40f7d0c039aefd753d5e70d9
+          path: .uc
+          fetch-depth: 1
+
+      - name: Record exact receiving identities
+        run: |
+          set -euo pipefail
+          mkdir -p lookdev-proof/generated/technical-art-front-face
+          git rev-parse HEAD > lookdev-proof/generated/rigid-shell-transport-materials-exact-head.txt
+          git -C .technical-art rev-parse HEAD > lookdev-proof/generated/rigid-shell-transport-technical-art-exact-head.txt
+          git -C .geometry rev-parse HEAD > lookdev-proof/generated/rigid-shell-transport-geometry-exact-head.txt
+          git -C .hard-surface rev-parse HEAD > lookdev-proof/generated/rigid-shell-transport-hard-surface-exact-head.txt
+          git -C .uc rev-parse HEAD > lookdev-proof/generated/rigid-shell-transport-uc-exact-head.txt
+          test "$(cat lookdev-proof/generated/rigid-shell-transport-technical-art-exact-head.txt)" = "7fa10bff981e49c9ea3396b83c4c6d731a90d146"
+          test "$(cat lookdev-proof/generated/rigid-shell-transport-geometry-exact-head.txt)" = "606d8189a3bf4502141d8038f08d35d421829dde"
+          test "$(cat lookdev-proof/generated/rigid-shell-transport-hard-surface-exact-head.txt)" = "77a4058b305fab7fd04dab94781b9460f089727e"
+          test "$(cat lookdev-proof/generated/rigid-shell-transport-uc-exact-head.txt)" = "7be1a28c43a88c7e40f7d0c039aefd753d5e70d9"
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Compile and run complete Object suite
+        run: |
+          python -m compileall -q tools tests
+          python -m unittest discover -s tests -v
+
+      - name: Rebuild exact Geometry and Hard Surface owner receipts
+        run: |
+          set -euo pipefail
+          PYTHONPATH=.geometry python .geometry/tools/verify_rigid_shell_orientation.py \
+            --source .geometry/assets/modular-equipment-case-001/source.json \
+            --policy .geometry/assets/modular-equipment-case-001/rigid-shell-orientation-review-001.json \
+            --receipt lookdev-proof/generated/technical-art-front-face/geometry-orientation-receipt.json \
+            --obj lookdev-proof/generated/technical-art-front-face/geometry33-orientation-candidate.obj
+          PYTHONPATH=.hard-surface python .hard-surface/tools/verify_rigid_shell_exterior_intent.py \
+            --source .hard-surface/assets/modular-equipment-case-001/source.json \
+            --contract .hard-surface/assets/modular-equipment-case-001/rigid-shell-exterior-intent-001.json \
+            --builder .hard-surface/tools/build_modular_case.py \
+            --geometry-candidate-obj lookdev-proof/generated/technical-art-front-face/geometry33-orientation-candidate.obj \
+            --geometry-head 606d8189a3bf4502141d8038f08d35d421829dde \
+            --receipt lookdev-proof/generated/technical-art-front-face/hard-surface-exterior-intent-receipt.json
+
+      - name: Rebuild exact Technical Art current-UC GLBs
+        run: |
+          set -euo pipefail
+          cd .technical-art
+          PYTHONPATH=.:../.uc/src python tools/build_object_geometry_front_face_transport.py \
+            --geometry-candidate-obj "$GITHUB_WORKSPACE/lookdev-proof/generated/technical-art-front-face/geometry33-orientation-candidate.obj" \
+            --geometry-receipt "$GITHUB_WORKSPACE/lookdev-proof/generated/technical-art-front-face/geometry-orientation-receipt.json" \
+            --hard-surface-receipt "$GITHUB_WORKSPACE/lookdev-proof/generated/technical-art-front-face/hard-surface-exterior-intent-receipt.json" \
+            --uc-root "$GITHUB_WORKSPACE/.uc" \
+            --expected-uc-commit 7be1a28c43a88c7e40f7d0c039aefd753d5e70d9 \
+            --out "$GITHUB_WORKSPACE/lookdev-proof/generated/technical-art-front-face"
+
+      - name: Build exact Materials receiving payload
+        run: |
+          python tools/verify_object_rigid_shell_transport_material_lookdev.py \
+            --exact-head "$(git rev-parse HEAD)"
+
+      - name: Negative control rejects Technical Art owner-head drift
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          src=Path('lookdev/object_rigid_shell_transport_material_lookdev_001.json')
+          data=json.loads(src.read_text())
+          data['technical_art_owner']['exact_head']='0000000000000000000000000000000000000000'
+          Path('/tmp/bad-object-rigid-shell-transport-material-lookdev.json').write_text(json.dumps(data,indent=2)+'\n')
+          PY
+          set +e
+          output="$(python tools/verify_object_rigid_shell_transport_material_lookdev.py \
+            --contract /tmp/bad-object-rigid-shell-transport-material-lookdev.json \
+            --exact-head "$(git rev-parse HEAD)" 2>&1)"
+          status=$?
+          set -e
+          test "$status" -ne 0
+          printf '%s\n' "$output" | grep -q "Technical Art owner head drift"
+          printf '%s\n' "Technical Art owner-head negative rejected as expected"
+
+      - name: Download pinned Godot 4.7.2
+        if: matrix.python-version == '3.11'
+        env:
+          GODOT_URL: https://github.com/godotengine/godot-builds/releases/download/4.7.2-stable/Godot_v4.7.2-stable_linux.x86_64.zip
+          GODOT_SHA256: cadd3204e728a35d3f13adb7fd0d7902636b79f6b95c40c265eb73b6c35329e4
+        run: |
+          set -euo pipefail
+          mkdir -p .godot-bin
+          curl --fail --location --retry 3 --retry-delay 2 "$GODOT_URL" --output .godot-bin/godot.zip
+          echo "$GODOT_SHA256  .godot-bin/godot.zip" | sha256sum --check --strict
+          unzip -q .godot-bin/godot.zip -d .godot-bin
+          chmod +x .godot-bin/Godot_v4.7.2-stable_linux.x86_64
+          .godot-bin/Godot_v4.7.2-stable_linux.x86_64 --version
+
+      - name: Install virtual display when needed
+        if: matrix.python-version == '3.11'
+        run: |
+          if ! command -v xvfb-run >/dev/null 2>&1; then
+            sudo apt-get update
+            sudo apt-get install -y xvfb
+          fi
+
+      - name: Render exact Technical Art transport with Object material family
+        if: matrix.python-version == '3.11'
+        run: |
+          set -euo pipefail
+          rm -f lookdev-proof/rigid-shell-transport-material-runtime-receipt.json lookdev-proof/rigid-shell-transport-material-*.png
+          xvfb-run --auto-servernum --server-args="-screen 0 1000x760x24" \
+            .godot-bin/Godot_v4.7.2-stable_linux.x86_64 \
+            --display-driver x11 \
+            --rendering-method gl_compatibility \
+            --path lookdev-proof \
+            --script rigid_shell_transport_material_observe.gd
+
+      - name: Validate bounded transport/material evidence
+        if: matrix.python-version == '3.11'
+        run: |
+          python tools/verify_object_rigid_shell_transport_material_lookdev.py \
+            --runtime-receipt lookdev-proof/rigid-shell-transport-material-runtime-receipt.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          r=json.loads(Path('lookdev-proof/rigid-shell-transport-material-runtime-receipt.json').read_text())
+          assert r['state']=='PASS_EVIDENCE',r
+          assert r['unshaded_two_sided_spatial_identity_all_contexts'] is True,r
+          assert r['aggregate_corrected_vs_unadapted_back_gt1'] > 0,r
+          print(json.dumps(r,indent=2))
+          PY
+
+      - name: Retain exact transport/material lookdev evidence
+        if: matrix.python-version == '3.11' && always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: object-material-rigid-shell-transport-${{ github.event.pull_request.head.sha || github.sha }}
+          path: |
+            lookdev/object_rigid_shell_transport_material_lookdev_001.json
+            tools/verify_object_rigid_shell_transport_material_lookdev.py
+            lookdev-proof/rigid_shell_transport_material_observe.gd
+            lookdev-proof/generated/rigid-shell-transport-materials-exact-head.txt
+            lookdev-proof/generated/rigid-shell-transport-technical-art-exact-head.txt
+            lookdev-proof/generated/rigid-shell-transport-geometry-exact-head.txt
+            lookdev-proof/generated/rigid-shell-transport-hard-surface-exact-head.txt
+            lookdev-proof/generated/rigid-shell-transport-uc-exact-head.txt
+            lookdev-proof/generated/technical-art-front-face/geometry33-orientation-candidate.obj
+            lookdev-proof/generated/technical-art-front-face/geometry-orientation-receipt.json
+            lookdev-proof/generated/technical-art-front-face/hard-surface-exterior-intent-receipt.json
+            lookdev-proof/generated/technical-art-front-face/geometry33-parity-corrected-rebound.glb
+            lookdev-proof/generated/technical-art-front-face/geometry33-unadapted-rebound.glb
+            lookdev-proof/generated/technical-art-front-face/front-face-transport-receipt.json
+            lookdev-proof/generated/technical-art-front-face/transport-manifest.json
+            lookdev-proof/generated/object_rigid_shell_transport_material_payload.json
+            lookdev-proof/generated/object_rigid_shell_transport_material_build_receipt.json
+            lookdev-proof/rigid-shell-transport-material-runtime-receipt.json
+            lookdev-proof/rigid-shell-transport-material-*.png
+          if-no-files-found: warn
+          retention-days: 30

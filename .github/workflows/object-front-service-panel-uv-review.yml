@@ -1,0 +1,200 @@
+name: Object front service-panel UV review evidence
+
+on:
+  push:
+    branches: [studio/materials-object-functional-surface-001]
+    paths:
+      - "lookdev/front_service_panel_uv_review_001.json"
+      - "lookdev-proof/front_service_panel_uv_observe.gd"
+      - "tools/build_object_front_service_panel_uv_evidence.py"
+      - ".github/workflows/object-front-service-panel-uv-review.yml"
+      - "assets/modular-equipment-case-001/source.json"
+      - "lookdev/object_material_profile_001.json"
+      - "tools/build_modular_case.py"
+  pull_request:
+    paths:
+      - "lookdev/front_service_panel_uv_review_001.json"
+      - "lookdev-proof/front_service_panel_uv_observe.gd"
+      - "tools/build_object_front_service_panel_uv_evidence.py"
+      - ".github/workflows/object-front-service-panel-uv-review.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  exact-front-service-panel-uv-review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      matrix:
+        python-version: ['3.11', '3.13']
+    steps:
+      - name: Checkout exact Materials head
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Record exact head
+        run: |
+          mkdir -p lookdev-proof/generated
+          git rev-parse HEAD > lookdev-proof/generated/front-service-panel-uv-exact-head.txt
+          test "$(cat lookdev-proof/generated/front-service-panel-uv-exact-head.txt)" = "${{ github.event.pull_request.head.sha || github.sha }}"
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Compile and run complete Object suite
+        run: |
+          python -m compileall -q tools tests
+          python -m unittest discover -s tests -v
+
+      - name: Build exact source-bound front service-panel UV packet
+        env:
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          python tools/build_object_front_service_panel_uv_evidence.py --exact-head "$HEAD_SHA"
+
+      - name: Validate isotropic candidate and stretched negative control
+        env:
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          python - <<'PY'
+          import json
+          import math
+          from pathlib import Path
+          root=Path('lookdev-proof/generated')
+          r=json.loads((root/'front_service_panel_uv_build_receipt.json').read_text())
+          p=json.loads((root/'front_service_panel_uv_payload.json').read_text())
+          assert r['result']=='PASS_SOURCE_BOUND_FRONT_SERVICE_PANEL_ISOTROPIC_UV_REVIEW_PACKET',r
+          assert r['exact_materials_head']==__import__('os').environ['HEAD_SHA'],r
+          assert r['source_sha256']=='49b1f9ed9865893d6de6f1ec8f069576732df694853fde4e3fcff366de32644a',r
+          assert r['material_profile_sha256']=='dc200229d6c25fa84063aa51f66103abc022efa54b2167e4432a5b47fc40360c',r
+          assert r['component_name']=='front_service_panel',r
+          assert r['component_role']=='service_panel',r
+          assert r['review_surface_selector']=='source_local_min_y_face',r
+          assert r['source_surface_identity_owned'] is False,r
+          assert r['source_material_slot_authored'] is False,r
+          assert r['material_id']=='service_dark',r
+          assert math.isclose(r['front_face_width_m'],0.468,abs_tol=1e-12),r
+          assert math.isclose(r['front_face_height_m'],0.156,abs_tol=1e-12),r
+          assert math.isclose(r['front_face_area_m2'],0.073008,abs_tol=1e-12),r
+          assert r['candidate_meters_per_uv_unit']==[0.05,0.05],r
+          assert math.isclose(r['candidate_density_anisotropy'],1.0,abs_tol=1e-12),r
+          assert math.isclose(r['negative_density_anisotropy'],3.0,abs_tol=1e-12),r
+          assert set(r['camera_contexts'])=={'front_service','three_quarter','grazing_service'},r
+          assert r['external_texture_assets']==[],r
+          assert r['material_scalars_changed'] is False,r
+          assert r['source_geometry_changed'] is False,r
+          assert r['production_uv_adopted'] is False,r
+          assert p['diagnostic_material']['external_texture_asset'] is False,p
+          assert p['truth_boundary']['production_uv_authored'] is False,p
+          assert p['truth_boundary']['final_texel_density_accepted'] is False,p
+          print(json.dumps(r,indent=2))
+          PY
+
+      - name: Negative control rejects target-component drift
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          src=Path('lookdev/front_service_panel_uv_review_001.json')
+          data=json.loads(src.read_text())
+          data['target']['component_name']='body_shell'
+          Path('/tmp/front-service-panel-uv-bad-target.json').write_text(json.dumps(data))
+          PY
+          if python tools/build_object_front_service_panel_uv_evidence.py \
+            --review /tmp/front-service-panel-uv-bad-target.json \
+            --out /tmp/front-service-panel-uv-bad-target-out \
+            --exact-head NEGATIVE-TARGET-DRIFT; then
+            echo "target-component drift unexpectedly passed" >&2
+            exit 1
+          fi
+
+      - name: Download pinned Godot 4.7.2
+        if: matrix.python-version == '3.11'
+        env:
+          GODOT_URL: https://github.com/godotengine/godot-builds/releases/download/4.7.2-stable/Godot_v4.7.2-stable_linux.x86_64.zip
+          GODOT_SHA256: cadd3204e728a35d3f13adb7fd0d7902636b79f6b95c40c265eb73b6c35329e4
+        run: |
+          set -euo pipefail
+          mkdir -p .godot-bin
+          curl --fail --location --retry 3 --retry-delay 2 "$GODOT_URL" --output .godot-bin/godot.zip
+          echo "$GODOT_SHA256  .godot-bin/godot.zip" | sha256sum --check --strict
+          unzip -q .godot-bin/godot.zip -d .godot-bin
+          chmod +x .godot-bin/Godot_v4.7.2-stable_linux.x86_64
+          .godot-bin/Godot_v4.7.2-stable_linux.x86_64 --version
+
+      - name: Install virtual display when needed
+        if: matrix.python-version == '3.11'
+        run: |
+          if ! command -v xvfb-run >/dev/null 2>&1; then
+            sudo apt-get update
+            sudo apt-get install -y xvfb
+          fi
+
+      - name: Render exact UV control candidate and anisotropic negative
+        if: matrix.python-version == '3.11'
+        run: |
+          set -euo pipefail
+          rm -f lookdev-proof/front-service-panel-uv-runtime-receipt.json lookdev-proof/front-service-panel-uv-*.png
+          xvfb-run --auto-servernum --server-args="-screen 0 1000x760x24" \
+            .godot-bin/Godot_v4.7.2-stable_linux.x86_64 \
+            --display-driver x11 \
+            --rendering-method gl_compatibility \
+            --path lookdev-proof \
+            --script front_service_panel_uv_observe.gd
+
+      - name: Validate real target-host UV diagnostic
+        if: matrix.python-version == '3.11'
+        run: |
+          python - <<'PY'
+          import json
+          import math
+          from pathlib import Path
+          root=Path('lookdev-proof')
+          r=json.loads((root/'front-service-panel-uv-runtime-receipt.json').read_text())
+          assert r['state']=='PASS_TARGET_HOST_FRONT_SERVICE_PANEL_ISOTROPIC_UV_DIAGNOSTIC_CAPTURED',r
+          assert r['promotion_effect']=='NONE',r
+          assert r['candidate_visible_contexts']==3,r
+          assert r['negative_control_visible_contexts']==3,r
+          assert math.isclose(r['uv_candidate']['density_anisotropy'],1.0,abs_tol=1e-12),r
+          assert math.isclose(r['negative_control']['density_anisotropy'],3.0,abs_tol=1e-12),r
+          assert set(r['contexts'])=={'front_service','three_quarter','grazing_service'},r
+          for context,row in r['contexts'].items():
+              for mode in ('legacy_uniform','split_uniform','uv_candidate','uv_negative_stretched'):
+                  assert row[mode]['state']=='PASS',(context,mode,row)
+                  path=root/f'front-service-panel-uv-{context}-{mode}.png'
+                  assert path.stat().st_size>2000,path
+              assert row['legacy_uniform']['component_count']==row['split_uniform']['component_count']==row['uv_candidate']['component_count']==row['uv_negative_stretched']['component_count'],(context,row)
+              assert row['split_representation_difference']['changed_fraction']<=0.001,(context,row)
+              assert row['candidate_diagnostic_difference']['changed_pixels']>0,(context,row)
+              assert row['negative_control_difference']['changed_pixels']>0,(context,row)
+          assert r['truth_boundary']['production_uv_authored'] is False,r
+          assert r['truth_boundary']['texture_asset_authored'] is False,r
+          assert r['truth_boundary']['material_scalars_changed'] is False,r
+          assert r['truth_boundary']['art_direction_accepted'] is False,r
+          assert r['truth_boundary']['visual_qa_accepted'] is False,r
+          print(json.dumps(r,indent=2))
+          PY
+
+      - name: Retain exact front service-panel UV evidence
+        if: matrix.python-version == '3.11' && always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: object-front-service-panel-uv-review-001-${{ github.event.pull_request.head.sha || github.sha }}
+          path: |
+            lookdev/front_service_panel_uv_review_001.json
+            lookdev/object_material_profile_001.json
+            assets/modular-equipment-case-001/source.json
+            lookdev-proof/front_service_panel_uv_observe.gd
+            lookdev-proof/generated/front-service-panel-uv-exact-head.txt
+            lookdev-proof/generated/front_service_panel_uv_payload.json
+            lookdev-proof/generated/front_service_panel_uv_build_receipt.json
+            lookdev-proof/front-service-panel-uv-runtime-receipt.json
+            lookdev-proof/front-service-panel-uv-*.png
+          if-no-files-found: warn
+          retention-days: 30

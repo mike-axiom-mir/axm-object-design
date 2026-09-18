@@ -1,0 +1,84 @@
+{
+  "schema": "axm.object-service-dark-roughness-selected-field/v0.1",
+  "asset_id": "modular-equipment-case-001",
+  "material_id": "service_dark",
+  "intent": "freeze the exact Art-preferred bounded roughness review field as a Materials-owned scalar identity and prove lossless serialized receiving continuity before Technical Art transport, without promoting it to production texture art or changing the selected response envelope",
+  "roughness_evidence_head": "83f8d8fc99f7c832711f7f30fbcac72938550fc2",
+  "roughness_contract_blob": "a4b7ff0e454a62e20ac5c3ed14f9af01092b2c56",
+  "roughness_observer_blob": "4549a086f2f61f42f852daf6337c9d444980432c",
+  "art_direction_reference": {
+    "repository": "mike-axiom-mir/axm-create-me",
+    "commit": "a15d394449a77204b365726affdff14cb2ec5dac",
+    "path": "studio/direction/OBJECT_SERVICE_DARK_ROUGHNESS_MICROVARIATION_DIRECTION_024.md",
+    "blob": "8aa8c54b7dd007b83255ce179f2cb672ae84b7e6",
+    "decision": "PASS_ART_DIRECTION_OBJECT_SERVICE_DARK_BOUNDED_ROUGHNESS_MICROVARIATION_PREFERENCE_024",
+    "authority": "COORDINATION_REFERENCE_ONLY__MATERIALS_OWNS_FIELD_IDENTITY__ART_OWNS_VISUAL_PREFERENCE"
+  },
+  "frozen_response_envelope": {
+    "roughness_center": 0.66,
+    "candidate_amplitude": 0.06,
+    "declared_range": [
+      0.6,
+      0.72
+    ],
+    "pattern": "DETERMINISTIC_TWO_FREQUENCY_TEXEL_FIELD_WITH_SOURCE_SURFACE_PHASE",
+    "atlas": {
+      "width_px": 512,
+      "height_px": 512,
+      "pixels_per_meter": 500,
+      "padding_px": 16,
+      "filtering": "LINEAR_MIPMAP_ANISOTROPIC",
+      "repeat": false
+    }
+  },
+  "selected_field": {
+    "authority": "MATERIALS_SELECTED_REVIEW_FIELD_IDENTITY_NOT_PRODUCTION_TEXTURE",
+    "semantic_encoding": "BASE_LEVEL_R8_SCALAR_VALUES_ROW_MAJOR",
+    "width_px": 512,
+    "height_px": 512,
+    "scalar_r8_sha256": "b8d13c07f9b71278042b0d42d44b84579a3f327c6adf6723cae4c8c8f06dd38e",
+    "historical_godot_png_sha256": "57cf746a9a7e0615884fe3c45c6c4df677c2bd0631def61b3ccb1684daa26949",
+    "historical_godot_png_bytes": 32595,
+    "observed_r8_min": 153,
+    "observed_r8_max": 183,
+    "observed_unique_r8_values": 31,
+    "source_evidence_artifact_id": 10487530600,
+    "source_evidence_archive_sha256": "3281d0c3879e8466bff5b5b609cf85c1f5707226f9dce7439f29ed2f71416b07"
+  },
+  "serialization_review": {
+    "control": "IN_MEMORY_GODOT_RGBA8_SELECTED_FIELD_WITH_GENERATED_MIPMAPS",
+    "candidate": "LOSSLESS_PNG_RELOAD_OF_EXACT_BASE_LEVEL_R8_EQUIVALENT_THEN_REGENERATE_MIPMAPS",
+    "poses": [
+      "mid_open",
+      "peak_open"
+    ],
+    "contexts": [
+      "three_quarter",
+      "front_interior"
+    ],
+    "require_base_level_scalar_digest_identity": true,
+    "require_real_render_pixel_identity": true,
+    "renderer": "Godot 4.7.2 stable / GL Compatibility / X11-Xvfb",
+    "adapter_boundary": "PROOF_HOST_ADAPTER_RECORDED_AT_RUNTIME__NO_CROSS_RENDERER_EQUIVALENCE_INFERRED"
+  },
+  "truth_boundary": {
+    "art_direction_bounded_preference_received": true,
+    "source_geometry_changed": false,
+    "source_surface_identities_changed": false,
+    "uv_scale_changed": false,
+    "atlas_layout_changed": false,
+    "base_color_changed": false,
+    "metallic_changed": false,
+    "roughness_center_changed": false,
+    "roughness_amplitude_changed": false,
+    "production_texture_authored": false,
+    "physically_measured_coating": false,
+    "technical_art_transport_accepted": false,
+    "runtime_storage_adopted": false,
+    "target_device_accepted": false,
+    "visual_qa_final_accepted": false,
+    "art_direction_final_accepted": false,
+    "canon": false,
+    "production_ready": false
+  }
+}

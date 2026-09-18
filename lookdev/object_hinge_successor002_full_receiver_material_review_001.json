@@ -1,0 +1,79 @@
+{
+  "schema": "axm.object-hinge-successor002-full-receiver-material-review/v0.1",
+  "review_id": "modular-equipment-case-001-hinge-successor002-full-receiver-material-review-001",
+  "asset_id": "modular-equipment-case-001",
+  "source_path": "assets/modular-equipment-case-001/source.json",
+  "source_sha256": "49b1f9ed9865893d6de6f1ec8f069576732df694853fde4e3fcff366de32644a",
+  "material_profile_path": "lookdev/object_material_profile_001.json",
+  "material_profile_sha256": "dc200229d6c25fa84063aa51f66103abc022efa54b2167e4432a5b47fc40360c",
+  "technical_art_owner": {
+    "repository": "mike-axiom-mir/axm-object-design",
+    "pull_request": 16,
+    "exact_head": "f430d00d98e694dcf8302fd4df3c64a074f6f30e",
+    "artifact_id": 10531541834,
+    "artifact_sha256": "5e1134d0ebdf786d04ae789a841493ce9cf684f16aedd7dbad597f2e02b3ad5e",
+    "expected_result": "PASS_OBJECT_HINGE_SUCCESSOR002_CURRENT_UC_GODOT_TRIANGLE_TRANSPORT",
+    "target_glb_sha256": "f81a9bccd9de1033476da4e5bbea3871b01e2ebf9fb65fcf909447fd14c43e40",
+    "hard_surface_exact_head": "a6d18b9fe729304dc4d95d962ed27527adce211f",
+    "geometry_exact_head": "96abb2830ddabca9ed270b42a9447534d007ce64",
+    "rigging_exact_head": "cf377074f70ce7f7e386f1378c51705b3db4d305",
+    "uc_exact_head": "9609998db6677391766e9ee7ff53a5b9b08a3cb9",
+    "expected_target_triangle_index_transform": "GODOT_4_7_2_GLTFDOCUMENT_RECEIVER_LOCAL_[a,b,c]_TO_[a,c,b]",
+    "maximum_position_delta_m": 0.000001
+  },
+  "art_direction_request": {
+    "status_blob": "e35d498292ae8dbc1f71d740b90c01329cd6c95d",
+    "direction": "PASS_ART_DIRECTION_OBJECT_HINGE_SUCCESSOR002_ISOLATED_MATERIAL_CULL_REFERENCE_044",
+    "hold": "HOLD_ART_DIRECTION_OBJECT_HINGE_SUCCESSOR002_FULL_OBJECT_ADOPTION__INTEGRATED_CASE_HIERARCHY_PENDING",
+    "question": "Does successor002 read as integrated functional hardware in the complete Object, or as an over-bright / over-repetitive focal stripe relative to the shell and service surfaces?"
+  },
+  "review_scope": {
+    "expected_total_mesh_nodes": 31,
+    "expected_total_triangles": 1052,
+    "hinge_components": [
+      "hinge_body_b0",
+      "hinge_lid_l0",
+      "hinge_body_b1",
+      "hinge_lid_l1",
+      "hinge_body_b2"
+    ],
+    "expected_hinge_triangles": 480,
+    "camera_contexts": [
+      "full_rear_three_quarter",
+      "full_rear_grazing",
+      "full_side_three_quarter"
+    ],
+    "positive": "exact Technical-Art successor002 current-UC rebound GLB with all 31 mesh nodes visible, ordinary backface culling, and the unchanged Object material role family",
+    "hinge_neutral_control": "same exact GLB, cameras, lights, exposure, surrounding materials and culling; only the five exact successor002 hinge knuckles use the existing neutral-proof material",
+    "material_activity_control": "same exact GLB and ordinary culling with every node rendered by one unshaded neutral control material",
+    "material_policy": "do not retune any positive material, UV, geometry, camera, light, exposure or Technical-Art transport data to force a preferred hierarchy result"
+  },
+  "renderer": {
+    "engine": "Godot",
+    "version": "4.7.2-stable",
+    "rendering_method": "gl_compatibility"
+  },
+  "provenance": {
+    "external_textures": [],
+    "external_material_assets": [],
+    "technical_art_artifact_consumed_by_exact_id_and_archive_sha256": true,
+    "technical_art_glb_bytes_edited_by_materials": false,
+    "technical_art_triangle_transform_reimplemented_by_materials": false,
+    "positive_material_values_changed": false,
+    "control_material_is_existing_profile_baseline": true
+  },
+  "truth_boundary": {
+    "source_successor_default_adopted": false,
+    "technical_art_transport_adopted_as_object_default": false,
+    "materials_edits_transport_geometry": false,
+    "materials_claims_universal_godot_winding_rule": false,
+    "uvs_changed": false,
+    "textures_changed": false,
+    "positive_material_scalars_changed": false,
+    "art_direction_acceptance": false,
+    "visual_qa_acceptance": false,
+    "runtime_or_physics_accepted": false,
+    "canon": false,
+    "production_ready": false
+  }
+}

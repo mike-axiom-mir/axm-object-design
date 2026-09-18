@@ -1,0 +1,278 @@
+name: Object material lookdev evidence
+
+on:
+  push:
+    branches: [studio/materials-object-functional-surface-001]
+  pull_request:
+    paths:
+      - "lookdev/**"
+      - "lookdev-proof/**"
+      - "tests/test_materials_lookdev.py"
+      - "tests/test_material_articulation.py"
+      - "tools/build_object_material_lookdev_evidence.py"
+      - "tools/build_object_material_articulation_evidence.py"
+      - ".github/workflows/object-material-lookdev.yml"
+      - "assets/modular-equipment-case-001/source.json"
+      - "assets/modular-equipment-case-001/utility-module-001.json"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  exact-object-lookdev:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      matrix:
+        python-version: ['3.11', '3.13']
+    steps:
+      - name: Checkout exact Object Materials head
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Record exact Materials head
+        run: |
+          mkdir -p lookdev-proof/generated
+          git rev-parse HEAD > lookdev-proof/generated/exact-head.txt
+          test "$(cat lookdev-proof/generated/exact-head.txt)" = "${{ github.event.pull_request.head.sha || github.sha }}"
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Compile and run complete object tests
+        run: |
+          python -m compileall -q tools tests
+          python -m unittest discover -s tests -v
+
+      - name: Build exact source-bound material payload
+        run: python tools/build_object_material_lookdev_evidence.py
+
+      - name: Validate structural material payload
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          root=Path('lookdev-proof/generated')
+          r=json.loads((root/'build_receipt.json').read_text())
+          p=json.loads((root/'object_material_payload.json').read_text())
+          assert r['result']=='PASS_SOURCE_BOUND_FUNCTIONAL_SURFACE_PAYLOAD',r
+          assert r['module_fit_prerequisite']['result']=='PASS_BILATERAL_SERVICE_MODULE_FIT_PROOF',r
+          assert p['truth_boundary']['same_geometry_baseline_candidate'] is True,p
+          assert p['truth_boundary']['textures'] is False,p
+          assert len(p['components'])==r['component_count'] and len(p['components'])>20,(r,p)
+          assert set(p['contexts'])=={'front_service','three_quarter','rear_hinge'},p
+          print(json.dumps(r,indent=2))
+          PY
+
+      - name: Materialize exact Animation, Rigging and latch-ownership donors
+        env:
+          ANIMATION_COMMIT: 12a350fc38f67348f342cd0e53ed6b16383b789d
+          RIG_COMMIT: 4b72c9918c5fc1e89bd18a0be24fb4afac6e7775
+          LATCH_OWNERSHIP_COMMIT: d3fa10a270faae7925811f44f03381fe5c5d0215
+        run: |
+          set -euo pipefail
+          git fetch --no-tags origin \
+            studio/animation-object-lid-open-close-001 \
+            studio/rigging-object-lid-articulation-001 \
+            studio/hard-surface-front-latch-ownership-001
+          git cat-file -e "$ANIMATION_COMMIT^{commit}"
+          git cat-file -e "$RIG_COMMIT^{commit}"
+          git cat-file -e "$LATCH_OWNERSHIP_COMMIT^{commit}"
+          mkdir -p lookdev-proof/generated
+          git show "$ANIMATION_COMMIT:assets/modular-equipment-case-001/lid-motion-clip.json" > lookdev-proof/generated/lid-motion-clip.json
+          git show "$RIG_COMMIT:assets/modular-equipment-case-001/articulation.json" > lookdev-proof/generated/articulation.json
+          git show "$LATCH_OWNERSHIP_COMMIT:assets/modular-equipment-case-001/front-latch-ownership-001.json" > lookdev-proof/generated/front-latch-ownership-001.json
+          printf '%s\n' "$ANIMATION_COMMIT" > lookdev-proof/generated/animation-donor-head.txt
+          printf '%s\n' "$RIG_COMMIT" > lookdev-proof/generated/rig-donor-head.txt
+          printf '%s\n' "$LATCH_OWNERSHIP_COMMIT" > lookdev-proof/generated/latch-ownership-donor-head.txt
+
+      - name: Build exact articulated material review payload
+        run: python tools/build_object_material_articulation_evidence.py
+
+      - name: Validate articulated material review payload
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          root=Path('lookdev-proof/generated')
+          r=json.loads((root/'articulation_build_receipt.json').read_text())
+          p=json.loads((root/'object_material_articulation_payload.json').read_text())
+          assert r['result']=='PASS_SOURCE_BOUND_ARTICULATED_MATERIAL_REVIEW_PAYLOAD',r
+          assert r['base_material_payload_result']=='PASS_SOURCE_BOUND_FUNCTIONAL_SURFACE_PAYLOAD',r
+          assert r['pose_angles_deg']==[0.0,50.0,100.0],r
+          assert set(r['camera_contexts'])=={'three_quarter','rear_hinge'},r
+          assert r['rigid_owner_component']=='lid_shell',r
+          assert r['rigid_owner_follow_component_names']==['latch_0_keeper','latch_1_keeper'],r
+          assert p['truth_boundary']['static_pose_material_review_only'] is True,p
+          assert p['truth_boundary']['source_owned_latch_ownership_consumed'] is True,p
+          assert p['truth_boundary']['latch_mechanism_articulation'] is False,p
+          assert p['truth_boundary']['target_engine_animation_playback'] is False,p
+          assert p['truth_boundary']['controller_or_gameplay_acceptance'] is False,p
+          assert p['animation_dependency']['commit']=='12a350fc38f67348f342cd0e53ed6b16383b789d',p
+          assert p['rig_dependency']['commit']=='4b72c9918c5fc1e89bd18a0be24fb4afac6e7775',p
+          assert p['ownership_dependency']['commit']=='d3fa10a270faae7925811f44f03381fe5c5d0215',p
+          assert p['observed_ownership_contract_digest']=='c24b7856ce11c86847e3444de737d3299fec696b94fd71f209be736e0cb2a08b',p
+          print(json.dumps(r,indent=2))
+          PY
+
+      - name: Download pinned Godot 4.7.2
+        if: matrix.python-version == '3.11'
+        env:
+          GODOT_URL: https://github.com/godotengine/godot-builds/releases/download/4.7.2-stable/Godot_v4.7.2-stable_linux.x86_64.zip
+          GODOT_SHA256: cadd3204e728a35d3f13adb7fd0d7902636b79f6b95c40c265eb73b6c35329e4
+        run: |
+          set -euo pipefail
+          mkdir -p .godot-bin
+          curl --fail --location --retry 3 --retry-delay 2 "$GODOT_URL" --output .godot-bin/godot.zip
+          echo "$GODOT_SHA256  .godot-bin/godot.zip" | sha256sum --check --strict
+          unzip -q .godot-bin/godot.zip -d .godot-bin
+          chmod +x .godot-bin/Godot_v4.7.2-stable_linux.x86_64
+          .godot-bin/Godot_v4.7.2-stable_linux.x86_64 --version
+
+      - name: Install virtual display when needed
+        if: matrix.python-version == '3.11'
+        run: |
+          if ! command -v xvfb-run >/dev/null 2>&1; then
+            sudo apt-get update
+            sudo apt-get install -y xvfb
+          fi
+
+      - name: Render exact baseline and candidate in three contexts
+        if: matrix.python-version == '3.11'
+        run: |
+          set -euo pipefail
+          rm -f lookdev-proof/material-lookdev-runtime-receipt.json lookdev-proof/baseline-*.png lookdev-proof/candidate-*.png
+          xvfb-run --auto-servernum --server-args="-screen 0 1000x760x24" \
+            .godot-bin/Godot_v4.7.2-stable_linux.x86_64 \
+            --display-driver x11 \
+            --rendering-method gl_compatibility \
+            --path lookdev-proof \
+            --script observe.gd
+
+      - name: Validate target-host A/B evidence
+        if: matrix.python-version == '3.11'
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          root=Path('lookdev-proof')
+          r=json.loads((root/'material-lookdev-runtime-receipt.json').read_text())
+          assert r['state']=='PASS_TARGET_HOST_FUNCTIONAL_SURFACE_AB_READY',r
+          assert r['promotion_effect']=='NONE',r
+          assert set(r['contexts'])=={'front_service','three_quarter','rear_hinge'},r
+          for context,row in r['contexts'].items():
+            assert row['baseline']['state']=='PASS',(context,row)
+            assert row['candidate']['state']=='PASS',(context,row)
+            assert row['baseline']['component_count']==row['candidate']['component_count'],(context,row)
+            assert row['pixel_difference']['changed_pixels']>0,(context,row)
+            assert row['pixel_difference']['changed_fraction']>0.001,(context,row)
+            for prefix in ('baseline','candidate'):
+              path=root/f'{prefix}-{context}.png'
+              assert path.stat().st_size>2000,path
+          print(json.dumps(r,indent=2))
+          PY
+
+      - name: Render owner-bound articulated material A-B in exact static poses
+        if: matrix.python-version == '3.11'
+        run: |
+          set -euo pipefail
+          rm -f lookdev-proof/articulation-lookdev-runtime-receipt.json lookdev-proof/articulation-*.png
+          xvfb-run --auto-servernum --server-args="-screen 0 1000x760x24" \
+            .godot-bin/Godot_v4.7.2-stable_linux.x86_64 \
+            --display-driver x11 \
+            --rendering-method gl_compatibility \
+            --path lookdev-proof \
+            --script articulation_observe.gd
+
+      - name: Validate owner-bound articulated target-host material evidence
+        if: matrix.python-version == '3.11'
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          root=Path('lookdev-proof')
+          r=json.loads((root/'articulation-lookdev-runtime-receipt.json').read_text())
+          assert r['state']=='PASS_TARGET_HOST_ARTICULATED_SURFACE_OWNER_BOUND_AB_READY',r
+          assert r['promotion_effect']=='NONE',r
+          assert set(r['poses'])=={'closed','mid_open','peak_open'},r
+          for pose,contexts in r['poses'].items():
+            assert set(contexts)=={'three_quarter','rear_hinge'},(pose,contexts)
+            for context,row in contexts.items():
+              assert row['baseline']['state']=='PASS',(pose,context,row)
+              assert row['candidate']['state']=='PASS',(pose,context,row)
+              assert row['baseline']['component_count']==row['candidate']['component_count'],(pose,context,row)
+              assert row['pixel_difference']['changed_pixels']>0,(pose,context,row)
+              assert row['pixel_difference']['changed_fraction']>0.001,(pose,context,row)
+              assert row['baseline']['ownership_mode']=='owner_bound',(pose,context,row)
+              assert row['candidate']['ownership_mode']=='owner_bound',(pose,context,row)
+              for variant in ('baseline','candidate'):
+                path=root/f'articulation-{pose}-{context}-{variant}.png'
+                assert path.stat().st_size>2000,path
+          assert set(r['candidate_pose_differences_from_closed'])=={'mid_open','peak_open'},r
+          for pose,contexts in r['candidate_pose_differences_from_closed'].items():
+            for context,diff in contexts.items():
+              assert diff['changed_pixels']>0,(pose,context,diff)
+          assert set(r['ownership_differences_from_legacy_fixed'])=={'mid_open','peak_open'},r
+          for pose,contexts in r['ownership_differences_from_legacy_fixed'].items():
+            total=0
+            for context,row in contexts.items():
+              assert row['legacy_fixed']['ownership_mode']=='legacy_fixed',(pose,context,row)
+              assert row['owner_bound']['ownership_mode']=='owner_bound',(pose,context,row)
+              total += int(row['pixel_difference']['changed_pixels'])
+              path=root/f'articulation-ownership-{pose}-{context}-legacy_fixed.png'
+              assert path.stat().st_size>2000,path
+            assert total>0,(pose,contexts)
+          assert r['rigid_owner_component']=='lid_shell',r
+          assert r['rigid_owner_follow_component_names']==['latch_0_keeper','latch_1_keeper'],r
+          assert r['truth_boundary']['latch_mechanism_articulation'] is False,r
+          assert r['truth_boundary']['articulated_collision_clearance'] is False,r
+          assert r['truth_boundary']['target_engine_animation_playback'] is False,r
+          print(json.dumps(r,indent=2))
+          PY
+
+      - name: Retain exact material comparison evidence
+        if: matrix.python-version == '3.11' && always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: object-material-lookdev-001-${{ github.event.pull_request.head.sha || github.sha }}
+          path: |
+            lookdev/object_material_profile_001.json
+            lookdev-proof/generated/exact-head.txt
+            lookdev-proof/generated/object_material_payload.json
+            lookdev-proof/generated/build_receipt.json
+            lookdev-proof/material-lookdev-runtime-receipt.json
+            lookdev-proof/baseline-front_service.png
+            lookdev-proof/candidate-front_service.png
+            lookdev-proof/baseline-three_quarter.png
+            lookdev-proof/candidate-three_quarter.png
+            lookdev-proof/baseline-rear_hinge.png
+            lookdev-proof/candidate-rear_hinge.png
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Retain exact owner-bound articulated material evidence
+        if: matrix.python-version == '3.11' && always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: object-material-articulation-001-${{ github.event.pull_request.head.sha || github.sha }}
+          path: |
+            lookdev/object_material_profile_001.json
+            lookdev/articulated_material_review_001.json
+            lookdev-proof/generated/exact-head.txt
+            lookdev-proof/generated/lid-motion-clip.json
+            lookdev-proof/generated/articulation.json
+            lookdev-proof/generated/front-latch-ownership-001.json
+            lookdev-proof/generated/animation-donor-head.txt
+            lookdev-proof/generated/rig-donor-head.txt
+            lookdev-proof/generated/latch-ownership-donor-head.txt
+            lookdev-proof/generated/object_material_articulation_payload.json
+            lookdev-proof/generated/articulation_build_receipt.json
+            lookdev-proof/articulation-lookdev-runtime-receipt.json
+            lookdev-proof/articulation-*.png
+          if-no-files-found: warn
+          retention-days: 30

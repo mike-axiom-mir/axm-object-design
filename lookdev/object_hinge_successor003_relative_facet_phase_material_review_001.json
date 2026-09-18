@@ -1,0 +1,141 @@
+{
+  "schema": "axm.object-hinge-successor003-relative-facet-phase-material-review/v0.1",
+  "review_id": "modular-equipment-case-001-hinge-successor003-relative-facet-phase-material-review-001",
+  "asset_id": "modular-equipment-case-001",
+  "source_path": "assets/modular-equipment-case-001/source.json",
+  "source_sha256": "49b1f9ed9865893d6de6f1ec8f069576732df694853fde4e3fcff366de32644a",
+  "material_profile_path": "lookdev/object_material_profile_001.json",
+  "material_profile_sha256": "dc200229d6c25fa84063aa51f66103abc022efa54b2167e4432a5b47fc40360c",
+  "predecessor_materials_reference": {
+    "exact_head": "134e9a7622868acbd184519eade15996ab20fbbe",
+    "artifact_id": 10536492694,
+    "artifact_sha256": "7f20f3285dff37dcb6d769870d687699bde0f9d579c8c453913a7308daa5756a",
+    "decision": "EVIDENCE_READY_OBJECT_HINGE_SUCCESSOR002_HARDWARE_STEEL_BASE_VALUE_SUCCESSOR_001",
+    "hardware_steel": {
+      "albedo": "#7E868AFF",
+      "metallic": 0.88,
+      "roughness": 0.32
+    }
+  },
+  "art_direction_request": {
+    "direction": 47,
+    "coordination_commit": "8a751070c0d02ff772ef78a514ac4e1d0c3568ea",
+    "packet_path": "studio/direction/OBJECT_HINGE_RELATIVE_FACET_PHASE_DIRECTION_047.md",
+    "art_review_id": 5245661337,
+    "qa_review_id": 5245562753,
+    "request": "ONE_LID_VS_BODY_RELATIVE_12_GON_FACET_PHASE_ONLY_SUCCESSOR",
+    "frozen_review_reference": "#7E868AFF / metallic 0.88 / roughness 0.32",
+    "primary_failure_witness": "rear-three-quarter hinge pixels at L>=0.90 remain 1625 -> 1625 with the same five connected near-white components",
+    "no_more_scalar_search": true
+  },
+  "hard_surface_owner": {
+    "repository": "mike-axiom-mir/axm-object-design",
+    "pull_request": 25,
+    "exact_head": "ef1dfc2f2c1adbe3c90ba089c66ac09d223df25c",
+    "artifact_id": 10538130737,
+    "artifact_sha256": "b3d684146ca109f968f330a2b32e2923e2425c6a187db92987c3773fdbd9d016",
+    "expected_result": "PASS_SOURCE_OWNED_HINGE_RELATIVE_FACET_PHASE_SUCCESSOR",
+    "successor_id": "modular-equipment-case-001/hinge-bored-knuckle-relative-facet-phase-source-successor-003",
+    "segments": 12,
+    "body_phase_deg": 0.0,
+    "lid_phase_deg": 15.0,
+    "relative_lid_minus_body_phase_deg": 15.0,
+    "single_candidate_only": true,
+    "no_phase_sweep": true
+  },
+  "rigging_owner": {
+    "repository": "mike-axiom-mir/axm-object-design",
+    "pull_request": 27,
+    "exact_head": "0974a97af10fedf62a5803a88921faf96f3448d5",
+    "artifact_id": 10539181299,
+    "artifact_sha256": "85afbaa5fd948ed5135826fbe0d8c842b6917545c2d897e2756dc098dbc1731b",
+    "expected_result": "PASS_HINGE_RELATIVE_FACET_PHASE_SUCCESSOR_RIG_PHASE_COMPOSITION_CONTINUOUS_0_TO_110",
+    "successor003_head": "ef1dfc2f2c1adbe3c90ba089c66ac09d223df25c",
+    "successor003_contract_blob": "e7a44523ea80e567a745cd61af7fd7005757cc12",
+    "joint": "rear-lid-hinge-001",
+    "axis_source": [1, 0, 0],
+    "opening_sign": -1,
+    "source_angle_domain_deg": [0.0, 110.0],
+    "body_phase_deg": 0.0,
+    "lid_phase_deg": 15.0,
+    "visual_authority": false
+  },
+  "technical_art_baseline": {
+    "repository": "mike-axiom-mir/axm-object-design",
+    "pull_request": 16,
+    "exact_head": "f430d00d98e694dcf8302fd4df3c64a074f6f30e",
+    "artifact_id": 10531541834,
+    "artifact_sha256": "5e1134d0ebdf786d04ae789a841493ce9cf684f16aedd7dbad597f2e02b3ad5e",
+    "successor002_control_glb_sha256": "f81a9bccd9de1033476da4e5bbea3871b01e2ebf9fb65fcf909447fd14c43e40",
+    "current_uc_head": "9609998db6677391766e9ee7ff53a5b9b08a3cb9",
+    "helper_module": "tools/build_object_hinge_successor002_ta_transport_rebind.py",
+    "scene_helper_module": "tools/build_object_uc_rigid_scene_handoff.py",
+    "review_carrier_rule": "MATERIALS_REEXECUTES_PINNED_TA_HELPERS_AND_GENERIC_UC_FOR_LOCAL_REVIEW_ONLY__NO_TA_ADOPTION_TRANSFER"
+  },
+  "review_scope": {
+    "expected_total_mesh_nodes": 31,
+    "expected_total_triangles": 1052,
+    "hinge_components": [
+      "hinge_body_b0",
+      "hinge_lid_l0",
+      "hinge_body_b1",
+      "hinge_lid_l1",
+      "hinge_body_b2"
+    ],
+    "body_hinge_components": [
+      "hinge_body_b0",
+      "hinge_body_b1",
+      "hinge_body_b2"
+    ],
+    "lid_hinge_components": [
+      "hinge_lid_l0",
+      "hinge_lid_l1"
+    ],
+    "expected_hinge_triangles": 480,
+    "camera_contexts": [
+      "full_rear_three_quarter",
+      "full_rear_grazing",
+      "full_side_three_quarter"
+    ],
+    "hardware_steel": {
+      "albedo": "#7E868AFF",
+      "metallic": 0.88,
+      "roughness": 0.32
+    },
+    "all_non_hinge_materials_frozen": true,
+    "uv_texture_camera_light_exposure_frozen": true,
+    "candidate_changes_source_facet_phase_only": true,
+    "visual_intent": "test whether one source-owned lid-vs-body 12-gon relative facet phase breaks or materially reduces the synchronized five-part rear-three-quarter near-white hinge stripe while retaining rear-grazing and side hierarchy"
+  },
+  "renderer": {
+    "engine": "Godot",
+    "version": "4.7.2-stable",
+    "rendering_method": "gl_compatibility"
+  },
+  "provenance": {
+    "method": "consume exact retained Hard-Surface successor003 artifact and exact Technical-Art successor002 baseline artifact, bind exact Rigging successor003 compatibility owner identity, then construct one Materials-local review carrier with pinned Technical-Art helper code and pinned generic UC",
+    "external_textures": [],
+    "external_material_assets": [],
+    "hard_surface_source_bytes_edited_by_materials": false,
+    "technical_art_control_glb_bytes_edited_by_materials": false,
+    "technical_art_helper_code_copied_or_reimplemented_by_materials": false,
+    "generic_uc_domain_policy_added": false,
+    "material_scalar_search_performed": false,
+    "material_values_changed_from_direction047_reference": false
+  },
+  "truth_boundary": {
+    "source_successor_default_adopted": false,
+    "geometry_adoption_accepted": false,
+    "rigging_or_animation_accepted": false,
+    "technical_art_successor003_transport_adopted": false,
+    "runtime_or_physics_accepted": false,
+    "final_hardware_steel_material_values": false,
+    "uvs_changed": false,
+    "textures_changed": false,
+    "art_direction_acceptance": false,
+    "visual_qa_acceptance": false,
+    "arbitrary_renderer_equivalence": false,
+    "canon": false,
+    "production_ready": false
+  }
+}

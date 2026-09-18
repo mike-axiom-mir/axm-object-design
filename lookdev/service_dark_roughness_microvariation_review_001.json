@@ -1,0 +1,52 @@
+{
+  "schema": "axm.object-service-dark-roughness-microvariation-review/v0.1",
+  "asset_id": "modular-equipment-case-001",
+  "material_id": "service_dark",
+  "intent": "add one bounded self-generated roughness-response layer to the exact 500 px/m padded service_dark review atlas without changing source surfaces, UV scale, base-color atlas, metallic scalar or production authority",
+  "materials_parent_head": "4c12a0a57f6aa8778cff41efad321e13567c6c91",
+  "required_atlas": {
+    "width_px": 512,
+    "height_px": 512,
+    "pixels_per_meter": 500,
+    "padding_px": 16,
+    "filtering": "LINEAR_MIPMAP_ANISOTROPIC",
+    "repeat": false
+  },
+  "roughness": {
+    "base": 0.66,
+    "candidate_amplitude": 0.06,
+    "candidate_range": [0.60, 0.72],
+    "negative_amplitude": 0.28,
+    "negative_range": [0.38, 0.94],
+    "pattern": "DETERMINISTIC_TWO_FREQUENCY_TEXEL_FIELD_WITH_SOURCE_SURFACE_PHASE",
+    "edge_policy": "16_PX_NEAREST_EDGE_DILATION",
+    "external_assets": [],
+    "physically_measured": false,
+    "production_texture": false
+  },
+  "comparison": {
+    "poses": ["mid_open", "peak_open"],
+    "contexts": ["three_quarter", "front_interior"],
+    "modes": ["constant_roughness_control", "roughness_micro_candidate", "roughness_overcontrast_negative"],
+    "candidate_must_be_renderer_visible": true,
+    "negative_must_exceed_candidate_max_channel_delta": true
+  },
+  "truth_boundary": {
+    "source_geometry_changed": false,
+    "source_surface_identities_changed": false,
+    "source_uv_authored": false,
+    "production_uv_adopted": false,
+    "base_color_atlas_changed": false,
+    "metallic_scalar_changed": false,
+    "base_roughness_scalar_changed": false,
+    "roughness_texture_self_generated": true,
+    "production_texture_authored": false,
+    "physically_measured_coating": false,
+    "target_import_transport_accepted": false,
+    "runtime_cost_accepted": false,
+    "art_direction_final_accepted": false,
+    "visual_qa_final_accepted": false,
+    "canon": false,
+    "production_ready": false
+  }
+}
