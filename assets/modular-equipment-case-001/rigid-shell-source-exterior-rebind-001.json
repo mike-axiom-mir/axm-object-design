@@ -1,0 +1,39 @@
+{
+  "schema": "axm.object-geometry-rigid-shell-source-exterior-rebind/v0.1",
+  "rebind_id": "modular-equipment-case-001-rigid-shell-source-exterior-rebind-001",
+  "asset_id": "modular-equipment-case-001",
+  "source_path": "assets/modular-equipment-case-001/source.json",
+  "source_sha256": "49b1f9ed9865893d6de6f1ec8f069576732df694853fde4e3fcff366de32644a",
+  "historical_geometry_candidate": {
+    "pull_request": 33,
+    "exact_head": "606d8189a3bf4502141d8038f08d35d421829dde",
+    "result": "PASS_DERIVED_RIGID_SHELL_OUTWARD_ORIENTATION_CANDIDATE",
+    "interpretation": "historical candidate bytes and structural coherence are preserved; the word outward is not carried forward from algebraic sign alone"
+  },
+  "hard_surface_exterior_intent": {
+    "pull_request": 34,
+    "exact_head": "77a4058b305fab7fd04dab94781b9460f089727e",
+    "contract_path": "assets/modular-equipment-case-001/rigid-shell-exterior-intent-001.json",
+    "contract_git_blob": "a9f3c40868f7d77c524738155178af51c91b947e",
+    "canonical_exterior_face_order_digest": "3a28b04f065cd58a21a310588ab4cecce54878c67b41793439d358c837647d63",
+    "expected_face_matches": 812,
+    "expected_face_mismatches": 0,
+    "authority": "source_exterior_semantics_only"
+  },
+  "signed_volume_semantics": {
+    "source_frame": "Object source coordinates as emitted by the pinned source builder",
+    "positive_signed_volume_defines_outward": false,
+    "meaning": "algebraic orientation diagnostic in the declared source frame only; handedness-changing transport can reverse its sign"
+  },
+  "operation": "rebuild the historical Geometry winding-only candidate unchanged, independently rebuild the exact Hard-Surface source-exterior receipt, and require exact face-order identity before carrying the candidate forward as source-exterior-coherent",
+  "source_geometry_changed": false,
+  "candidate_geometry_changed": false,
+  "source_adopted": false,
+  "candidate_authority": "geometry_topology_structural_review_only",
+  "hard_surface_authority_preserved": true,
+  "technical_art_transport_authority_preserved": true,
+  "materials_art_qa_authority_preserved": true,
+  "runtime_authority_preserved": true,
+  "gameplay_collision_authority_preserved": true,
+  "truth_boundary": "A PASS may establish only that the unchanged historical Geometry candidate has the exact face order independently certified by Hard Surface as source-exterior intent for this exact Object source. Positive algebraic signed volume is retained only as a source-frame diagnostic and is not a generic definition of outward. No source adoption, transport/front-face rule, renderer acceptance, runtime/gameplay acceptance, CANON, production readiness, game readiness or Geometry mastery follows."
+}

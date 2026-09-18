@@ -1,0 +1,78 @@
+name: Object Geometry rigid-shell orientation evidence
+
+on:
+  pull_request:
+    paths:
+      - "assets/modular-equipment-case-001/source.json"
+      - "assets/modular-equipment-case-001/rigid-shell-orientation-review-001.json"
+      - "tools/build_modular_case.py"
+      - "tools/verify_rigid_shell_orientation.py"
+      - "tests/test_rigid_shell_orientation.py"
+      - ".github/workflows/object-geometry-rigid-shell-orientation.yml"
+  workflow_dispatch:
+
+jobs:
+  geometry-orientation:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.13"]
+    steps:
+      - name: Checkout exact candidate
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Compile structural tools and tests
+        run: python -m compileall -q tools tests
+
+      - name: Run complete Object regression suite
+        env:
+          PYTHONPATH: .
+        run: python -m unittest discover -s tests -p "test_*.py"
+
+      - name: Build exact Geometry orientation receipt
+        env:
+          PYTHONPATH: .
+        run: |
+          rm -rf geometry-orientation-evidence
+          mkdir -p geometry-orientation-evidence
+          python tools/verify_rigid_shell_orientation.py \
+            --receipt geometry-orientation-evidence/receipt.json \
+            --obj geometry-orientation-evidence/modular-equipment-case-001-rigid-shell-orientation-candidate.obj
+          cp assets/modular-equipment-case-001/source.json geometry-orientation-evidence/source.json
+          cp assets/modular-equipment-case-001/rigid-shell-orientation-review-001.json geometry-orientation-evidence/policy.json
+          printf '%s\n' "${{ github.event.pull_request.head.sha || github.sha }}" > geometry-orientation-evidence/exact-head.txt
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          receipt = json.loads(Path('geometry-orientation-evidence/receipt.json').read_text())
+          assert receipt['result'] == 'PASS_DERIVED_RIGID_SHELL_OUTWARD_ORIENTATION_CANDIDATE'
+          assert receipt['source_vertices'] == 468
+          assert receipt['source_triangles'] == 812
+          assert receipt['source_rigid_groups'] == 31
+          assert receipt['source_orientation_conflict_edges'] == 304
+          assert receipt['source_negative_signed_volume_groups'] == 31
+          assert receipt['candidate_orientation_conflict_edges'] == 0
+          assert receipt['candidate_positive_signed_volume_groups'] == 31
+          assert receipt['candidate_flipped_faces'] == 508
+          assert receipt['positions_changed'] is False
+          assert receipt['triangle_vertex_sets_changed'] is False
+          assert receipt['group_partition_changed'] is False
+          assert receipt['source_adopted'] is False
+          assert receipt['technical_art_scene_graph_adopted'] is False
+          assert receipt['runtime_adopted'] is False
+          assert receipt['gameplay_collision_adopted'] is False
+          PY
+
+      - name: Upload retained Geometry evidence
+        if: matrix.python-version == '3.11'
+        uses: actions/upload-artifact@v4
+        with:
+          name: object-geometry-rigid-shell-orientation-${{ github.event.pull_request.head.sha || github.sha }}
+          path: geometry-orientation-evidence
+          retention-days: 30

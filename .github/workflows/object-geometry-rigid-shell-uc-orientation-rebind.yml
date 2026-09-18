@@ -1,0 +1,110 @@
+name: Object Geometry merged UC orientation rebind evidence
+
+on:
+  pull_request:
+    paths:
+      - "assets/modular-equipment-case-001/source.json"
+      - "assets/modular-equipment-case-001/rigid-shell-orientation-review-001.json"
+      - "assets/modular-equipment-case-001/rigid-shell-source-exterior-rebind-001.json"
+      - "assets/modular-equipment-case-001/rigid-shell-uc-orientation-rebind-001.json"
+      - "tools/build_modular_case.py"
+      - "tools/verify_rigid_shell_orientation.py"
+      - "tools/verify_rigid_shell_source_exterior_rebind.py"
+      - "tools/verify_rigid_shell_uc_orientation_rebind.py"
+      - "tests/test_rigid_shell_orientation.py"
+      - "tests/test_rigid_shell_source_exterior_rebind.py"
+      - "tests/test_rigid_shell_uc_orientation_rebind.py"
+      - ".github/workflows/object-geometry-rigid-shell-uc-orientation-rebind.yml"
+  workflow_dispatch:
+
+jobs:
+  merged-uc-orientation-rebind:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.13"]
+    steps:
+      - name: Checkout exact Object Geometry head
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Compile structural tools and tests
+        run: python -m compileall -q tools tests
+
+      - name: Run complete Object regression suite
+        env:
+          PYTHONPATH: .
+        run: python -m unittest discover -s tests -p "test_*.py"
+
+      - name: Checkout exact merged Universal Creation orientation observer
+        uses: actions/checkout@v4
+        with:
+          repository: mike-axiom-mir/axm-universal-creation
+          ref: 13a823349a568db266099564d6f5d8d7bac48b2b
+          path: _uc_orientation_donor
+          fetch-depth: 1
+
+      - name: Fail closed on merged UC identity or observer blob drift
+        run: |
+          test "$(git -C _uc_orientation_donor rev-parse HEAD)" = "13a823349a568db266099564d6f5d8d7bac48b2b"
+          test "$(git -C _uc_orientation_donor rev-parse HEAD:src/axm_uc/mesh_topology.py)" = "b82c812d9c98799d0ccefa416ba2bd8d813245ee"
+          test "$(git -C _uc_orientation_donor rev-parse HEAD:src/axm_uc/mesh_closed_orientation.py)" = "c8edfccbd49aa0e8aacf62a51b18440ef7499ac0"
+
+      - name: Re-observe exact Object rigid groups through merged UC
+        env:
+          PYTHONPATH: .
+        run: |
+          rm -rf geometry-uc-orientation-evidence
+          mkdir -p geometry-uc-orientation-evidence
+          python tools/verify_rigid_shell_uc_orientation_rebind.py \
+            --uc-root _uc_orientation_donor \
+            --receipt geometry-uc-orientation-evidence/object-uc-orientation-rebind-receipt.json \
+            --obj geometry-uc-orientation-evidence/modular-equipment-case-001-rigid-shell-orientation-candidate.obj
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          receipt = json.loads(Path('geometry-uc-orientation-evidence/object-uc-orientation-rebind-receipt.json').read_text())
+          assert receipt['result'] == 'PASS_OBJECT_RIGID_SHELL_MERGED_UC_ORIENTATION_OBSERVER_REBIND'
+          assert receipt['merged_uc_observer']['merge_commit'] == '13a823349a568db266099564d6f5d8d7bac48b2b'
+          assert receipt['rigid_groups'] == 31
+          assert receipt['source_shared_orientation_conflicts'] == 304
+          assert receipt['candidate_shared_orientation_conflicts'] == 0
+          assert receipt['candidate_groups_requiring_shared_diagnostic_flips'] == 0
+          assert receipt['parity_compatible_groups'] == 31
+          assert receipt['candidate_volume_matching_groups'] == 31
+          assert receipt['positive_signed_volume_defines_outward'] is False
+          assert receipt['historical_local_helper_retired'] is False
+          assert receipt['source_adopted'] is False
+          assert receipt['candidate_adopted'] is False
+          assert receipt['work_budget_negative_control']['inspection_complete'] is False
+          assert receipt['work_budget_negative_control']['orientability_state'] == 'NOT_EVALUATED'
+          assert receipt['work_budget_negative_control']['reason'] == 'TRIANGLE_WORK_BUDGET_EXCEEDED'
+          assert receipt['work_budget_negative_control']['partial_parity_emitted'] is False
+          PY
+
+      - name: Retain exact Object + merged UC evidence identity
+        if: matrix.python-version == '3.11'
+        run: |
+          cp assets/modular-equipment-case-001/source.json geometry-uc-orientation-evidence/source.json
+          cp assets/modular-equipment-case-001/rigid-shell-orientation-review-001.json geometry-uc-orientation-evidence/historical-local-orientation-policy.json
+          cp assets/modular-equipment-case-001/rigid-shell-uc-orientation-rebind-001.json geometry-uc-orientation-evidence/merged-uc-rebind-policy.json
+          printf '%s\n' "${{ github.event.pull_request.head.sha || github.sha }}" > geometry-uc-orientation-evidence/exact-object-geometry-head.txt
+          printf '%s\n' "13a823349a568db266099564d6f5d8d7bac48b2b" > geometry-uc-orientation-evidence/exact-uc-merge-commit.txt
+          printf '%s\n' "b82c812d9c98799d0ccefa416ba2bd8d813245ee" > geometry-uc-orientation-evidence/exact-uc-mesh-topology-blob.txt
+          printf '%s\n' "c8edfccbd49aa0e8aacf62a51b18440ef7499ac0" > geometry-uc-orientation-evidence/exact-uc-closed-orientation-blob.txt
+
+      - name: Upload retained Object merged-UC orientation evidence
+        if: matrix.python-version == '3.11'
+        uses: actions/upload-artifact@v4
+        with:
+          name: object-geometry-uc-orientation-rebind-${{ github.event.pull_request.head.sha || github.sha }}
+          path: geometry-uc-orientation-evidence
+          retention-days: 30
