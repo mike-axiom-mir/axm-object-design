@@ -173,10 +173,8 @@ func make_viewport(context: String) -> Dictionary:
     viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
     viewport.render_target_clear_mode = SubViewport.CLEAR_MODE_ALWAYS
     get_root().add_child(viewport)
-
     var root3d := Node3D.new()
     viewport.add_child(root3d)
-
     var env := Environment.new()
     env.background_mode = Environment.BG_COLOR
     env.background_color = BACKGROUND
@@ -186,20 +184,17 @@ func make_viewport(context: String) -> Dictionary:
     var world := WorldEnvironment.new()
     world.environment = env
     root3d.add_child(world)
-
     var key := DirectionalLight3D.new()
     key.light_energy = 2.0
     key.shadow_enabled = false
     key.rotation_degrees = Vector3(-48.0, -34.0, 0.0)
     root3d.add_child(key)
-
     var fill := OmniLight3D.new()
     fill.light_energy = 3.2
     fill.omni_range = 4.0
     fill.shadow_enabled = false
     fill.position = Vector3(-0.85, 1.0, 0.95)
     root3d.add_child(fill)
-
     var camera := Camera3D.new()
     root3d.add_child(camera)
     camera.make_current()
@@ -215,9 +210,9 @@ func luminance(pixel: Color) -> float:
 func percentile(values: Array[float], fraction: float) -> float:
     if values.is_empty():
         return 0.0
-    var ordered := values.duplicate()
+    var ordered: Array[float] = values.duplicate()
     ordered.sort()
-    var index := clampi(int(floor(float(ordered.size() - 1) * fraction)), 0, ordered.size() - 1)
+    var index: int = clampi(int(floor(float(ordered.size() - 1) * fraction)), 0, ordered.size() - 1)
     return float(ordered[index])
 
 func capture(glb_path: String, context: String, variant: String) -> Dictionary:
@@ -234,7 +229,7 @@ func capture(glb_path: String, context: String, variant: String) -> Dictionary:
     if int(stats.get("total_triangles", 0)) != int(payload["expected_total_triangles"]):
         imported.queue_free()
         return {"state": "FAIL_TOTAL_TRIANGLE_COUNT", "observed": stats.get("total_triangles", -1)}
-    var expected_visible := int(payload["expected_total_mesh_nodes"]) if variant != "hinge_mask" else payload["hinge_components"].size()
+    var expected_visible: int = int(payload["expected_total_mesh_nodes"]) if variant != "hinge_mask" else int(payload["hinge_components"].size())
     if int(stats.get("visible_mesh_nodes", 0)) != expected_visible:
         imported.queue_free()
         return {"state": "FAIL_VISIBLE_MESH_NODE_COUNT", "variant": variant, "observed": stats.get("visible_mesh_nodes", -1), "expected": expected_visible}
@@ -261,7 +256,6 @@ func capture(glb_path: String, context: String, variant: String) -> Dictionary:
         if observed_mask != expected_mask:
             imported.queue_free()
             return {"state": "FAIL_MASK_NODE_SET", "observed": observed_mask, "expected": expected_mask}
-
     var setup := make_viewport(context)
     var viewport := setup["viewport"] as SubViewport
     var root3d := setup["root"] as Node3D
@@ -277,7 +271,7 @@ func capture(glb_path: String, context: String, variant: String) -> Dictionary:
         for x in range(image.get_width()):
             if background_delta(image.get_pixel(x, y)) > THRESHOLD:
                 coverage += 1
-    var minimum_coverage := 100 if variant == "hinge_mask" else 1000
+    var minimum_coverage: int = 100 if variant == "hinge_mask" else 1000
     if coverage < minimum_coverage:
         viewport.queue_free()
         return {"state": "FAIL_CAPTURE_INSUFFICIENT_COVERAGE", "variant": variant, "visible_pixels": coverage}
@@ -428,7 +422,6 @@ func _initialize() -> void:
     if payload["control_hardware_steel"]["albedo"] != payload["successor_hardware_steel"]["albedo"] or float(payload["control_hardware_steel"]["metallic"]) != float(payload["successor_hardware_steel"]["metallic"]):
         fail("successor changed more than roughness")
         return
-
     var receipt := {
         "schema": "axm.object-hinge-successor002-hardware-steel-roughness-successor-runtime/v0.1",
         "state": "PASS_EVIDENCE",
@@ -451,7 +444,6 @@ func _initialize() -> void:
         "aggregate_control_vs_successor_gt1": 0,
         "truth_boundary": payload["truth_boundary"]
     }
-
     for context_value in payload["camera_contexts"]:
         var context := String(context_value)
         var control := await capture(glb_path, context, "control")
@@ -495,7 +487,6 @@ func _initialize() -> void:
             "control_visible_p99_luminance": control_metrics["visible_p99_luminance"],
             "successor_visible_p99_luminance": successor_metrics["visible_p99_luminance"]
         }
-
     if int(receipt["aggregate_control_vs_successor_gt1"]) <= 0:
         fail("roughness-only successor produced no renderer-visible response", receipt)
         return
