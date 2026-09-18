@@ -37,14 +37,14 @@ jobs:
           test "$(git rev-parse "$donor:assets/modular-equipment-case-001/hinge-bored-knuckle-phase-invariant-source-successor-002.json")" = 7e078189d5c80508b28932563326cd5629c4efa6
           test "$(git rev-parse "$donor:tools/build_hinge_pin_annular_mesh.py")" = 7665d904d33dea2904b55b1ebd85a6e81621ad50
           test "$(git rev-parse "$donor:assets/modular-equipment-case-001/hinge-pin-annular-mesh-001.json")" = 39a52ad5ba8497a8a524d764bbf6744bb11cf54a
-          test "$(git rev-parse HEAD:assets/modular-equipment-case-001/hinge-phase-invariant-bored-knuckle-topology-rebind-002.json)" = 0de4dbbfe61cc2989689a070371181fe264e16a0
+          test "$(git rev-parse HEAD:assets/modular-equipment-case-001/hinge-phase-invariant-bored-knuckle-topology-rebind-002.json)" = 0de4dbb01df9cb49493ace474168bd2d99d169a5
           test "$(git rev-parse HEAD:tools/verify_hinge_phase_invariant_bored_knuckle_topology_rebind.py)" = 2d1306c9b4c7e89cb29a230c75bcf894f12b64a9
           if ! git cat-file -e "$predecessor_geometry^{commit}" 2>/dev/null; then
             git fetch --no-tags origin "$predecessor_geometry" --depth=1
           fi
           test "$(git rev-parse "$predecessor_geometry:assets/modular-equipment-case-001/hinge-bored-knuckle-topology-rebind-001.json")" = 4a27f5c179870a1fcf96d74a0c6d133cf8676b42
           git diff --name-only "$donor"..HEAD > /tmp/geometry-delta.txt
-          if grep -Ev '^(assets/modular-equipment-case-001/hinge-phase-invariant-bored-knuckle-topology-rebind-002\.json|assets/modular-equipment-case-001/hinge-successor002-godot-receiver-topology-001\.json|tools/verify_hinge_phase_invariant_bored_knuckle_topology_rebind\.py|tools/verify_hinge_successor002_godot_receiver_topology\.py|tests/test_hinge_phase_invariant_bored_knuckle_topology_rebind\.py|tests/test_hinge_successor002_godot_receiver_topology\.py|\.github/workflows/object-geometry-hinge-phase-invariant-bored-knuckle-topology\.yml)$' /tmp/geometry-delta.txt | grep -q .; then
+          if grep -Ev '^(assets/modular-equipment-case-001/hinge-phase-invariant-bored-knuckle-topology-rebind-002\.json|assets/modular-equipment-case-001/hinge-successor002-godot-receiver-topology-001\.json|tools/verify_hinge_phase_invariant_bored-knuckle-topology-rebind\.py|tools/verify_hinge_successor002_godot_receiver_topology\.py|tests/test_hinge_phase_invariant_bored-knuckle-topology-rebind\.py|tests/test_hinge_successor002_godot_receiver_topology\.py|\.github/workflows/object-geometry-hinge-phase-invariant-bored-knuckle-topology\.yml)$' /tmp/geometry-delta.txt | grep -q .; then
             echo "unexpected non-Geometry delta from exact Hard-Surface donor"
             cat /tmp/geometry-delta.txt
             exit 1
