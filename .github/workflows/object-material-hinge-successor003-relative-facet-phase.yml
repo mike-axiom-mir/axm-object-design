@@ -1,0 +1,277 @@
+name: Object material hinge successor003 relative-facet-phase review
+
+on:
+  push:
+    branches: [studio/materials-object-functional-surface-001]
+    paths:
+      - "lookdev/object_hinge_successor003_relative_facet_phase_material_review_001.json"
+      - "tools/verify_object_hinge_successor003_relative_facet_phase_material_review.py"
+      - "lookdev-proof/hinge_successor003_relative_facet_phase_material_review_observe.gd"
+      - ".github/workflows/object-material-hinge-successor003-relative-facet-phase.yml"
+      - "lookdev/object_material_profile_001.json"
+      - "assets/modular-equipment-case-001/source.json"
+      - "tools/build_modular_case.py"
+      - "tools/verify_object_hinge_successor002_full_receiver_material_review.py"
+  pull_request:
+    paths:
+      - "lookdev/object_hinge_successor003_relative_facet_phase_material_review_001.json"
+      - "tools/verify_object_hinge_successor003_relative_facet_phase_material_review.py"
+      - "lookdev-proof/hinge_successor003_relative_facet_phase_material_review_observe.gd"
+      - ".github/workflows/object-material-hinge-successor003-relative-facet-phase.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  relative-facet-phase-material-review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ['3.11', '3.13']
+    env:
+      HS_ARTIFACT_ID: "10538130737"
+      HS_ARTIFACT_SHA256: b3d684146ca109f968f330a2b32e2923e2425c6a187db92987c3773fdbd9d016
+      TA_ARTIFACT_ID: "10531541834"
+      TA_ARTIFACT_SHA256: 5e1134d0ebdf786d04ae789a841493ce9cf684f16aedd7dbad597f2e02b3ad5e
+      CONTROL_GLB_SHA256: f81a9bccd9de1033476da4e5bbea3871b01e2ebf9fb65fcf909447fd14c43e40
+
+    steps:
+      - name: Checkout exact Materials head
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Checkout exact Technical Art helper owner
+        uses: actions/checkout@v4
+        with:
+          repository: mike-axiom-mir/axm-object-design
+          ref: f430d00d98e694dcf8302fd4df3c64a074f6f30e
+          path: .ta-donor
+          fetch-depth: 1
+
+      - name: Checkout exact generic UC used by Technical Art baseline
+        uses: actions/checkout@v4
+        with:
+          repository: mike-axiom-mir/axm-universal-creation
+          ref: 9609998db6677391766e9ee7ff53a5b9b08a3cb9
+          path: .uc
+          fetch-depth: 1
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Validate Direction-047 contract and complete Object suite
+        run: |
+          set -euo pipefail
+          mkdir -p lookdev-proof/generated
+          git rev-parse HEAD > lookdev-proof/hinge-successor003-relative-facet-phase-materials-exact-head.txt
+          test "$(git -C .ta-donor rev-parse HEAD)" = "f430d00d98e694dcf8302fd4df3c64a074f6f30e"
+          test "$(git -C .uc rev-parse HEAD)" = "9609998db6677391766e9ee7ff53a5b9b08a3cb9"
+          python -m json.tool lookdev/object_hinge_successor003_relative_facet_phase_material_review_001.json >/dev/null
+          python -m py_compile tools/verify_object_hinge_successor003_relative_facet_phase_material_review.py
+          python tools/verify_object_hinge_successor003_relative_facet_phase_material_review.py \
+            --exact-head "$(git rev-parse HEAD)" \
+            --validate-only
+          python -m unittest discover -s tests -v
+
+      - name: Negative control rejects collapsed lid phase
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('lookdev/object_hinge_successor003_relative_facet_phase_material_review_001.json')
+          d=json.loads(p.read_text())
+          d['hard_surface_owner']['lid_phase_deg']=0.0
+          d['hard_surface_owner']['relative_lid_minus_body_phase_deg']=0.0
+          Path('/tmp/collapsed-phase-contract.json').write_text(json.dumps(d,indent=2)+'\n')
+          PY
+          set +e
+          output="$(python tools/verify_object_hinge_successor003_relative_facet_phase_material_review.py \
+            --contract /tmp/collapsed-phase-contract.json \
+            --exact-head "$(git rev-parse HEAD)" \
+            --validate-only 2>&1)"
+          status=$?
+          set -e
+          test "$status" -ne 0
+          printf '%s\n' "$output" | grep -q "Hard-Surface successor003 binding drift"
+          printf '%s\n' "Collapsed relative phase rejected as expected"
+
+      - name: Download exact Hard Surface and Technical Art retained artifacts
+        if: matrix.python-version == '3.11'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          rm -rf .hs-artifact .ta-artifact .hs-artifact.zip .ta-artifact.zip
+          mkdir -p .hs-artifact .ta-artifact
+          curl --fail --location --retry 3 --retry-delay 2 \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts/${HS_ARTIFACT_ID}/zip" \
+            -o .hs-artifact.zip
+          echo "$HS_ARTIFACT_SHA256  .hs-artifact.zip" | sha256sum --check --strict
+          unzip -q .hs-artifact.zip -d .hs-artifact
+
+          curl --fail --location --retry 3 --retry-delay 2 \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts/${TA_ARTIFACT_ID}/zip" \
+            -o .ta-artifact.zip
+          echo "$TA_ARTIFACT_SHA256  .ta-artifact.zip" | sha256sum --check --strict
+          unzip -q .ta-artifact.zip -d .ta-artifact
+
+      - name: Materialize exact donor files for the bounded review
+        if: matrix.python-version == '3.11'
+        run: |
+          set -euo pipefail
+          hs=lookdev-proof/generated/successor003-hard-surface-owner
+          ta=lookdev-proof/generated/successor002-technical-art-baseline
+          mkdir -p "$hs" "$ta"
+
+          copy_one() {
+            src_root="$1"; pattern="$2"; dest="$3"
+            found="$(find "$src_root" -type f -name "$pattern" -print -quit)"
+            test -n "$found"
+            cp "$found" "$dest"
+          }
+
+          copy_one .hs-artifact relative-facet-phase-successor-contract.json "$hs/relative-facet-phase-successor-contract.json"
+          copy_one .hs-artifact relative-facet-phase-successor-receipt.json "$hs/relative-facet-phase-successor-receipt.json"
+          copy_one .hs-artifact relative-facet-phase-successor-candidate.obj "$hs/relative-facet-phase-successor-candidate.obj"
+          copy_one .hs-artifact exact-head.txt "$hs/exact-head.txt"
+
+          copy_one .ta-artifact object-rigid-components-hinge-successor002.surface.json "$ta/object-rigid-components-hinge-successor002.surface.json"
+          copy_one .ta-artifact object-rigid-scene-graph-hinge-successor002.json "$ta/object-rigid-scene-graph-hinge-successor002.json"
+          copy_one .ta-artifact uc-rigid-scene-handoff-receipt.json "$ta/uc-rigid-scene-handoff-receipt.json"
+          copy_one .ta-artifact object-rigid-components-hinge-successor002-rebound.glb "$ta/object-rigid-components-hinge-successor002-rebound.glb"
+
+          test "$(cat "$hs/exact-head.txt")" = "ef1dfc2f2c1adbe3c90ba089c66ac09d223df25c"
+          echo "$CONTROL_GLB_SHA256  $ta/object-rigid-components-hinge-successor002-rebound.glb" | sha256sum --check --strict
+          printf '%s  %s\n' "$HS_ARTIFACT_SHA256" "$HS_ARTIFACT_ID" > "$hs/artifact-identity.txt"
+          printf '%s  %s\n' "$TA_ARTIFACT_SHA256" "$TA_ARTIFACT_ID" > "$ta/artifact-identity.txt"
+
+      - name: Build exact successor002 vs successor003 Materials-local review carrier
+        if: matrix.python-version == '3.11'
+        run: |
+          set -euo pipefail
+          hs=lookdev-proof/generated/successor003-hard-surface-owner
+          ta=lookdev-proof/generated/successor002-technical-art-baseline
+          out=lookdev-proof/generated/object-hinge-successor003-relative-facet-phase-material-review
+          rm -rf "$out"
+          python tools/verify_object_hinge_successor003_relative_facet_phase_material_review.py \
+            --exact-head "$(git rev-parse HEAD)" \
+            --hs-contract "$hs/relative-facet-phase-successor-contract.json" \
+            --hs-receipt "$hs/relative-facet-phase-successor-receipt.json" \
+            --hs-obj "$hs/relative-facet-phase-successor-candidate.obj" \
+            --hs-exact-head "$hs/exact-head.txt" \
+            --ta-surface "$ta/object-rigid-components-hinge-successor002.surface.json" \
+            --ta-manifest "$ta/object-rigid-scene-graph-hinge-successor002.json" \
+            --ta-scene-receipt "$ta/uc-rigid-scene-handoff-receipt.json" \
+            --control-glb "$ta/object-rigid-components-hinge-successor002-rebound.glb" \
+            --ta-donor-root .ta-donor \
+            --uc-root .uc \
+            --out "$out"
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('lookdev-proof/generated/object-hinge-successor003-relative-facet-phase-material-review/object_hinge_successor003_relative_facet_phase_material_review_build_receipt.json')
+          r=json.loads(p.read_text())
+          assert r['result']=='PASS_SOURCE_BOUND_OBJECT_HINGE_SUCCESSOR003_MATERIALS_LOCAL_REVIEW_CARRIER',r
+          assert r['mesh_nodes']==31 and r['triangles']==1052 and r['hinge_triangles']==480,r
+          assert r['changed_primitive_ids']==['hinge_lid_l0','hinge_lid_l1'],r
+          assert r['body_zero_phase_max_position_delta_vs_control_m']<=1e-9,r
+          assert r['lid_phase_min_position_delta_vs_control_m']>1e-6,r
+          assert r['technical_art_successor003_adoption_claimed'] is False,r
+          print(json.dumps(r,indent=2))
+          PY
+
+      - name: Download pinned Godot 4.7.2
+        if: matrix.python-version == '3.11'
+        env:
+          GODOT_URL: https://github.com/godotengine/godot-builds/releases/download/4.7.2-stable/Godot_v4.7.2-stable_linux.x86_64.zip
+          GODOT_SHA256: cadd3204e728a35d3f13adb7fd0d7902636b79f6b95c40c265eb73b6c35329e4
+        run: |
+          set -euo pipefail
+          mkdir -p .godot-bin
+          curl --fail --location --retry 3 --retry-delay 2 "$GODOT_URL" --output .godot-bin/godot.zip
+          echo "$GODOT_SHA256  .godot-bin/godot.zip" | sha256sum --check --strict
+          unzip -q .godot-bin/godot.zip -d .godot-bin
+          chmod +x .godot-bin/Godot_v4.7.2-stable_linux.x86_64
+          .godot-bin/Godot_v4.7.2-stable_linux.x86_64 --version
+          if ! command -v xvfb-run >/dev/null 2>&1; then
+            sudo apt-get update
+            sudo apt-get install -y xvfb
+          fi
+
+      - name: Render frozen material control versus one relative-facet-phase successor
+        if: matrix.python-version == '3.11'
+        run: |
+          set -euo pipefail
+          rm -f lookdev-proof/hinge-successor003-relative-facet-phase-material-review-runtime-receipt.json
+          rm -f lookdev-proof/hinge-successor003-phase-*.png
+          xvfb-run --auto-servernum --server-args="-screen 0 1100x820x24" \
+            .godot-bin/Godot_v4.7.2-stable_linux.x86_64 \
+            --display-driver x11 \
+            --rendering-method gl_compatibility \
+            --path lookdev-proof \
+            --script hinge_successor003_relative_facet_phase_material_review_observe.gd
+
+      - name: Validate exact successor003 real-render evidence
+        if: matrix.python-version == '3.11'
+        run: |
+          set -euo pipefail
+          out=lookdev-proof/generated/object-hinge-successor003-relative-facet-phase-material-review
+          python tools/verify_object_hinge_successor003_relative_facet_phase_material_review.py \
+            --exact-head "$(git rev-parse HEAD)" \
+            --runtime-receipt lookdev-proof/hinge-successor003-relative-facet-phase-material-review-runtime-receipt.json \
+            --build-receipt "$out/object_hinge_successor003_relative_facet_phase_material_review_build_receipt.json"
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('lookdev-proof/hinge-successor003-relative-facet-phase-material-review-runtime-receipt.json')
+          r=json.loads(p.read_text())
+          assert r['state']=='PASS_EVIDENCE',r
+          assert r['decision']=='EVIDENCE_READY_OBJECT_HINGE_SUCCESSOR003_RELATIVE_FACET_PHASE_MATERIAL_REVIEW_001',r
+          assert r['hardware_steel_review']['albedo_hex']=='#7E868AFF',r
+          assert r['hardware_steel_review']['metallic']==0.88 and r['hardware_steel_review']['roughness']==0.32,r
+          print(json.dumps({
+            'renderer':r['renderer'],
+            'aggregate_control_vs_candidate_gt1':r['aggregate_control_vs_candidate_gt1'],
+            'primary_rear_three_quarter_witness':r['primary_rear_three_quarter_witness'],
+            'rear_grazing':{
+              'control_near_white':r['observations']['full_rear_grazing']['control_near_white'],
+              'candidate_near_white':r['observations']['full_rear_grazing']['candidate_near_white'],
+            },
+            'side_three_quarter':{
+              'control_near_white':r['observations']['full_side_three_quarter']['control_near_white'],
+              'candidate_near_white':r['observations']['full_side_three_quarter']['candidate_near_white'],
+            },
+          },indent=2))
+          PY
+
+      - name: Retain exact successor003 relative-facet-phase Materials evidence
+        if: matrix.python-version == '3.11' && always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: object-material-hinge-successor003-relative-facet-phase-${{ github.event.pull_request.head.sha || github.sha }}
+          path: |
+            lookdev/object_hinge_successor003_relative_facet_phase_material_review_001.json
+            tools/verify_object_hinge_successor003_relative_facet_phase_material_review.py
+            lookdev-proof/hinge_successor003_relative_facet_phase_material_review_observe.gd
+            lookdev-proof/hinge-successor003-relative-facet-phase-materials-exact-head.txt
+            lookdev-proof/generated/successor003-hard-surface-owner/
+            lookdev-proof/generated/successor002-technical-art-baseline/
+            lookdev-proof/generated/object-hinge-successor003-relative-facet-phase-material-review/
+            lookdev-proof/hinge-successor003-relative-facet-phase-material-review-runtime-receipt.json
+            lookdev-proof/hinge-successor003-phase-*.png
+          if-no-files-found: warn
+          retention-days: 30
