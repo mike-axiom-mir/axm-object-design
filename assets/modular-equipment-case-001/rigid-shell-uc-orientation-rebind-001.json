@@ -1,0 +1,40 @@
+{
+  "schema": "axm.object-geometry-rigid-shell-uc-orientation-rebind/v0.1",
+  "asset_id": "modular-equipment-case-001",
+  "source_path": "assets/modular-equipment-case-001/source.json",
+  "source_sha256": "49b1f9ed9865893d6de6f1ec8f069576732df694853fde4e3fcff366de32644a",
+  "historical_local_candidate": {
+    "pull_request": 33,
+    "exact_head": "606d8189a3bf4502141d8038f08d35d421829dde",
+    "policy_path": "assets/modular-equipment-case-001/rigid-shell-orientation-review-001.json",
+    "candidate_preserved": true,
+    "local_helper_retired": false
+  },
+  "merged_uc_observer": {
+    "repository": "mike-axiom-mir/axm-universal-creation",
+    "pull_request": 200,
+    "pull_request_final_head": "316e9c2a59e92046af309667fe21b956676b7286",
+    "merge_commit": "13a823349a568db266099564d6f5d8d7bac48b2b",
+    "mesh_topology_blob": "b82c812d9c98799d0ccefa416ba2bd8d813245ee",
+    "mesh_closed_orientation_blob": "c8edfccbd49aa0e8aacf62a51b18440ef7499ac0",
+    "include_closed_component_orientation": true,
+    "weld_tolerance_m": 1e-9,
+    "orientation_volume_epsilon_m3": 1e-15,
+    "orientation_frame_label": "OBJECT_SOURCE_NUMERIC_XYZ_METRES",
+    "orientation_handedness": "UNDECLARED"
+  },
+  "pattern": "PRESERVE_LOCAL_ORIENTATION_CANDIDATE_AND_REBIND_EXACT_RIGID_GROUPS_TO_MERGED_SHARED_ORIENTABILITY_OBSERVER",
+  "historical_positive_volume_label_is_not_current_exterior_authority": true,
+  "positive_signed_volume_defines_outward": false,
+  "shared_parity_is_diagnostic_only": true,
+  "source_geometry_changed": false,
+  "candidate_geometry_changed": false,
+  "source_adopted": false,
+  "candidate_adopted": false,
+  "hard_surface_exterior_authority_preserved": true,
+  "technical_art_transport_authority_preserved": true,
+  "renderer_front_face_authority_preserved": true,
+  "runtime_authority_preserved": true,
+  "gameplay_collision_authority_preserved": true,
+  "truth_boundary": "A PASS may prove only that the exact unchanged Object rigid groups and the unchanged historical Geometry winding candidate can be re-observed through the exact merged UC closed-component orientation observer with compatible closure, orientability, parity-complement and algebraic-volume evidence. Shared parity remains diagnostic; positive algebraic sign is not exterior authority; the local historical receipt is preserved rather than retired. This does not adopt or rewrite source/candidate geometry, select renderer front-face policy, prove final shading/runtime/collision/gameplay suitability, establish CANON or production readiness, or establish Geometry mastery."
+}
