@@ -66,6 +66,8 @@ class HingeBoredKnuckleAxialStopBracketTests(unittest.TestCase):
         self.assertEqual(receipt["result"], RESULT)
         self.assertAlmostEqual(receipt["left_stop_inward_face_x_m"], -0.344, places=12)
         self.assertAlmostEqual(receipt["right_stop_inward_face_x_m"], 0.344, places=12)
+        self.assertAlmostEqual(receipt["left_stop_outward_face_x_m"], -0.35, places=12)
+        self.assertAlmostEqual(receipt["right_stop_outward_face_x_m"], 0.35, places=12)
         self.assertAlmostEqual(receipt["knuckle_stack_min_x_m"], -0.33, places=12)
         self.assertAlmostEqual(receipt["knuckle_stack_max_x_m"], 0.33, places=12)
         self.assertAlmostEqual(receipt["left_static_axial_gap_m"], 0.014, places=12)
@@ -79,15 +81,13 @@ class HingeBoredKnuckleAxialStopBracketTests(unittest.TestCase):
         self.assertFalse(receipt["axial_translation_model_authorized"])
         self.assertFalse(receipt["retention_force_authorized"])
 
-    def test_left_stop_inside_stack_fails_closed(self):
+    def test_knuckle_stack_outgrows_left_bracket_fails_closed(self):
         host = json.loads(HOST.read_text(encoding="utf-8"))
         stop = json.loads(STOP.read_text(encoding="utf-8"))
-        bad = copy.deepcopy(stop)
-        for item in bad["stops"]:
-            if item["side"] == "left":
-                item["center_x_m"] = -0.323
+        bad = copy.deepcopy(host)
+        bad["hinge"]["knuckles"][0]["center_x"] = -0.30
         with self.assertRaisesRegex(AssertionError, "left stop inward face does not bracket"):
-            _axial_bracket_metrics(host, bad)
+            _axial_bracket_metrics(bad, stop)
 
     def test_pin_endpoint_seating_drift_fails_closed(self):
         host = json.loads(HOST.read_text(encoding="utf-8"))
