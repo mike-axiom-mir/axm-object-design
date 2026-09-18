@@ -16,7 +16,9 @@ permissions:
   contents: read
 
 env:
-  TECHNICAL_ART_HEAD: 965fb2f24dbd0b0cbb748d9f8b8712d62966315f
+  PREVIOUS_TECHNICAL_ART_HEAD: 965fb2f24dbd0b0cbb748d9f8b8712d62966315f
+  TECHNICAL_ART_HEAD: dad13ce23a0fd8e0ec3e612ac1e72f01c5155284
+  TECHNICAL_ART_REBOUND_GLB_SHA256: 9788bc7d405b1837961409de20bc9f76d72facae63726cdc7bf7a3ffd2ac3914
   UC_HEAD: 6dc465987e01362264f88b7cef4213609ae50763
   LID_RIG_HEAD: 4b72c9918c5fc1e89bd18a0be24fb4afac6e7775
   LATCH_RIG_HEAD: 3b667ff5d30c46ec2fe7da7679518970f8610018
@@ -43,6 +45,24 @@ jobs:
           repository: mike-axiom-mir/axm-object-design
           ref: ${{ env.TECHNICAL_ART_HEAD }}
           path: .technical-art
+          fetch-depth: 0
+
+      - name: Prove Technical Art successor continuity before replay
+        run: |
+          set -euo pipefail
+          test "$(git -C .technical-art rev-parse HEAD)" = "$TECHNICAL_ART_HEAD"
+          git -C .technical-art merge-base --is-ancestor "$PREVIOUS_TECHNICAL_ART_HEAD" "$TECHNICAL_ART_HEAD"
+          for path in \
+            assets/modular-equipment-case-001/source.json \
+            assets/modular-equipment-case-001/front-latch-ownership-001.json \
+            tools/build_object_uc_rigid_scene_handoff.py \
+            rigid-proof/observe.gd
+          do
+            previous_blob="$(git -C .technical-art rev-parse "${PREVIOUS_TECHNICAL_ART_HEAD}:${path}")"
+            current_blob="$(git -C .technical-art rev-parse "${TECHNICAL_ART_HEAD}:${path}")"
+            test "$previous_blob" = "$current_blob"
+            printf '%s %s\n' "$current_blob" "$path"
+          done
 
       - name: Checkout exact UC rigid-scene donor
         uses: actions/checkout@v4
@@ -86,6 +106,7 @@ jobs:
           )
           test "$(git -C .technical-art rev-parse HEAD)" = "$TECHNICAL_ART_HEAD"
           test "$(git -C .uc rev-parse HEAD)" = "$UC_HEAD"
+          echo "$TECHNICAL_ART_REBOUND_GLB_SHA256  .technical-art/rigid-proof/generated/object-rigid-components-rebound.glb" | sha256sum -c -
 
       - name: Materialize exact Animation and latch donors
         run: |
@@ -145,15 +166,17 @@ jobs:
       - name: Validate exact cross-repo identity before target host
         run: |
           python - <<'PY'
-          import json, os
+          import hashlib, json, os
           from pathlib import Path
           root=Path('animation-proof/generated')
           t=json.loads((root/'uc-rigid-scene-handoff-receipt.json').read_text())
           s=json.loads((root/'lid-latch-motion-evidence.json').read_text())
           r=json.loads((root/'front-latch-articulation.receipt.json').read_text())
+          glb_sha=hashlib.sha256((root/'object-rigid-components-rebound.glb').read_bytes()).hexdigest()
           assert t['result']=='PASS_OBJECT_SOURCE_OWNED_RIGID_PARTS_THROUGH_UC_SCENE_GRAPH',t
           assert t['source_repository_head']==os.environ['TECHNICAL_ART_HEAD'],t
           assert t['observed_uc_commit']==os.environ['UC_HEAD'],t
+          assert t['rebound_glb_sha256']==os.environ['TECHNICAL_ART_REBOUND_GLB_SHA256']==glb_sha,(t,glb_sha)
           assert s['result']=='PASS_ORDERED_LATCH_RELEASE_LID_CLIP_REENGAGE_SEQUENCE',s
           assert s['exact_receiving_head']==os.environ['EXACT_HEAD_SHA'],s
           assert s['host_source_sha256']==t['source_sha256'],(s,t)
