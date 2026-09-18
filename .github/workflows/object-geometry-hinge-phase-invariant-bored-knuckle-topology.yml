@@ -6,6 +6,7 @@ on:
 
 permissions:
   contents: read
+  actions: read
 
 jobs:
   structural:
@@ -13,6 +14,11 @@ jobs:
       matrix:
         python-version: ['3.11', '3.13']
     runs-on: ubuntu-latest
+    env:
+      SOURCE_GEOMETRY_HEAD: 96abb2830ddabca9ed270b42a9447534d007ce64
+      TECHNICAL_ART_HEAD: f430d00d98e694dcf8302fd4df3c64a074f6f30e
+      TECHNICAL_ART_ARTIFACT_ID: '10531541834'
+      TECHNICAL_ART_ARTIFACT_SHA256: 5e1134d0ebdf786d04ae789a841493ce9cf684f16aedd7dbad597f2e02b3ad5e
     steps:
       - uses: actions/checkout@v4
         with:
@@ -31,12 +37,14 @@ jobs:
           test "$(git rev-parse "$donor:assets/modular-equipment-case-001/hinge-bored-knuckle-phase-invariant-source-successor-002.json")" = 7e078189d5c80508b28932563326cd5629c4efa6
           test "$(git rev-parse "$donor:tools/build_hinge_pin_annular_mesh.py")" = 7665d904d33dea2904b55b1ebd85a6e81621ad50
           test "$(git rev-parse "$donor:assets/modular-equipment-case-001/hinge-pin-annular-mesh-001.json")" = 39a52ad5ba8497a8a524d764bbf6744bb11cf54a
+          test "$(git rev-parse HEAD:assets/modular-equipment-case-001/hinge-phase-invariant-bored-knuckle-topology-rebind-002.json)" = 0de4dbbfe61cc2989689a070371181fe264e16a0
+          test "$(git rev-parse HEAD:tools/verify_hinge_phase_invariant_bored_knuckle_topology_rebind.py)" = 2d1306c9b4c7e89cb29a230c75bcf894f12b64a9
           if ! git cat-file -e "$predecessor_geometry^{commit}" 2>/dev/null; then
             git fetch --no-tags origin "$predecessor_geometry" --depth=1
           fi
           test "$(git rev-parse "$predecessor_geometry:assets/modular-equipment-case-001/hinge-bored-knuckle-topology-rebind-001.json")" = 4a27f5c179870a1fcf96d74a0c6d133cf8676b42
           git diff --name-only "$donor"..HEAD > /tmp/geometry-delta.txt
-          if grep -Ev '^(assets/modular-equipment-case-001/hinge-phase-invariant-bored-knuckle-topology-rebind-002\.json|tools/verify_hinge_phase_invariant_bored_knuckle_topology_rebind\.py|tests/test_hinge_phase_invariant_bored_knuckle_topology_rebind\.py|\.github/workflows/object-geometry-hinge-phase-invariant-bored-knuckle-topology\.yml)$' /tmp/geometry-delta.txt | grep -q .; then
+          if grep -Ev '^(assets/modular-equipment-case-001/hinge-phase-invariant-bored-knuckle-topology-rebind-002\.json|assets/modular-equipment-case-001/hinge-successor002-godot-receiver-topology-001\.json|tools/verify_hinge_phase_invariant_bored_knuckle_topology_rebind\.py|tools/verify_hinge_successor002_godot_receiver_topology\.py|tests/test_hinge_phase_invariant_bored_knuckle_topology_rebind\.py|tests/test_hinge_successor002_godot_receiver_topology\.py|\.github/workflows/object-geometry-hinge-phase-invariant-bored-knuckle-topology\.yml)$' /tmp/geometry-delta.txt | grep -q .; then
             echo "unexpected non-Geometry delta from exact Hard-Surface donor"
             cat /tmp/geometry-delta.txt
             exit 1
@@ -45,7 +53,7 @@ jobs:
         run: python -m compileall tools tests
       - name: Test full repository suite
         run: python -m unittest discover -s tests -v
-      - name: Build exact successor 002 topology evidence
+      - name: Build exact successor 002 source topology evidence
         if: matrix.python-version == '3.11'
         shell: bash
         run: |
@@ -66,6 +74,81 @@ jobs:
           git rev-parse HEAD > "$out/exact-head.txt"
           printf '%s\n' a6d18b9fe729304dc4d95d962ed27527adce211f > "$out/hard-surface-donor-head.txt"
           printf '%s\n' 07f68d8e3df57ecf4ae3b8fb86fdb3bca5683747 > "$out/predecessor-geometry-head.txt"
+      - name: Revalidate topology on exact retained Godot receiver evidence
+        if: matrix.python-version == '3.11'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          out=evidence/geometry-hinge-phase-invariant-bored-knuckle-topology
+          ta_root=/tmp/technical-art-artifact
+          rm -rf "$ta_root" /tmp/technical-art-artifact.zip
+          mkdir -p "$ta_root"
+          curl --fail --location --retry 3 --retry-delay 2 \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts/${TECHNICAL_ART_ARTIFACT_ID}/zip" \
+            -o /tmp/technical-art-artifact.zip
+          echo "${TECHNICAL_ART_ARTIFACT_SHA256}  /tmp/technical-art-artifact.zip" | sha256sum --check --strict
+          unzip -q /tmp/technical-art-artifact.zip -d "$ta_root"
+
+          SOURCE_SURFACE=$(find "$ta_root" -type f -name 'object-rigid-components-hinge-successor002.surface.json' -print -quit)
+          TARGET_ARRAYS=$(find "$ta_root" -type f -name 'hinge-successor002-target-arrays.json' -print -quit)
+          TA_RECEIPT=$(find "$ta_root" -type f -name 'hinge-successor002-target-transport-receipt.json' -print -quit)
+          TA_HEAD_FILE=$(find "$ta_root" -type f -name 'exact-technical-art-head.txt' -print -quit)
+          test -n "$SOURCE_SURFACE" && test -n "$TARGET_ARRAYS" && test -n "$TA_RECEIPT" && test -n "$TA_HEAD_FILE"
+          test "$(tr -d '\r\n' < "$TA_HEAD_FILE")" = "$TECHNICAL_ART_HEAD"
+
+          python tools/verify_hinge_successor002_godot_receiver_topology.py \
+            --contract assets/modular-equipment-case-001/hinge-successor002-godot-receiver-topology-001.json \
+            --source-surface "$SOURCE_SURFACE" \
+            --target-arrays "$TARGET_ARRAYS" \
+            --ta-receipt "$TA_RECEIPT" \
+            --source-geometry-receipt "$out/hinge-phase-invariant-bored-knuckle-topology-rebind-receipt.json" \
+            --out "$out/hinge-successor002-godot-receiver-topology-receipt.json"
+
+          export SOURCE_SURFACE TARGET_ARRAYS TA_RECEIPT
+          python - <<'PY'
+          import json, os
+          source=json.load(open(os.environ['SOURCE_SURFACE']))
+          target=json.load(open(os.environ['TARGET_ARRAYS']))
+          name='hinge_body_b0'
+          primitive=next(item for item in source['primitives'] if item.get('id')==name)
+          target['components'][name]['indices'][:3]=primitive['indices'][:3]
+          json.dump(target,open('/tmp/target-arrays-partial-reversal.json','w'),indent=2,sort_keys=True)
+          ta=json.load(open(os.environ['TA_RECEIPT']))
+          ta['technical_art_head']='0'*40
+          json.dump(ta,open('/tmp/ta-head-drift.json','w'),indent=2,sort_keys=True)
+          PY
+          if python tools/verify_hinge_successor002_godot_receiver_topology.py \
+            --contract assets/modular-equipment-case-001/hinge-successor002-godot-receiver-topology-001.json \
+            --source-surface "$SOURCE_SURFACE" --target-arrays /tmp/target-arrays-partial-reversal.json \
+            --ta-receipt "$TA_RECEIPT" --source-geometry-receipt "$out/hinge-phase-invariant-bored-knuckle-topology-rebind-receipt.json" \
+            --out /tmp/should-not-pass.json; then
+            echo 'ERROR: partial receiver reversal unexpectedly passed Geometry topology gate' >&2
+            exit 1
+          fi
+          printf '%s\n' PASS_PARTIAL_RECEIVER_REVERSAL_REJECTED > "$out/negative-partial-receiver-reversal.txt"
+          if python tools/verify_hinge_successor002_godot_receiver_topology.py \
+            --contract assets/modular-equipment-case-001/hinge-successor002-godot-receiver-topology-001.json \
+            --source-surface "$SOURCE_SURFACE" --target-arrays "$TARGET_ARRAYS" \
+            --ta-receipt /tmp/ta-head-drift.json --source-geometry-receipt "$out/hinge-phase-invariant-bored-knuckle-topology-rebind-receipt.json" \
+            --out /tmp/should-not-pass-head.json; then
+            echo 'ERROR: Technical Art head drift unexpectedly passed Geometry topology gate' >&2
+            exit 1
+          fi
+          printf '%s\n' PASS_TECHNICAL_ART_HEAD_DRIFT_REJECTED > "$out/negative-technical-art-head-drift.txt"
+
+          mkdir -p "$out/godot-receiver-source"
+          cp assets/modular-equipment-case-001/hinge-successor002-godot-receiver-topology-001.json "$out/godot-receiver-topology-contract-001.json"
+          cp "$SOURCE_SURFACE" "$out/godot-receiver-source/object-rigid-components-hinge-successor002.surface.json"
+          cp "$TARGET_ARRAYS" "$out/godot-receiver-source/hinge-successor002-target-arrays.json"
+          cp "$TA_RECEIPT" "$out/godot-receiver-source/hinge-successor002-target-transport-receipt.json"
+          printf '%s\n' "$TECHNICAL_ART_HEAD" > "$out/godot-receiver-source/exact-technical-art-head.txt"
+          printf '%s\n' "$TECHNICAL_ART_ARTIFACT_ID" > "$out/godot-receiver-source/technical-art-artifact-id.txt"
+          printf '%s\n' "$TECHNICAL_ART_ARTIFACT_SHA256" > "$out/godot-receiver-source/technical-art-artifact-sha256.txt"
       - name: Upload retained evidence
         if: matrix.python-version == '3.11'
         uses: actions/upload-artifact@v4
