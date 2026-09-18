@@ -43,6 +43,23 @@
     "single_candidate_only": true,
     "no_phase_sweep": true
   },
+  "rigging_owner": {
+    "repository": "mike-axiom-mir/axm-object-design",
+    "pull_request": 27,
+    "exact_head": "0974a97af10fedf62a5803a88921faf96f3448d5",
+    "artifact_id": 10539181299,
+    "artifact_sha256": "85afbaa5fd948ed5135826fbe0d8c842b6917545c2d897e2756dc098dbc1731b",
+    "expected_result": "PASS_HINGE_RELATIVE_FACET_PHASE_SUCCESSOR_RIG_PHASE_COMPOSITION_CONTINUOUS_0_TO_110",
+    "successor003_head": "ef1dfc2f2c1adbe3c90ba089c66ac09d223df25c",
+    "successor003_contract_blob": "e7a44523ea80e567a745cd61af7fd7005757cc12",
+    "joint": "rear-lid-hinge-001",
+    "axis_source": [1, 0, 0],
+    "opening_sign": -1,
+    "source_angle_domain_deg": [0.0, 110.0],
+    "body_phase_deg": 0.0,
+    "lid_phase_deg": 15.0,
+    "visual_authority": false
+  },
   "technical_art_baseline": {
     "repository": "mike-axiom-mir/axm-object-design",
     "pull_request": 16,
@@ -96,7 +113,7 @@
     "rendering_method": "gl_compatibility"
   },
   "provenance": {
-    "method": "consume exact retained Hard-Surface successor003 artifact and exact Technical-Art successor002 baseline artifact; construct one Materials-local review carrier with pinned Technical-Art helper code and pinned generic UC",
+    "method": "consume exact retained Hard-Surface successor003 artifact and exact Technical-Art successor002 baseline artifact, bind exact Rigging successor003 compatibility owner identity, then construct one Materials-local review carrier with pinned Technical-Art helper code and pinned generic UC",
     "external_textures": [],
     "external_material_assets": [],
     "hard_surface_source_bytes_edited_by_materials": false,
