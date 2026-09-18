@@ -1,0 +1,49 @@
+{
+  "schema": "axm.object-hinge-phase-invariant-bored-knuckle-rig-compatibility/v0.1",
+  "asset_id": "modular-equipment-case-001",
+  "compatibility_id": "modular-equipment-case-001/hinge-phase-invariant-bored-knuckle-rig-compatibility-002",
+  "source_successor": {
+    "head": "a6d18b9fe729304dc4d95d962ed27527adce211f",
+    "contract_git_blob_sha1": "7e078189d5c80508b28932563326cd5629c4efa6",
+    "schema": "axm.object-hinge-bored-knuckle-phase-invariant-source-successor/v0.1",
+    "successor_id": "modular-equipment-case-001/hinge-bored-knuckle-phase-invariant-source-successor-002",
+    "source_owner_result": "PASS_SOURCE_OWNED_PHASE_INVARIANT_BORED_HINGE_KNUCKLE_SUCCESSOR",
+    "predecessor_successor_head": "178d93e8976a741271d7f47ab4865519de925657"
+  },
+  "predecessor_rigging_head": "38f32efe4a1b053f77255c31bee021646156e4ad",
+  "historical_rig": {
+    "head": "4b72c9918c5fc1e89bd18a0be24fb4afac6e7775",
+    "plan_digest": "0ad6dc2ca22676cf301579932e599a441eb7c4bccce31991d1b727aeb22ac422",
+    "joint_id": "rear-lid-hinge-001",
+    "axis": [1, 0, 0],
+    "angle_limit_deg": [0, 110],
+    "opening_rotation_sign": -1,
+    "moving_lid_knuckles": ["l0", "l1"],
+    "fixed_body_knuckles": ["b0", "b1", "b2"]
+  },
+  "representative_source_angles_deg": [0, 15, 30, 45, 60, 75, 90, 105, 110],
+  "rig_constraint": {
+    "pin_centerline": "EXACT_SOURCE_HINGE_AXIS_COAXIAL_NO_TRANSLATION",
+    "pin_axial_phase": "UNSPECIFIED",
+    "pin_physical_owner": "UNSPECIFIED"
+  },
+  "decision": {
+    "source_successor_rig_compatibility_authorized": true,
+    "phase_independent_1mm_radial_lower_bound_accepted_as_source_geometric_constraint": true,
+    "source_successor_geometry_adopted": false,
+    "automatic_downstream_adoption": false,
+    "pin_parent_or_axial_phase_claimed": false
+  },
+  "authority": {
+    "rigging_constraint_evidence_authorized": true,
+    "animation_accepted": false,
+    "technical_art_target_host_accepted": false,
+    "runtime_accepted": false,
+    "physics_or_load_accepted": false,
+    "manufacturing_fit_or_bearing_accepted": false,
+    "visual_accepted": false,
+    "canon_or_production_accepted": false
+  },
+  "intent": "Rebind the exact historical Object lid-hinge Rigging identity to Hard-Surface phase-invariant successor 002 for source-geometric radial compatibility only. Preserve the existing parent partition and coaxial +X joint while proving the returned 1 mm arbitrary-relative-phase radial lower bound across the exact 0..110 degree owner-motion domain without inventing pin phase, pin physical ownership, Animation, target-host or Runtime acceptance.",
+  "truth_boundary": "This Rigging contract proves only exact source-successor compatibility of the existing Object hinge constraint and parent partition with the source-owned phase-invariant regular-12-gon bore. It does not adopt successor geometry as a production default, choose pin parent/spin/ownership, prove axial stop/contact/retention, loads, bearing/manufacturing fit, full collision, Animation timing/interpolation/playback, Technical-Art target-host adoption, Runtime/controller/device behavior, visual acceptance, CANON or production readiness."
+}
