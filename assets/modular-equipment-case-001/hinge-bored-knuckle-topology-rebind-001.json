@@ -1,0 +1,45 @@
+{
+  "schema": "axm.object-hinge-bored-knuckle-topology-rebind/v0.1",
+  "asset_id": "modular-equipment-case-001",
+  "successor_id": "modular-equipment-case-001/hinge-bored-knuckle-source-successor-001",
+  "hard_surface_donor_head": "178d93e8976a741271d7f47ab4865519de925657",
+  "successor_contract_git_blob_sha1": "beaf16f588450a3b298e2e581b590c5dc0c07380",
+  "annular_mesh_contract_git_blob_sha1": "39a52ad5ba8497a8a524d764bbf6744bb11cf54a",
+  "legacy_host_source_sha256": "49b1f9ed9865893d6de6f1ec8f069576732df694853fde4e3fcff366de32644a",
+  "expected_knuckle_count": 5,
+  "expected_segments": 12,
+  "expected_per_knuckle": {
+    "vertices": 48,
+    "triangles": 96,
+    "unique_edges": 144,
+    "triangle_components": 1,
+    "boundary_edges": 0,
+    "non_manifold_edges": 0,
+    "orientation_conflicts": 0,
+    "degenerate_triangles": 0,
+    "isolated_vertices": 0,
+    "max_vertex_fan_components": 1,
+    "euler_characteristic": 0,
+    "orientable_genus": 1
+  },
+  "expected_aggregate": {
+    "vertices": 240,
+    "triangles": 480,
+    "unique_edges": 720,
+    "triangle_components": 5,
+    "euler_characteristic_sum": 0,
+    "orientable_genus_sum": 5
+  },
+  "geometry_authority": {
+    "source_successor_rewritten": false,
+    "geometry_rebind_is_observation_only": true,
+    "automatic_downstream_adoption": false,
+    "automatic_local_helper_retirement": false,
+    "runtime_or_physics_authorized": false,
+    "gameplay_collision_authorized": false,
+    "visual_acceptance_authorized": false
+  },
+  "reusable_rule": "SOURCE_OWNED_THROUGH_BORE_REQUIRES_CLOSED_VERTEX_MANIFOLD_AND_EXPECTED_EULER_GENUS_EVIDENCE_BEFORE_GEOMETRY_REBIND",
+  "intent": "Rebind Geometry to the exact Hard-Surface bored-knuckle source successor without changing it, and prove that each source-owned annular knuckle is not merely edge-closed but has the expected connected closed orientable vertex-manifold topology of one through-bore: Euler characteristic 0 and genus 1. Preserve downstream receiver agency and the historical source.",
+  "truth_boundary": "This contract proves only indexed structural topology class for the exact five source-owned bored-knuckle successor shells. It does not prove manufacturing tolerance, bearing behavior, arbitrary geometric self-intersection freedom, articulation collision, shading/normals/UV/material quality, Technical Art transport, Runtime/device behavior, gameplay collision suitability, CANON, production readiness, game readiness or Geometry mastery."
+}
