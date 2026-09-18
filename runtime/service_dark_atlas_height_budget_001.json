@@ -1,0 +1,55 @@
+{
+  "schema": "axm.object-service-dark-atlas-height-budget/v0.1",
+  "asset_id": "modular-equipment-case-001",
+  "intent": "measure whether the exact Materials 512x512 service_dark review atlas can reduce runtime texture footprint by cropping only unused vertical atlas extent while preserving 500 px/m surface texel density, 16 px dilation, surface rectangles, filtering, source identities and material scalars",
+  "upstream": {
+    "materials_head": "4c12a0a57f6aa8778cff41efad321e13567c6c91",
+    "materials_contract_path": "lookdev/service_dark_atlas_pack_review_001.json",
+    "materials_contract_schema": "axm.object-service-dark-atlas-pack-review/v0.1",
+    "materials_contract_blob": "2b95fcc1fcc523576eca08dbf47a140a727ab598"
+  },
+  "control": {
+    "width_px": 512,
+    "height_px": 512
+  },
+  "candidate": {
+    "width_px": 512,
+    "height_px": 384
+  },
+  "preserve": {
+    "pixels_per_meter": 500,
+    "meters_per_pixel": 0.002,
+    "texels_per_review_uv_unit": 25,
+    "padding_px": 16,
+    "filtering": "LINEAR_MIPMAP_ANISOTROPIC",
+    "repeat": false,
+    "surface_rectangles_unchanged": true,
+    "surface_pixel_extents_unchanged": true,
+    "diagnostic_texels_inside_surface_rectangles_unchanged": true,
+    "material_scalars_unchanged": true
+  },
+  "acceptance": {
+    "candidate_must_contain_all_padded_surface_rectangles": true,
+    "candidate_texture_memory_must_be_lower_on_proof_host": true,
+    "draw_calls_must_not_increase": true,
+    "rendered_objects_must_not_increase": true,
+    "rendered_primitives_must_not_increase": true,
+    "visual_delta_must_be_reported_not_silently_accepted": true
+  },
+  "truth_boundary": {
+    "source_geometry_changed": false,
+    "source_surface_identities_changed": false,
+    "source_uv_authored": false,
+    "production_uv_adopted": false,
+    "production_texture_authored": false,
+    "final_pixels_per_meter_accepted": false,
+    "final_atlas_pack_accepted": false,
+    "materials_atlas_rewritten": false,
+    "technical_art_transport_accepted": false,
+    "art_direction_final_accepted": false,
+    "visual_qa_final_accepted": false,
+    "target_device_performance_proven": false,
+    "canon": false,
+    "production_ready": false
+  }
+}
