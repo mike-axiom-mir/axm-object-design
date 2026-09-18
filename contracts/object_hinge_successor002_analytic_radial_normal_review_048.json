@@ -1,0 +1,109 @@
+{
+  "schema": "axm.object-technical-art-hinge-analytic-radial-normal-review/v0.1",
+  "asset_id": "modular-equipment-case-001",
+  "candidate_id": "modular-equipment-case-001/hinge-successor002-outer-cylinder-analytic-radial-normal-review-048",
+  "technical_art_lane": {
+    "pull_request": 16,
+    "baseline_head": "f430d00d98e694dcf8302fd4df3c64a074f6f30e",
+    "baseline_artifact_id": 10531541834,
+    "baseline_artifact_sha256": "5e1134d0ebdf786d04ae789a841493ce9cf684f16aedd7dbad597f2e02b3ad5e",
+    "baseline_control_glb_sha256": "f81a9bccd9de1033476da4e5bbea3871b01e2ebf9fb65fcf909447fd14c43e40",
+    "baseline_result": "PASS_OBJECT_HINGE_SUCCESSOR002_TA_SCENE_REBIND_TO_CURRENT_UC__HOLD_DEFAULT_RUNTIME_VISUAL"
+  },
+  "art_direction": {
+    "direction": 48,
+    "packet_path": "studio/direction/OBJECT_HINGE_SHADING_NORMAL_DIRECTION_048.md",
+    "packet_git_blob_sha1": "910871c06902d9c5bb42a2246aa07bdfaa029045",
+    "request": "ONE_REVIEW_ONLY_HINGE_OUTER_CYLINDER_ANALYTIC_RADIAL_NORMAL_CANDIDATE",
+    "visual_acceptance_owned_by_technical_art": false
+  },
+  "hard_surface_disposition": {
+    "exact_head": "5d8f767af79b744b6f3d31ce91dc4c908b3a440b",
+    "path": "assets/modular-equipment-case-001/hinge-bored-knuckle-relative-facet-phase-disposition-048.json",
+    "git_blob_sha1": "289d7cb333ca5adb2d87e71feab451fd864249c3",
+    "frozen_source_successor": "modular-equipment-case-001/hinge-bored-knuckle-phase-invariant-source-successor-002",
+    "relative_owner_phase": "SYNCHRONIZED_PREDECESSOR_PHASE"
+  },
+  "materials_review_owner": {
+    "exact_head": "5509084acbaca2a7d45f072203b98174c621d5ef",
+    "review_contract_path": "lookdev/object_hinge_successor003_relative_facet_phase_material_review_001.json",
+    "review_contract_git_blob_sha1": "ce6c29e19967013b1eea3276e378689f926ef6e0",
+    "hardware_steel": {
+      "albedo": "#7E868AFF",
+      "metallic": 0.88,
+      "roughness": 0.32
+    },
+    "camera_contexts": [
+      "full_rear_three_quarter",
+      "full_rear_grazing",
+      "full_side_three_quarter"
+    ]
+  },
+  "universal_creation": {
+    "exact_head": "376b5c49a8bdbff344fe20e61cd89a73b8a96c75",
+    "procedural_3d_blob_sha1": "cdb654d4d0f68a4ca7539d98a985d7a70cf7ee36",
+    "rigid_scene_graph_blob_sha1": "fada5e5e06e110b48c7c9886e6a7f73c5c3a2d44",
+    "object_domain_policy_added": false
+  },
+  "receiver_scope": {
+    "expected_mesh_nodes": 31,
+    "expected_total_triangles": 1052,
+    "hinge_components": [
+      "hinge_body_b0",
+      "hinge_lid_l0",
+      "hinge_body_b1",
+      "hinge_lid_l1",
+      "hinge_body_b2"
+    ],
+    "body_hinge_components": [
+      "hinge_body_b0",
+      "hinge_body_b1",
+      "hinge_body_b2"
+    ],
+    "lid_hinge_components": [
+      "hinge_lid_l0",
+      "hinge_lid_l1"
+    ],
+    "expected_hinge_triangles": 480,
+    "expected_outer_side_triangles_per_knuckle": 24,
+    "expected_outer_side_triangles_total": 120,
+    "expected_changed_normal_entries_per_knuckle": 72,
+    "expected_changed_normal_entries_total": 360,
+    "hinge_axis_target": "+X"
+  },
+  "candidate_rule": {
+    "change_only_hinge_outer_cylindrical_side_surface_normals": true,
+    "normal_rule": "for each frozen successor002 outer-cylinder triangle corner, set target normal to normalize([0, position_y-axis_y, position_z-axis_z]) around the existing +X hinge axis",
+    "end_cap_normals_frozen": true,
+    "through_bore_inner_wall_normals_frozen": true,
+    "non_hinge_normals_frozen": true,
+    "positions_frozen": true,
+    "indices_frozen": true,
+    "triangle_count_frozen": true,
+    "mesh_node_ownership_frozen": true,
+    "culling_front_face_transport_frozen": true,
+    "uvs_frozen": true,
+    "materials_frozen": true,
+    "transforms_frozen": true,
+    "facet_count_frozen": true,
+    "phase_frozen": true,
+    "roughness_value_metallic_frozen": true,
+    "camera_light_fov_exposure_frozen": true,
+    "single_candidate_only": true,
+    "smoothing_angle_sweep_authorized": false,
+    "custom_normal_sculpt_authorized": false
+  },
+  "authority": {
+    "technical_art_review_representation_only": true,
+    "source_geometry_mutation_authorized": false,
+    "source_default_adoption_authorized": false,
+    "automatic_downstream_adoption": false,
+    "materials_retune_authorized": false,
+    "geometry_rigging_animation_runtime_authority_transferred": false,
+    "visual_or_art_acceptance_claimed": false,
+    "visual_qa_acceptance_claimed": false,
+    "uc_domain_policy_added": false,
+    "canon_or_production_accepted": false
+  },
+  "truth_boundary": "A PASS may prove only that one analytic-radial outer-cylinder normal-only review representation can be transported through the exact frozen successor002 Object receiver, unchanged generic UC surface/scene-graph machinery, and Godot 4.7.2 while retaining direct three-context A/B evidence. It does not visually adopt the candidate, change Object source/default geometry, authorize another phase/material/normal search, transfer domain authority into UC, establish final tangents or normals, accept Runtime/device behavior, CANON or production readiness."
+}
