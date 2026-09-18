@@ -1,0 +1,76 @@
+{
+  "schema": "axm.object-hinge-successor002-godot-receiver-topology/v0.1",
+  "asset_id": "modular-equipment-case-001",
+  "successor_id": "modular-equipment-case-001/hinge-bored-knuckle-phase-invariant-source-successor-002",
+  "source_geometry_head": "96abb2830ddabca9ed270b42a9447534d007ce64",
+  "source_geometry_contract_git_blob_sha1": "0de4dbb01df9cb49493ace474168bd2d99d169a5",
+  "source_geometry_verifier_git_blob_sha1": "2d1306c9b4c7e89cb29a230c75bcf894f12b64a9",
+  "source_geometry_result": "PASS_OBJECT_PHASE_INVARIANT_BORED_KNUCKLE_SUCCESSOR_GENUS1_TOPOLOGY_REBIND",
+  "technical_art_head": "f430d00d98e694dcf8302fd4df3c64a074f6f30e",
+  "technical_art_artifact_id": 10531541834,
+  "technical_art_artifact_sha256": "5e1134d0ebdf786d04ae789a841493ce9cf684f16aedd7dbad597f2e02b3ad5e",
+  "technical_art_transport_result": "PASS_OBJECT_HINGE_SUCCESSOR002_CURRENT_UC_GODOT_TRIANGLE_TRANSPORT",
+  "technical_art_glb_sha256": "f81a9bccd9de1033476da4e5bbea3871b01e2ebf9fb65fcf909447fd14c43e40",
+  "target_host": "Godot 4.7.2 GLTFDocument exact retained receiving path",
+  "target_host_triangle_index_transform": "GODOT_4_7_2_GLTFDOCUMENT_RECEIVER_LOCAL_[a,b,c]_TO_[a,c,b]",
+  "target_position_tolerance_m": 0.000001,
+  "components": [
+    "hinge_body_b0",
+    "hinge_lid_l0",
+    "hinge_body_b1",
+    "hinge_lid_l1",
+    "hinge_body_b2"
+  ],
+  "expected_corner_expansion_per_component": {
+    "serialized_vertices": 288,
+    "serialized_indices": 288,
+    "serialized_unique_indices": 288,
+    "exact_position_classes": 48,
+    "minimum_exact_position_class_multiplicity": 6,
+    "maximum_exact_position_class_multiplicity": 6
+  },
+  "expected_per_component": {
+    "vertices": 48,
+    "triangles": 96,
+    "unique_edges": 144,
+    "triangle_components": 1,
+    "boundary_edges": 0,
+    "non_manifold_edges": 0,
+    "orientation_conflicts": 0,
+    "degenerate_triangles": 0,
+    "isolated_vertices": 0,
+    "max_vertex_fan_components": 1,
+    "euler_characteristic": 0,
+    "orientable_genus": 1
+  },
+  "expected_aggregate": {
+    "vertices": 240,
+    "triangles": 480,
+    "unique_edges": 720,
+    "triangle_components": 5,
+    "euler_characteristic_sum": 0,
+    "orientable_genus_sum": 5
+  },
+  "expected_serialized_aggregate": {
+    "serialized_vertices": 1440,
+    "serialized_indices": 1440,
+    "exact_position_classes": 240,
+    "receiver_reversed_triangles": 480
+  },
+  "geometry_authority": {
+    "receiver_topology_revalidation_is_observation_only": true,
+    "exact_position_quotient_is_diagnostic_only": true,
+    "receiver_vertices_rewritten_or_merged": false,
+    "source_topology_pass_transferred_without_retest": false,
+    "technical_art_transport_rewritten": false,
+    "source_successor_rewritten": false,
+    "automatic_downstream_adoption": false,
+    "runtime_or_physics_authorized": false,
+    "gameplay_collision_authorized": false,
+    "visual_acceptance_authorized": false,
+    "canon_or_production_authorized": false
+  },
+  "reusable_rule": "TARGET_HOST_TRIANGLE_REORDER_OR_REVERSAL_REQUIRES_EXPLICIT_TOPOLOGY_CLASS_REVALIDATION_BEFORE_RECEIVER_PASS",
+  "intent": "Consume the exact retained Technical-Art target arrays for successor 002. The retained transport serializes every triangle corner as a distinct indexed vertex while repeating each of the 48 geometric positions exactly six times per knuckle. Observe that representation honestly, construct a diagnostic quotient only over exactly equal position tuples, and independently re-establish the five through-bore topology classes after the Godot receiver-local triangle reversal. Preserve Technical Art transport authority and the source Geometry result as separate evidence identities.",
+  "truth_boundary": "This contract proves only indexed topology-class continuity for the exact five successor-002 knuckles in the exact retained Godot 4.7.2 receiving evidence after a diagnostic quotient of exactly equal serialized positions. The quotient does not rewrite, weld, optimize or adopt receiver geometry. It does not define a universal Godot winding or welding rule, rewrite source geometry or Technical-Art transport, transfer source Geometry PASS without receiver retest, prove renderer front-face/culling correctness, arbitrary self-intersection freedom, articulated collision, normals/tangents/UV/material quality, Runtime/device/physics/gameplay acceptance, visual acceptance, CANON, production readiness, game readiness or Geometry mastery."
+}
