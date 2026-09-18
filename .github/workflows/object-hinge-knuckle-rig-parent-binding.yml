@@ -1,0 +1,149 @@
+name: Object hinge knuckle rig parent binding
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  hinge-knuckle-rig-parent-binding:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.11', '3.13']
+    steps:
+      - name: Checkout exact receiving Rigging head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          path: object
+          fetch-depth: 0
+
+      - name: Preserve exact predecessor Rigging lineage
+        working-directory: object
+        run: |
+          set -euo pipefail
+          git merge-base --is-ancestor 9d5fb18d8eb2222694e86025641256a30f57c485 HEAD
+
+      - name: Checkout exact Hard-Surface hinge owner-stack source owner
+        uses: actions/checkout@v4
+        with:
+          repository: mike-axiom-mir/axm-object-design
+          ref: 172dd9ff5ed1fee3a21cd460c607f07ee0da7520
+          path: owner-stack
+          fetch-depth: 1
+
+      - name: Checkout exact historical lid-articulation donor
+        uses: actions/checkout@v4
+        with:
+          repository: mike-axiom-mir/axm-object-design
+          ref: 4b72c9918c5fc1e89bd18a0be24fb4afac6e7775
+          path: lid-rig-donor
+          fetch-depth: 1
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Verify exact source-owner blob and source owner-stack evidence
+        run: |
+          set -euo pipefail
+          test "$(git -C owner-stack rev-parse 172dd9ff5ed1fee3a21cd460c607f07ee0da7520:assets/modular-equipment-case-001/hinge-knuckle-owner-stack-001.json)" = "e4e7c95769c0827a6a019afd672ff4b20cd13541"
+          rm -rf owner-stack/evidence/hinge-knuckle-owner-stack-001
+          (
+            cd owner-stack
+            python tools/verify_hinge_knuckle_owner_stack.py \
+              --host assets/modular-equipment-case-001/source.json \
+              --contract assets/modular-equipment-case-001/hinge-knuckle-owner-stack-001.json \
+              --out evidence/hinge-knuckle-owner-stack-001
+          )
+          grep -q 'PASS_SOURCE_OWNED_HINGE_KNUCKLE_OWNER_STACK' owner-stack/evidence/hinge-knuckle-owner-stack-001/hinge-knuckle-owner-stack.receipt.json
+
+      - name: Compile and run full Object regression suite
+        working-directory: object
+        run: |
+          python -m compileall -q tools tests
+          python -m unittest discover -s tests -v
+
+      - name: Build exact hinge-knuckle Rigging parent evidence
+        if: matrix.python-version == '3.11'
+        working-directory: object
+        env:
+          CURRENT_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          set -euo pipefail
+          rm -rf evidence/hinge-knuckle-rig-parent-binding-001
+          python tools/verify_hinge_knuckle_rig_parent_binding.py \
+            --source assets/modular-equipment-case-001/source.json \
+            --owner-stack ../owner-stack/assets/modular-equipment-case-001/hinge-knuckle-owner-stack-001.json \
+            --lid-plan ../lid-rig-donor/assets/modular-equipment-case-001/articulation.json \
+            --observed-owner-stack-head 172dd9ff5ed1fee3a21cd460c607f07ee0da7520 \
+            --observed-owner-stack-blob e4e7c95769c0827a6a019afd672ff4b20cd13541 \
+            --observed-lid-rig-head 4b72c9918c5fc1e89bd18a0be24fb4afac6e7775 \
+            --observed-previous-rigging-head 9d5fb18d8eb2222694e86025641256a30f57c485 \
+            --out evidence/hinge-knuckle-rig-parent-binding-001
+          printf '%s\n' "$CURRENT_HEAD" > evidence/hinge-knuckle-rig-parent-binding-001/exact-head.txt
+          printf '%s\n' '172dd9ff5ed1fee3a21cd460c607f07ee0da7520' > evidence/hinge-knuckle-rig-parent-binding-001/owner-stack-head.txt
+          printf '%s\n' 'e4e7c95769c0827a6a019afd672ff4b20cd13541' > evidence/hinge-knuckle-rig-parent-binding-001/owner-stack-blob.txt
+          printf '%s\n' '4b72c9918c5fc1e89bd18a0be24fb4afac6e7775' > evidence/hinge-knuckle-rig-parent-binding-001/lid-rig-head.txt
+          printf '%s\n' '9d5fb18d8eb2222694e86025641256a30f57c485' > evidence/hinge-knuckle-rig-parent-binding-001/previous-rigging-head.txt
+          cp ../owner-stack/assets/modular-equipment-case-001/hinge-knuckle-owner-stack-001.json evidence/hinge-knuckle-rig-parent-binding-001/source-owner-stack.json
+          cp ../owner-stack/evidence/hinge-knuckle-owner-stack-001/hinge-knuckle-owner-stack.receipt.json evidence/hinge-knuckle-rig-parent-binding-001/source-owner-stack.receipt.json
+          cp ../lid-rig-donor/assets/modular-equipment-case-001/articulation.json evidence/hinge-knuckle-rig-parent-binding-001/lid-articulation-plan.json
+
+      - name: Prove fail-closed source owner / rig parent mismatch
+        if: matrix.python-version == '3.11'
+        working-directory: object
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import copy, json, sys
+          from pathlib import Path
+          sys.path.insert(0, 'tools')
+          from verify_hinge_knuckle_rig_parent_binding import verify, sha256_file
+
+          source_path=Path('assets/modular-equipment-case-001/source.json')
+          owner_path=Path('../owner-stack/assets/modular-equipment-case-001/hinge-knuckle-owner-stack-001.json')
+          plan_path=Path('../lid-rig-donor/assets/modular-equipment-case-001/articulation.json')
+          source=json.loads(source_path.read_text())
+          owner=json.loads(owner_path.read_text())
+          plan=json.loads(plan_path.read_text())
+          bad=copy.deepcopy(plan)
+          bad['joint']['coaxial_moving_knuckles']=['l0','b1','l1']
+          try:
+              verify(
+                  source, owner, bad,
+                  source_sha256=sha256_file(source_path),
+                  observed_owner_stack_head='172dd9ff5ed1fee3a21cd460c607f07ee0da7520',
+                  observed_owner_stack_blob='e4e7c95769c0827a6a019afd672ff4b20cd13541',
+                  observed_lid_rig_head='4b72c9918c5fc1e89bd18a0be24fb4afac6e7775',
+                  observed_previous_rigging_head='9d5fb18d8eb2222694e86025641256a30f57c485',
+              )
+          except AssertionError as exc:
+              Path('evidence/hinge-knuckle-rig-parent-binding-001/negative-control.txt').write_text(
+                  'PASS_FAILS_CLOSED_ON_BODY_KNUCKLE_IN_LID_MOVING_SET\n'+str(exc)+'\n')
+          else:
+              raise SystemExit('negative control unexpectedly passed')
+          PY
+
+      - name: Assert bounded truth boundary
+        if: matrix.python-version == '3.11'
+        working-directory: object
+        run: |
+          grep -q 'PASS_SOURCE_OWNED_HINGE_KNUCKLE_PARENT_BINDING_CONTINUOUS_0_TO_110' evidence/hinge-knuckle-rig-parent-binding-001/receipt.json
+          grep -q '"animation_accepted": false' evidence/hinge-knuckle-rig-parent-binding-001/receipt.json
+          grep -q '"runtime_accepted": false' evidence/hinge-knuckle-rig-parent-binding-001/receipt.json
+          grep -q '"technical_art_target_host_parenting_accepted": false' evidence/hinge-knuckle-rig-parent-binding-001/receipt.json
+          grep -q '"physical_pin_retention_or_load_accepted": false' evidence/hinge-knuckle-rig-parent-binding-001/receipt.json
+          grep -q 'PASS_FAILS_CLOSED_ON_BODY_KNUCKLE_IN_LID_MOVING_SET' evidence/hinge-knuckle-rig-parent-binding-001/negative-control.txt
+
+      - name: Upload exact Rigging evidence
+        if: ${{ always() && matrix.python-version == '3.11' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: object-hinge-knuckle-rig-parent-binding-${{ github.event.pull_request.head.sha || github.sha }}
+          path: object/evidence/hinge-knuckle-rig-parent-binding-001
+          if-no-files-found: error
+          retention-days: 30

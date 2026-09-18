@@ -1,0 +1,152 @@
+name: Object bored hinge Rigging compatibility
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  bored-hinge-rig-compatibility:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.11', '3.13']
+    steps:
+      - name: Checkout exact receiving Rigging head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          path: object
+          fetch-depth: 0
+
+      - name: Preserve exact predecessor Rigging lineage
+        working-directory: object
+        run: |
+          set -euo pipefail
+          git merge-base --is-ancestor 16b32c5ac6d52d768d64f0fac9fedfe4ee9f24fe HEAD
+
+      - name: Checkout exact Hard-Surface bored-knuckle source successor
+        uses: actions/checkout@v4
+        with:
+          repository: mike-axiom-mir/axm-object-design
+          ref: 178d93e8976a741271d7f47ab4865519de925657
+          path: source-successor
+          fetch-depth: 0
+
+      - name: Checkout exact historical lid Rigging donor
+        uses: actions/checkout@v4
+        with:
+          repository: mike-axiom-mir/axm-object-design
+          ref: 4b72c9918c5fc1e89bd18a0be24fb4afac6e7775
+          path: lid-rig-donor
+          fetch-depth: 1
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Verify exact source-successor identities
+        run: |
+          set -euo pipefail
+          test "$(git -C source-successor rev-parse 178d93e8976a741271d7f47ab4865519de925657:assets/modular-equipment-case-001/hinge-bored-knuckle-source-successor-001.json)" = "beaf16f588450a3b298e2e581b590c5dc0c07380"
+          test "$(git -C source-successor rev-parse 178d93e8976a741271d7f47ab4865519de925657:assets/modular-equipment-case-001/hinge-pin-annular-mesh-001.json)" = "39a52ad5ba8497a8a524d764bbf6744bb11cf54a"
+          test "$(git -C source-successor rev-parse 178d93e8976a741271d7f47ab4865519de925657:assets/modular-equipment-case-001/hinge-knuckle-owner-stack-001.json)" = "e4e7c95769c0827a6a019afd672ff4b20cd13541"
+          git -C source-successor merge-base --is-ancestor 172dd9ff5ed1fee3a21cd460c607f07ee0da7520 178d93e8976a741271d7f47ab4865519de925657
+          test "$(git -C source-successor rev-parse 172dd9ff5ed1fee3a21cd460c607f07ee0da7520:assets/modular-equipment-case-001/hinge-knuckle-owner-stack-001.json)" = "e4e7c95769c0827a6a019afd672ff4b20cd13541"
+
+      - name: Rebuild exact Hard-Surface source-successor evidence
+        working-directory: source-successor
+        run: |
+          set -euo pipefail
+          rm -rf evidence/hinge-pin-bore-clearance
+          mkdir -p evidence/hinge-pin-bore-clearance
+          python tools/verify_hinge_pin_bore_clearance.py \
+            --host assets/modular-equipment-case-001/source.json \
+            --contract assets/modular-equipment-case-001/hinge-pin-bore-clearance-001.json \
+            --out evidence/hinge-pin-bore-clearance
+          python tools/build_hinge_pin_annular_mesh.py \
+            --host assets/modular-equipment-case-001/source.json \
+            --bore-contract assets/modular-equipment-case-001/hinge-pin-bore-clearance-001.json \
+            --mesh-contract assets/modular-equipment-case-001/hinge-pin-annular-mesh-001.json \
+            --out evidence/hinge-pin-bore-clearance
+          python tools/verify_hinge_knuckle_owner_stack.py \
+            --host assets/modular-equipment-case-001/source.json \
+            --contract assets/modular-equipment-case-001/hinge-knuckle-owner-stack-001.json \
+            --out evidence/hinge-pin-bore-clearance
+          python tools/verify_hinge_bored_knuckle_source_successor.py \
+            --host assets/modular-equipment-case-001/source.json \
+            --bore-contract assets/modular-equipment-case-001/hinge-pin-bore-clearance-001.json \
+            --annular-contract assets/modular-equipment-case-001/hinge-pin-annular-mesh-001.json \
+            --owner-contract assets/modular-equipment-case-001/hinge-knuckle-owner-stack-001.json \
+            --successor-contract assets/modular-equipment-case-001/hinge-bored-knuckle-source-successor-001.json \
+            --out evidence/hinge-pin-bore-clearance
+          grep -q 'PASS_SOURCE_OWNED_BORED_HINGE_KNUCKLE_SUCCESSOR' evidence/hinge-pin-bore-clearance/hinge-bored-knuckle-source-successor.receipt.json
+
+      - name: Compile and run full Object regression suite
+        working-directory: object
+        run: |
+          python -m compileall -q tools tests
+          python -m unittest discover -s tests -v
+
+      - name: Build exact bored-knuckle Rigging compatibility evidence
+        if: matrix.python-version == '3.11'
+        working-directory: object
+        env:
+          CURRENT_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          set -euo pipefail
+          rm -rf evidence/hinge-bored-knuckle-rig-compatibility-001
+          python tools/verify_hinge_bored_knuckle_rig_compatibility.py \
+            --source assets/modular-equipment-case-001/source.json \
+            --owner-stack ../source-successor/assets/modular-equipment-case-001/hinge-knuckle-owner-stack-001.json \
+            --successor-contract ../source-successor/assets/modular-equipment-case-001/hinge-bored-knuckle-source-successor-001.json \
+            --annular-contract ../source-successor/assets/modular-equipment-case-001/hinge-pin-annular-mesh-001.json \
+            --successor-receipt ../source-successor/evidence/hinge-pin-bore-clearance/hinge-bored-knuckle-source-successor.receipt.json \
+            --lid-plan ../lid-rig-donor/assets/modular-equipment-case-001/articulation.json \
+            --compatibility-contract assets/modular-equipment-case-001/hinge-bored-knuckle-rig-compatibility-001.json \
+            --observed-owner-stack-head 172dd9ff5ed1fee3a21cd460c607f07ee0da7520 \
+            --observed-owner-stack-blob e4e7c95769c0827a6a019afd672ff4b20cd13541 \
+            --observed-successor-head 178d93e8976a741271d7f47ab4865519de925657 \
+            --observed-successor-blob beaf16f588450a3b298e2e581b590c5dc0c07380 \
+            --observed-annular-blob 39a52ad5ba8497a8a524d764bbf6744bb11cf54a \
+            --observed-lid-rig-head 4b72c9918c5fc1e89bd18a0be24fb4afac6e7775 \
+            --observed-predecessor-rigging-head 16b32c5ac6d52d768d64f0fac9fedfe4ee9f24fe \
+            --out evidence/hinge-bored-knuckle-rig-compatibility-001
+          printf '%s\n' "$CURRENT_HEAD" > evidence/hinge-bored-knuckle-rig-compatibility-001/exact-head.txt
+          printf '%s\n' '178d93e8976a741271d7f47ab4865519de925657' > evidence/hinge-bored-knuckle-rig-compatibility-001/source-successor-head.txt
+          printf '%s\n' '16b32c5ac6d52d768d64f0fac9fedfe4ee9f24fe' > evidence/hinge-bored-knuckle-rig-compatibility-001/predecessor-rigging-head.txt
+          printf '%s\n' '4b72c9918c5fc1e89bd18a0be24fb4afac6e7775' > evidence/hinge-bored-knuckle-rig-compatibility-001/historical-lid-rig-head.txt
+          cp assets/modular-equipment-case-001/hinge-bored-knuckle-rig-compatibility-001.json evidence/hinge-bored-knuckle-rig-compatibility-001/rig-compatibility-contract.json
+          cp ../source-successor/assets/modular-equipment-case-001/hinge-bored-knuckle-source-successor-001.json evidence/hinge-bored-knuckle-rig-compatibility-001/source-successor-contract.json
+          cp ../source-successor/assets/modular-equipment-case-001/hinge-pin-annular-mesh-001.json evidence/hinge-bored-knuckle-rig-compatibility-001/annular-mesh-contract.json
+          cp ../source-successor/assets/modular-equipment-case-001/hinge-knuckle-owner-stack-001.json evidence/hinge-bored-knuckle-rig-compatibility-001/owner-stack-contract.json
+          cp ../source-successor/evidence/hinge-pin-bore-clearance/hinge-bored-knuckle-source-successor.receipt.json evidence/hinge-bored-knuckle-rig-compatibility-001/source-successor.receipt.json
+          cp ../lid-rig-donor/assets/modular-equipment-case-001/articulation.json evidence/hinge-bored-knuckle-rig-compatibility-001/historical-lid-articulation-plan.json
+
+      - name: Assert bounded Rigging truth boundary
+        if: matrix.python-version == '3.11'
+        working-directory: object
+        run: |
+          set -euo pipefail
+          grep -q 'PASS_BORED_KNUCKLE_SUCCESSOR_RIG_RADIAL_NONCONTACT_CONTINUOUS_0_TO_110' evidence/hinge-bored-knuckle-rig-compatibility-001/receipt.json
+          grep -q 'HOLD_SOURCE_STATIC_1MM_AS_CONTINUOUS_MOTION_CLEARANCE__PIN_PHASE_UNSPECIFIED' evidence/hinge-bored-knuckle-rig-compatibility-001/receipt.json
+          grep -q '"source_successor_geometry_adopted": false' evidence/hinge-bored-knuckle-rig-compatibility-001/receipt.json
+          grep -q '"pin_parent_or_axial_phase_claimed": false' evidence/hinge-bored-knuckle-rig-compatibility-001/receipt.json
+          grep -q '"animation_accepted": false' evidence/hinge-bored-knuckle-rig-compatibility-001/receipt.json
+          grep -q '"technical_art_target_host_accepted": false' evidence/hinge-bored-knuckle-rig-compatibility-001/receipt.json
+          grep -q '"runtime_accepted": false' evidence/hinge-bored-knuckle-rig-compatibility-001/receipt.json
+          grep -q '"canon_or_production_accepted": false' evidence/hinge-bored-knuckle-rig-compatibility-001/receipt.json
+          grep -q 'insufficient_phase_independent_bore' evidence/hinge-bored-knuckle-rig-compatibility-001/receipt.json
+          grep -q 'automatic_successor_adoption' evidence/hinge-bored-knuckle-rig-compatibility-001/receipt.json
+          grep -q 'silent_pin_phase_claim' evidence/hinge-bored-knuckle-rig-compatibility-001/receipt.json
+
+      - name: Upload exact Rigging evidence
+        if: ${{ always() && matrix.python-version == '3.11' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: object-hinge-bored-knuckle-rig-compatibility-${{ github.event.pull_request.head.sha || github.sha }}
+          path: object/evidence/hinge-bored-knuckle-rig-compatibility-001
+          if-no-files-found: error
+          retention-days: 30

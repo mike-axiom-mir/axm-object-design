@@ -1,0 +1,155 @@
+name: Object lid-owned keeper seat frame binding
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  keeper-seat-frame-binding:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.11', '3.13']
+    steps:
+      - name: Checkout exact receiving Rigging head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          path: object
+          fetch-depth: 0
+
+      - name: Preserve exact previous Rigging lineage
+        working-directory: object
+        run: |
+          set -euo pipefail
+          git merge-base --is-ancestor 29b3a4828b020fe608085df5eaaf9d33d5ea331f HEAD
+
+      - name: Checkout exact Hard-Surface keeper-seat source owner
+        uses: actions/checkout@v4
+        with:
+          repository: mike-axiom-mir/axm-object-design
+          ref: 37217b244046055a40d9050b61eff2876566bad8
+          path: seat-owner
+          fetch-depth: 1
+
+      - name: Checkout exact historical lid-articulation donor
+        uses: actions/checkout@v4
+        with:
+          repository: mike-axiom-mir/axm-object-design
+          ref: 4b72c9918c5fc1e89bd18a0be24fb4afac6e7775
+          path: lid-rig-donor
+          fetch-depth: 1
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Verify exact source-owner seat blob and static seat evidence
+        run: |
+          set -euo pipefail
+          test "$(git -C seat-owner rev-parse 37217b244046055a40d9050b61eff2876566bad8:assets/modular-equipment-case-001/front-latch-keeper-seat-001.json)" = "bc91018225d0141d278ffac8ade2176e47338e27"
+          rm -rf seat-owner/evidence/front-latch-keeper-seat-001
+          (
+            cd seat-owner
+            python tools/verify_front_latch_keeper_seat.py \
+              --host assets/modular-equipment-case-001/source.json \
+              --ownership assets/modular-equipment-case-001/front-latch-ownership-001.json \
+              --contract assets/modular-equipment-case-001/front-latch-keeper-seat-001.json \
+              --out evidence/front-latch-keeper-seat-001
+          )
+          grep -q 'PASS_SOURCE_OWNED_FRONT_LATCH_KEEPER_ATTACHMENT_SEATS' seat-owner/evidence/front-latch-keeper-seat-001/receipt.json
+
+      - name: Compile and run full Object regression suite
+        working-directory: object
+        run: |
+          python -m compileall -q tools tests
+          python -m unittest discover -s tests -v
+
+      - name: Build exact keeper-seat Rigging evidence
+        if: matrix.python-version == '3.11'
+        working-directory: object
+        env:
+          CURRENT_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          set -euo pipefail
+          rm -rf evidence/lid-keeper-seat-frame-binding-001
+          python tools/verify_lid_keeper_seat_frame_binding.py \
+            --source assets/modular-equipment-case-001/source.json \
+            --ownership ../seat-owner/assets/modular-equipment-case-001/front-latch-ownership-001.json \
+            --keeper-seat ../seat-owner/assets/modular-equipment-case-001/front-latch-keeper-seat-001.json \
+            --lid-plan ../lid-rig-donor/assets/modular-equipment-case-001/articulation.json \
+            --observed-keeper-seat-head 37217b244046055a40d9050b61eff2876566bad8 \
+            --observed-keeper-seat-blob bc91018225d0141d278ffac8ade2176e47338e27 \
+            --observed-lid-rig-head 4b72c9918c5fc1e89bd18a0be24fb4afac6e7775 \
+            --observed-previous-rigging-head 29b3a4828b020fe608085df5eaaf9d33d5ea331f \
+            --out evidence/lid-keeper-seat-frame-binding-001
+          printf '%s\n' "$CURRENT_HEAD" > evidence/lid-keeper-seat-frame-binding-001/exact-head.txt
+          printf '%s\n' '37217b244046055a40d9050b61eff2876566bad8' > evidence/lid-keeper-seat-frame-binding-001/keeper-seat-owner-head.txt
+          printf '%s\n' 'bc91018225d0141d278ffac8ade2176e47338e27' > evidence/lid-keeper-seat-frame-binding-001/keeper-seat-owner-blob.txt
+          printf '%s\n' '4b72c9918c5fc1e89bd18a0be24fb4afac6e7775' > evidence/lid-keeper-seat-frame-binding-001/lid-rig-head.txt
+          printf '%s\n' '29b3a4828b020fe608085df5eaaf9d33d5ea331f' > evidence/lid-keeper-seat-frame-binding-001/previous-rigging-head.txt
+          cp ../seat-owner/assets/modular-equipment-case-001/front-latch-keeper-seat-001.json evidence/lid-keeper-seat-frame-binding-001/front-latch-keeper-seat.json
+          cp ../seat-owner/assets/modular-equipment-case-001/front-latch-ownership-001.json evidence/lid-keeper-seat-frame-binding-001/front-latch-ownership.json
+          cp ../seat-owner/evidence/front-latch-keeper-seat-001/receipt.json evidence/lid-keeper-seat-frame-binding-001/source-owner-seat-receipt.json
+          cp ../lid-rig-donor/assets/modular-equipment-case-001/articulation.json evidence/lid-keeper-seat-frame-binding-001/lid-articulation-plan.json
+
+      - name: Prove fail-closed one-millimetre source-seat drift
+        if: matrix.python-version == '3.11'
+        working-directory: object
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json, sys
+          from pathlib import Path
+          sys.path.insert(0, 'tools')
+          from verify_lid_keeper_seat_frame_binding import verify, sha256_file
+
+          source_path=Path('assets/modular-equipment-case-001/source.json')
+          ownership_path=Path('../seat-owner/assets/modular-equipment-case-001/front-latch-ownership-001.json')
+          seat_path=Path('../seat-owner/assets/modular-equipment-case-001/front-latch-keeper-seat-001.json')
+          plan_path=Path('../lid-rig-donor/assets/modular-equipment-case-001/articulation.json')
+          source=json.loads(source_path.read_text())
+          ownership=json.loads(ownership_path.read_text())
+          seat=json.loads(seat_path.read_text())
+          plan=json.loads(plan_path.read_text())
+          try:
+              verify(
+                  source, ownership, seat, plan,
+                  source_sha256=sha256_file(source_path),
+                  ownership_sha256=sha256_file(ownership_path),
+                  observed_keeper_seat_head='37217b244046055a40d9050b61eff2876566bad8',
+                  observed_keeper_seat_blob='bc91018225d0141d278ffac8ade2176e47338e27',
+                  observed_lid_rig_head='4b72c9918c5fc1e89bd18a0be24fb4afac6e7775',
+                  observed_previous_rigging_head='29b3a4828b020fe608085df5eaaf9d33d5ea331f',
+                  seat_override={'front-latch-left': {'center_m': [-0.219, -0.24, 0.32275]}},
+              )
+          except AssertionError as exc:
+              text=str(exc)
+              assert 'seat center' in text
+              Path('evidence/lid-keeper-seat-frame-binding-001/negative-control.txt').write_text(
+                  'PASS_FAILS_CLOSED_ON_1MM_SOURCE_KEEPER_SEAT_DRIFT\n'+text+'\n')
+          else:
+              raise SystemExit('negative control unexpectedly passed')
+          PY
+
+      - name: Assert truth boundary remains explicit
+        if: matrix.python-version == '3.11'
+        working-directory: object
+        run: |
+          grep -q 'PASS_SOURCE_OWNED_KEEPER_ATTACHMENT_SEAT_FRAME_BINDING_111_POSES' evidence/lid-keeper-seat-frame-binding-001/receipt.json
+          grep -q '"animation_accepted": false' evidence/lid-keeper-seat-frame-binding-001/receipt.json
+          grep -q '"runtime_accepted": false' evidence/lid-keeper-seat-frame-binding-001/receipt.json
+          grep -q '"physical_attachment_accepted": false' evidence/lid-keeper-seat-frame-binding-001/receipt.json
+          grep -q 'PASS_FAILS_CLOSED_ON_1MM_SOURCE_KEEPER_SEAT_DRIFT' evidence/lid-keeper-seat-frame-binding-001/negative-control.txt
+
+      - name: Upload exact Rigging evidence
+        if: ${{ always() && matrix.python-version == '3.11' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: object-lid-keeper-seat-frame-binding-${{ github.event.pull_request.head.sha || github.sha }}
+          path: object/evidence/lid-keeper-seat-frame-binding-001
+          if-no-files-found: error
+          retention-days: 30

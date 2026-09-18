@@ -1,0 +1,192 @@
+name: Object keeper-lever authored-pose ordering evidence
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  OWNERSHIP_HEAD: d3fa10a270faae7925811f44f03381fe5c5d0215
+  SOURCE_INTERFACE_HEAD: 6086f39a3da344c57a68653f90d040e03e04cec2
+  SOURCE_RIG_HEAD: a1acd2bcb2074f41e536562f2673508e2cb0a4d5
+  LID_RIG_HEAD: 4b72c9918c5fc1e89bd18a0be24fb4afac6e7775
+  HISTORICAL_LATCH_RIG_HEAD: 3b667ff5d30c46ec2fe7da7679518970f8610018
+  PREVIOUS_RIGGING_HEAD: 9556308c9986f71519bc488badc1b1a63e855e7e
+  ANIMATION_HEAD: 82b0c22e3a9eb346f2b06745b958a570d41beb15
+  HISTORICAL_LATCH_PLAN_SHA256: 81c27ab7b73ed9a43cb3f554b56c3f4294b893712075e33d13f5b02e008455db
+
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.11', '3.13']
+    steps:
+      - name: Checkout exact receiving Rigging head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Compile and run full Object regression suite
+        run: |
+          python -m compileall -q tools tests
+          python -m unittest discover -s tests -v
+
+  authored-pose-ordering:
+    needs: regression
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout exact receiving Rigging head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          path: object
+          fetch-depth: 0
+
+      - name: Bind exact receiving head and preserve Rigging/source ancestry
+        working-directory: object
+        run: |
+          set -euo pipefail
+          echo "EXACT_HEAD=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
+          git merge-base --is-ancestor "$OWNERSHIP_HEAD" HEAD
+          git merge-base --is-ancestor "$SOURCE_INTERFACE_HEAD" HEAD
+          git merge-base --is-ancestor "$SOURCE_RIG_HEAD" HEAD
+          git merge-base --is-ancestor "$PREVIOUS_RIGGING_HEAD" HEAD
+
+      - name: Checkout exact Animation pose-set donor
+        uses: actions/checkout@v4
+        with:
+          repository: mike-axiom-mir/axm-object-design
+          ref: ${{ env.ANIMATION_HEAD }}
+          path: animation-donor
+
+      - name: Checkout exact historical lid Rigging donor
+        uses: actions/checkout@v4
+        with:
+          repository: mike-axiom-mir/axm-object-design
+          ref: ${{ env.LID_RIG_HEAD }}
+          path: lid-rig-donor
+
+      - name: Checkout exact historical latch Rigging donor
+        uses: actions/checkout@v4
+        with:
+          repository: mike-axiom-mir/axm-object-design
+          ref: ${{ env.HISTORICAL_LATCH_RIG_HEAD }}
+          path: latch-rig-donor
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Rebuild exact historical Rigging and Animation authored pose set
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/axm-lid-motion /tmp/axm-latch-rig /tmp/axm-lid-latch
+          python animation-donor/tools/build_lid_motion_evidence.py \
+            --source animation-donor/assets/modular-equipment-case-001/source.json \
+            --rig lid-rig-donor/assets/modular-equipment-case-001/articulation.json \
+            --clip animation-donor/assets/modular-equipment-case-001/lid-motion-clip.json \
+            --out /tmp/axm-lid-motion \
+            --exact-head "$ANIMATION_HEAD"
+          python latch-rig-donor/tools/verify_front_latch_articulation.py \
+            --host latch-rig-donor/assets/modular-equipment-case-001/source.json \
+            --ownership latch-rig-donor/assets/modular-equipment-case-001/front-latch-ownership-001.json \
+            --plan latch-rig-donor/assets/modular-equipment-case-001/front-latch-articulation-001.json \
+            --out /tmp/axm-latch-rig
+          python animation-donor/tools/build_lid_latch_motion_evidence.py \
+            --source animation-donor/assets/modular-equipment-case-001/source.json \
+            --sequence animation-donor/assets/modular-equipment-case-001/lid-latch-motion-sequence-001.json \
+            --motion-evidence /tmp/axm-lid-motion/lid-motion-evidence.json \
+            --ownership latch-rig-donor/assets/modular-equipment-case-001/front-latch-ownership-001.json \
+            --rig-receipt /tmp/axm-latch-rig/front-latch-articulation.receipt.json \
+            --rig-head "$HISTORICAL_LATCH_RIG_HEAD" \
+            --rig-plan-sha256 "$HISTORICAL_LATCH_PLAN_SHA256" \
+            --out /tmp/axm-lid-latch \
+            --exact-head "$ANIMATION_HEAD"
+
+      - name: Prove exact current keeper/lever ordering across the 101 authored poses
+        working-directory: object
+        run: |
+          set -euo pipefail
+          rm -rf evidence/lid-keeper-lever-ordering-001
+          python tools/run_lid_keeper_lever_ordering.py \
+            --source assets/modular-equipment-case-001/source.json \
+            --ownership assets/modular-equipment-case-001/front-latch-ownership-001.json \
+            --lid-plan ../lid-rig-donor/assets/modular-equipment-case-001/articulation.json \
+            --source-interface assets/modular-equipment-case-001/front-latch-pivot-interface-001.json \
+            --source-rig-binding assets/modular-equipment-case-001/front-latch-source-rig-binding-002.json \
+            --animation-authority ../animation-donor/assets/modular-equipment-case-001/source-authority-motion-rebind-002.json \
+            --animation-evidence /tmp/axm-lid-latch/lid-latch-motion-evidence.json \
+            --observed-ownership-head "$OWNERSHIP_HEAD" \
+            --observed-lid-rig-head "$LID_RIG_HEAD" \
+            --observed-previous-rigging-head "$PREVIOUS_RIGGING_HEAD" \
+            --observed-animation-head "$ANIMATION_HEAD" \
+            --observed-source-rig-head "$SOURCE_RIG_HEAD" \
+            --observed-source-interface-head "$SOURCE_INTERFACE_HEAD" \
+            --out evidence/lid-keeper-lever-ordering-001
+          printf '%s\n' "$EXACT_HEAD" > evidence/lid-keeper-lever-ordering-001/exact-head.txt
+          printf '%s\n' "$ANIMATION_HEAD" > evidence/lid-keeper-lever-ordering-001/animation-head.txt
+          printf '%s\n' "$SOURCE_RIG_HEAD" > evidence/lid-keeper-lever-ordering-001/source-rig-head.txt
+          printf '%s\n' "$SOURCE_INTERFACE_HEAD" > evidence/lid-keeper-lever-ordering-001/source-interface-head.txt
+          cp /tmp/axm-lid-latch/lid-latch-motion-evidence.json evidence/lid-keeper-lever-ordering-001/exact-animation-pose-set.json
+          cp ../animation-donor/assets/modular-equipment-case-001/source-authority-motion-rebind-002.json evidence/lid-keeper-lever-ordering-001/animation-source-authority.json
+          cp assets/modular-equipment-case-001/front-latch-source-rig-binding-002.json evidence/lid-keeper-lever-ordering-001/source-rig-binding.json
+          cp assets/modular-equipment-case-001/front-latch-pivot-interface-001.json evidence/lid-keeper-lever-ordering-001/source-latch-interface.json
+
+      - name: Prove fail-closed early lid motion before latch release
+        working-directory: object
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('/tmp/axm-lid-latch/lid-latch-motion-evidence.json')
+          data=json.loads(p.read_text())
+          first=next(row for row in data['samples'] if abs(float(row['lid_open_angle_deg']))>1e-12)
+          first['latch_lever_angle_deg']=0.0
+          Path('/tmp/axm-lid-latch/mutated-early-lid-motion.json').write_text(json.dumps(data,indent=2,sort_keys=True)+'\n')
+          PY
+          if python tools/run_lid_keeper_lever_ordering.py \
+            --source assets/modular-equipment-case-001/source.json \
+            --ownership assets/modular-equipment-case-001/front-latch-ownership-001.json \
+            --lid-plan ../lid-rig-donor/assets/modular-equipment-case-001/articulation.json \
+            --source-interface assets/modular-equipment-case-001/front-latch-pivot-interface-001.json \
+            --source-rig-binding assets/modular-equipment-case-001/front-latch-source-rig-binding-002.json \
+            --animation-authority ../animation-donor/assets/modular-equipment-case-001/source-authority-motion-rebind-002.json \
+            --animation-evidence /tmp/axm-lid-latch/mutated-early-lid-motion.json \
+            --observed-ownership-head "$OWNERSHIP_HEAD" \
+            --observed-lid-rig-head "$LID_RIG_HEAD" \
+            --observed-previous-rigging-head "$PREVIOUS_RIGGING_HEAD" \
+            --observed-animation-head "$ANIMATION_HEAD" \
+            --observed-source-rig-head "$SOURCE_RIG_HEAD" \
+            --observed-source-interface-head "$SOURCE_INTERFACE_HEAD" \
+            --out /tmp/should-not-pass; then
+            echo 'negative control unexpectedly passed' >&2
+            exit 1
+          else
+            printf '%s\n' 'PASS_FAILS_CLOSED_ON_EARLY_LID_MOTION_BEFORE_LATCH_RELEASE' > evidence/lid-keeper-lever-ordering-001/negative-control.txt
+          fi
+
+      - name: Assert truth boundary remains explicit
+        working-directory: object
+        run: |
+          set -euo pipefail
+          grep -q 'PASS_SOURCE_OWNED_KEEPER_LEVER_ORDERING_101_AUTHORED_POSES__HOLD_CONTINUOUS_COLLISION' evidence/lid-keeper-lever-ordering-001/receipt.json
+          grep -q '"continuous_between_authored_samples_proven": false' evidence/lid-keeper-lever-ordering-001/receipt.json
+          grep -q '"animation_accepted": false' evidence/lid-keeper-lever-ordering-001/receipt.json
+          grep -q '"runtime_accepted": false' evidence/lid-keeper-lever-ordering-001/receipt.json
+          grep -q 'PASS_FAILS_CLOSED_ON_EARLY_LID_MOTION_BEFORE_LATCH_RELEASE' evidence/lid-keeper-lever-ordering-001/negative-control.txt
+
+      - name: Upload exact Rigging evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: object-keeper-lever-authored-pose-ordering-${{ github.event.pull_request.head.sha || github.sha }}
+          path: object/evidence/lid-keeper-lever-ordering-001
+          if-no-files-found: error
+          retention-days: 30
