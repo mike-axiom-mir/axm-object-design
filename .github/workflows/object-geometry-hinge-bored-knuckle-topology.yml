@@ -1,0 +1,65 @@
+name: Object Geometry bored-knuckle topology evidence
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  structural:
+    strategy:
+      matrix:
+        python-version: ['3.11', '3.13']
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Bind exact Hard-Surface successor lineage and Geometry-only delta
+        shell: bash
+        run: |
+          set -euo pipefail
+          donor=178d93e8976a741271d7f47ab4865519de925657
+          test "$(git merge-base HEAD "$donor")" = "$donor"
+          test "$(git rev-parse "$donor:assets/modular-equipment-case-001/hinge-bored-knuckle-source-successor-001.json")" = beaf16f588450a3b298e2e581b590c5dc0c07380
+          test "$(git rev-parse "$donor:assets/modular-equipment-case-001/hinge-pin-annular-mesh-001.json")" = 39a52ad5ba8497a8a524d764bbf6744bb11cf54a
+          git diff --name-only "$donor"..HEAD > /tmp/geometry-delta.txt
+          if grep -Ev '^(assets/modular-equipment-case-001/hinge-bored-knuckle-topology-rebind-001\.json|tools/verify_hinge_bored_knuckle_topology_rebind\.py|tests/test_hinge_bored_knuckle_topology_rebind\.py|\.github/workflows/object-geometry-hinge-bored-knuckle-topology\.yml)$' /tmp/geometry-delta.txt | grep -q .; then
+            echo "unexpected non-Geometry delta from exact Hard-Surface donor"
+            cat /tmp/geometry-delta.txt
+            exit 1
+          fi
+      - name: Compile
+        run: python -m compileall tools tests
+      - name: Test full repository suite
+        run: python -m unittest discover -s tests -v
+      - name: Build exact bored-knuckle topology evidence
+        if: matrix.python-version == '3.11'
+        run: |
+          mkdir -p evidence/geometry-hinge-bored-knuckle-topology
+          python tools/verify_hinge_bored_knuckle_topology_rebind.py \
+            --host assets/modular-equipment-case-001/source.json \
+            --bore-contract assets/modular-equipment-case-001/hinge-pin-bore-clearance-001.json \
+            --annular-contract assets/modular-equipment-case-001/hinge-pin-annular-mesh-001.json \
+            --successor-contract assets/modular-equipment-case-001/hinge-bored-knuckle-source-successor-001.json \
+            --topology-contract assets/modular-equipment-case-001/hinge-bored-knuckle-topology-rebind-001.json \
+            --out evidence/geometry-hinge-bored-knuckle-topology
+          cp assets/modular-equipment-case-001/hinge-bored-knuckle-source-successor-001.json evidence/geometry-hinge-bored-knuckle-topology/hard-surface-source-successor.json
+          cp assets/modular-equipment-case-001/hinge-pin-annular-mesh-001.json evidence/geometry-hinge-bored-knuckle-topology/annular-mesh-contract.json
+          cp assets/modular-equipment-case-001/hinge-bored-knuckle-topology-rebind-001.json evidence/geometry-hinge-bored-knuckle-topology/geometry-topology-contract.json
+          git rev-parse HEAD > evidence/geometry-hinge-bored-knuckle-topology/exact-head.txt
+          printf '%s\n' 178d93e8976a741271d7f47ab4865519de925657 > evidence/geometry-hinge-bored-knuckle-topology/hard-surface-donor-head.txt
+      - name: Upload retained evidence
+        if: matrix.python-version == '3.11'
+        uses: actions/upload-artifact@v4
+        with:
+          name: object-geometry-bored-knuckle-topology-${{ github.event.pull_request.head.sha || github.sha }}
+          path: evidence/geometry-hinge-bored-knuckle-topology
+          if-no-files-found: error
+          retention-days: 30
