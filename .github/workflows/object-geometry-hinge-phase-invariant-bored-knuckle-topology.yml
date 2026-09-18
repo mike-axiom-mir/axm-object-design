@@ -1,0 +1,76 @@
+name: Object Geometry phase-invariant bored-knuckle topology evidence
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  structural:
+    strategy:
+      matrix:
+        python-version: ['3.11', '3.13']
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Bind exact Hard-Surface successor 002 and predecessor Geometry provenance
+        shell: bash
+        run: |
+          set -euo pipefail
+          donor=a6d18b9fe729304dc4d95d962ed27527adce211f
+          predecessor_geometry=07f68d8e3df57ecf4ae3b8fb86fdb3bca5683747
+          test "$(git merge-base HEAD "$donor")" = "$donor"
+          test "$(git rev-parse "$donor:assets/modular-equipment-case-001/hinge-bored-knuckle-phase-invariant-source-successor-002.json")" = 7e078189d5c80508b28932563326cd5629c4efa6
+          test "$(git rev-parse "$donor:tools/build_hinge_pin_annular_mesh.py")" = 7665d904d33dea2904b55b1ebd85a6e81621ad50
+          test "$(git rev-parse "$donor:assets/modular-equipment-case-001/hinge-pin-annular-mesh-001.json")" = 39a52ad5ba8497a8a524d764bbf6744bb11cf54a
+          if ! git cat-file -e "$predecessor_geometry^{commit}" 2>/dev/null; then
+            git fetch --no-tags origin "$predecessor_geometry" --depth=1
+          fi
+          test "$(git rev-parse "$predecessor_geometry:assets/modular-equipment-case-001/hinge-bored-knuckle-topology-rebind-001.json")" = 4a27f5c179870a1fcf96d74a0c6d133cf8676b42
+          git diff --name-only "$donor"..HEAD > /tmp/geometry-delta.txt
+          if grep -Ev '^(assets/modular-equipment-case-001/hinge-phase-invariant-bored-knuckle-topology-rebind-002\.json|tools/verify_hinge_phase_invariant_bored_knuckle_topology_rebind\.py|tests/test_hinge_phase_invariant_bored_knuckle_topology_rebind\.py|\.github/workflows/object-geometry-hinge-phase-invariant-bored-knuckle-topology\.yml)$' /tmp/geometry-delta.txt | grep -q .; then
+            echo "unexpected non-Geometry delta from exact Hard-Surface donor"
+            cat /tmp/geometry-delta.txt
+            exit 1
+          fi
+      - name: Compile
+        run: python -m compileall tools tests
+      - name: Test full repository suite
+        run: python -m unittest discover -s tests -v
+      - name: Build exact successor 002 topology evidence
+        if: matrix.python-version == '3.11'
+        shell: bash
+        run: |
+          set -euo pipefail
+          out=evidence/geometry-hinge-phase-invariant-bored-knuckle-topology
+          mkdir -p "$out"
+          python tools/verify_hinge_phase_invariant_bored_knuckle_topology_rebind.py \
+            --host assets/modular-equipment-case-001/source.json \
+            --annular-contract assets/modular-equipment-case-001/hinge-pin-annular-mesh-001.json \
+            --successor-contract assets/modular-equipment-case-001/hinge-bored-knuckle-phase-invariant-source-successor-002.json \
+            --topology-contract assets/modular-equipment-case-001/hinge-phase-invariant-bored-knuckle-topology-rebind-002.json \
+            --annular-builder tools/build_hinge_pin_annular_mesh.py \
+            --out "$out"
+          cp assets/modular-equipment-case-001/hinge-bored-knuckle-phase-invariant-source-successor-002.json "$out/hard-surface-source-successor-002.json"
+          cp assets/modular-equipment-case-001/hinge-pin-annular-mesh-001.json "$out/predecessor-annular-contract.json"
+          cp assets/modular-equipment-case-001/hinge-phase-invariant-bored-knuckle-topology-rebind-002.json "$out/geometry-topology-contract-002.json"
+          git show 07f68d8e3df57ecf4ae3b8fb86fdb3bca5683747:assets/modular-equipment-case-001/hinge-bored-knuckle-topology-rebind-001.json > "$out/predecessor-geometry-topology-contract-001.json"
+          git rev-parse HEAD > "$out/exact-head.txt"
+          printf '%s\n' a6d18b9fe729304dc4d95d962ed27527adce211f > "$out/hard-surface-donor-head.txt"
+          printf '%s\n' 07f68d8e3df57ecf4ae3b8fb86fdb3bca5683747 > "$out/predecessor-geometry-head.txt"
+      - name: Upload retained evidence
+        if: matrix.python-version == '3.11'
+        uses: actions/upload-artifact@v4
+        with:
+          name: object-geometry-phase-invariant-bored-knuckle-topology-${{ github.event.pull_request.head.sha || github.sha }}
+          path: evidence/geometry-hinge-phase-invariant-bored-knuckle-topology
+          if-no-files-found: error
+          retention-days: 30
