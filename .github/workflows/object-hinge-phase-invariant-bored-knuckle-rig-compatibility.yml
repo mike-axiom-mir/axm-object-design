@@ -1,0 +1,167 @@
+name: Object phase-invariant bored hinge Rigging compatibility
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  phase-invariant-bored-hinge-rig-compatibility:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.11', '3.13']
+    steps:
+      - name: Checkout exact receiving Rigging head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          path: object
+          fetch-depth: 0
+
+      - name: Preserve exact predecessor Rigging lineage
+        working-directory: object
+        run: |
+          set -euo pipefail
+          git merge-base --is-ancestor 38f32efe4a1b053f77255c31bee021646156e4ad HEAD
+
+      - name: Checkout exact Hard-Surface phase-invariant successor
+        uses: actions/checkout@v4
+        with:
+          repository: mike-axiom-mir/axm-object-design
+          ref: a6d18b9fe729304dc4d95d962ed27527adce211f
+          path: source-successor
+          fetch-depth: 0
+
+      - name: Checkout exact historical lid Rigging donor
+        uses: actions/checkout@v4
+        with:
+          repository: mike-axiom-mir/axm-object-design
+          ref: 4b72c9918c5fc1e89bd18a0be24fb4afac6e7775
+          path: lid-rig-donor
+          fetch-depth: 1
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Verify exact source-owner identities
+        run: |
+          set -euo pipefail
+          test "$(git -C source-successor rev-parse a6d18b9fe729304dc4d95d962ed27527adce211f:assets/modular-equipment-case-001/hinge-bored-knuckle-phase-invariant-source-successor-002.json)" = "7e078189d5c80508b28932563326cd5629c4efa6"
+          git -C source-successor merge-base --is-ancestor 178d93e8976a741271d7f47ab4865519de925657 a6d18b9fe729304dc4d95d962ed27527adce211f
+          test "$(git -C source-successor rev-parse 178d93e8976a741271d7f47ab4865519de925657:assets/modular-equipment-case-001/hinge-bored-knuckle-source-successor-001.json)" = "beaf16f588450a3b298e2e581b590c5dc0c07380"
+          test "$(git -C source-successor rev-parse 178d93e8976a741271d7f47ab4865519de925657:assets/modular-equipment-case-001/hinge-pin-annular-mesh-001.json)" = "39a52ad5ba8497a8a524d764bbf6744bb11cf54a"
+          test "$(git -C source-successor rev-parse 178d93e8976a741271d7f47ab4865519de925657:assets/modular-equipment-case-001/hinge-knuckle-owner-stack-001.json)" = "e4e7c95769c0827a6a019afd672ff4b20cd13541"
+
+      - name: Rebuild exact Hard-Surface predecessor and phase-invariant successor evidence
+        working-directory: source-successor
+        run: |
+          set -euo pipefail
+          rm -rf evidence/hinge-pin-bore-clearance
+          mkdir -p evidence/hinge-pin-bore-clearance
+          python tools/verify_hinge_pin_bore_clearance.py \
+            --host assets/modular-equipment-case-001/source.json \
+            --contract assets/modular-equipment-case-001/hinge-pin-bore-clearance-001.json \
+            --out evidence/hinge-pin-bore-clearance
+          python tools/build_hinge_pin_annular_mesh.py \
+            --host assets/modular-equipment-case-001/source.json \
+            --bore-contract assets/modular-equipment-case-001/hinge-pin-bore-clearance-001.json \
+            --mesh-contract assets/modular-equipment-case-001/hinge-pin-annular-mesh-001.json \
+            --out evidence/hinge-pin-bore-clearance
+          python tools/verify_hinge_knuckle_owner_stack.py \
+            --host assets/modular-equipment-case-001/source.json \
+            --contract assets/modular-equipment-case-001/hinge-knuckle-owner-stack-001.json \
+            --out evidence/hinge-pin-bore-clearance
+          python tools/verify_hinge_bored_knuckle_source_successor.py \
+            --host assets/modular-equipment-case-001/source.json \
+            --bore-contract assets/modular-equipment-case-001/hinge-pin-bore-clearance-001.json \
+            --annular-contract assets/modular-equipment-case-001/hinge-pin-annular-mesh-001.json \
+            --owner-contract assets/modular-equipment-case-001/hinge-knuckle-owner-stack-001.json \
+            --successor-contract assets/modular-equipment-case-001/hinge-bored-knuckle-source-successor-001.json \
+            --out evidence/hinge-pin-bore-clearance
+          python tools/verify_hinge_bored_knuckle_phase_invariant_successor.py \
+            --host assets/modular-equipment-case-001/source.json \
+            --bore-contract assets/modular-equipment-case-001/hinge-pin-bore-clearance-001.json \
+            --annular-contract assets/modular-equipment-case-001/hinge-pin-annular-mesh-001.json \
+            --owner-contract assets/modular-equipment-case-001/hinge-knuckle-owner-stack-001.json \
+            --predecessor-successor-contract assets/modular-equipment-case-001/hinge-bored-knuckle-source-successor-001.json \
+            --phase-invariant-successor-contract assets/modular-equipment-case-001/hinge-bored-knuckle-phase-invariant-source-successor-002.json \
+            --out evidence/hinge-pin-bore-clearance
+          grep -q 'PASS_SOURCE_OWNED_PHASE_INVARIANT_BORED_HINGE_KNUCKLE_SUCCESSOR' evidence/hinge-pin-bore-clearance/hinge-bored-knuckle-phase-invariant-source-successor.receipt.json
+
+      - name: Compile and run full Object regression suite
+        working-directory: object
+        run: |
+          python -m compileall -q tools tests
+          python -m unittest discover -s tests -v
+
+      - name: Rebuild predecessor Rigging receipt and prove phase-invariant receiver
+        if: matrix.python-version == '3.11'
+        working-directory: object
+        env:
+          CURRENT_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          set -euo pipefail
+          rm -rf evidence/hinge-phase-invariant-bored-knuckle-rig-compatibility-002
+          mkdir -p evidence/hinge-phase-invariant-bored-knuckle-rig-compatibility-002/predecessor
+          python tools/verify_hinge_bored_knuckle_rig_compatibility.py \
+            --source assets/modular-equipment-case-001/source.json \
+            --owner-stack ../source-successor/assets/modular-equipment-case-001/hinge-knuckle-owner-stack-001.json \
+            --successor-contract ../source-successor/assets/modular-equipment-case-001/hinge-bored-knuckle-source-successor-001.json \
+            --annular-contract ../source-successor/assets/modular-equipment-case-001/hinge-pin-annular-mesh-001.json \
+            --successor-receipt ../source-successor/evidence/hinge-pin-bore-clearance/hinge-bored-knuckle-source-successor.receipt.json \
+            --lid-plan ../lid-rig-donor/assets/modular-equipment-case-001/articulation.json \
+            --compatibility-contract assets/modular-equipment-case-001/hinge-bored-knuckle-rig-compatibility-001.json \
+            --observed-owner-stack-head 172dd9ff5ed1fee3a21cd460c607f07ee0da7520 \
+            --observed-owner-stack-blob e4e7c95769c0827a6a019afd672ff4b20cd13541 \
+            --observed-successor-head 178d93e8976a741271d7f47ab4865519de925657 \
+            --observed-successor-blob beaf16f588450a3b298e2e581b590c5dc0c07380 \
+            --observed-annular-blob 39a52ad5ba8497a8a524d764bbf6744bb11cf54a \
+            --observed-lid-rig-head 4b72c9918c5fc1e89bd18a0be24fb4afac6e7775 \
+            --observed-predecessor-rigging-head 16b32c5ac6d52d768d64f0fac9fedfe4ee9f24fe \
+            --out evidence/hinge-phase-invariant-bored-knuckle-rig-compatibility-002/predecessor
+          python tools/verify_hinge_phase_invariant_bored_knuckle_rig_compatibility.py \
+            --predecessor-rig-receipt evidence/hinge-phase-invariant-bored-knuckle-rig-compatibility-002/predecessor/receipt.json \
+            --successor-contract ../source-successor/assets/modular-equipment-case-001/hinge-bored-knuckle-phase-invariant-source-successor-002.json \
+            --successor-receipt ../source-successor/evidence/hinge-pin-bore-clearance/hinge-bored-knuckle-phase-invariant-source-successor.receipt.json \
+            --compatibility-contract assets/modular-equipment-case-001/hinge-phase-invariant-bored-knuckle-rig-compatibility-002.json \
+            --observed-successor-head a6d18b9fe729304dc4d95d962ed27527adce211f \
+            --observed-successor-blob 7e078189d5c80508b28932563326cd5629c4efa6 \
+            --observed-predecessor-rigging-head 38f32efe4a1b053f77255c31bee021646156e4ad \
+            --out evidence/hinge-phase-invariant-bored-knuckle-rig-compatibility-002
+          printf '%s\n' "$CURRENT_HEAD" > evidence/hinge-phase-invariant-bored-knuckle-rig-compatibility-002/exact-head.txt
+          printf '%s\n' 'a6d18b9fe729304dc4d95d962ed27527adce211f' > evidence/hinge-phase-invariant-bored-knuckle-rig-compatibility-002/source-successor-head.txt
+          printf '%s\n' '38f32efe4a1b053f77255c31bee021646156e4ad' > evidence/hinge-phase-invariant-bored-knuckle-rig-compatibility-002/predecessor-rigging-head.txt
+          cp assets/modular-equipment-case-001/hinge-phase-invariant-bored-knuckle-rig-compatibility-002.json evidence/hinge-phase-invariant-bored-knuckle-rig-compatibility-002/rig-compatibility-contract.json
+          cp ../source-successor/assets/modular-equipment-case-001/hinge-bored-knuckle-phase-invariant-source-successor-002.json evidence/hinge-phase-invariant-bored-knuckle-rig-compatibility-002/source-successor-contract.json
+          cp ../source-successor/evidence/hinge-pin-bore-clearance/hinge-bored-knuckle-phase-invariant-source-successor.receipt.json evidence/hinge-phase-invariant-bored-knuckle-rig-compatibility-002/source-successor.receipt.json
+
+      - name: Assert bounded Rigging truth boundary
+        if: matrix.python-version == '3.11'
+        working-directory: object
+        run: |
+          set -euo pipefail
+          RECEIPT=evidence/hinge-phase-invariant-bored-knuckle-rig-compatibility-002/receipt.json
+          grep -q 'PASS_PHASE_INVARIANT_BORED_KNUCKLE_SUCCESSOR_RIG_1MM_RADIAL_NONCONTACT_CONTINUOUS_0_TO_110' "$RECEIPT"
+          grep -q '0.0009999999999999992' "$RECEIPT"
+          grep -q '"source_successor_geometry_adopted": false' "$RECEIPT"
+          grep -q '"pin_parent_or_axial_phase_claimed": false' "$RECEIPT"
+          grep -q '"animation_accepted": false' "$RECEIPT"
+          grep -q '"technical_art_target_host_accepted": false' "$RECEIPT"
+          grep -q '"runtime_accepted": false' "$RECEIPT"
+          grep -q 'predecessor_bore_insufficient_for_1mm_phase_invariant_clearance' "$RECEIPT"
+          grep -q 'automatic_source_successor_adoption' "$RECEIPT"
+          grep -q 'invented_pin_phase' "$RECEIPT"
+          grep -q 'animation_authority_expansion' "$RECEIPT"
+
+      - name: Upload exact Rigging evidence
+        if: ${{ always() && matrix.python-version == '3.11' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: object-hinge-phase-invariant-bored-knuckle-rig-compatibility-${{ github.event.pull_request.head.sha || github.sha }}
+          path: object/evidence/hinge-phase-invariant-bored-knuckle-rig-compatibility-002
+          if-no-files-found: error
+          retention-days: 30
