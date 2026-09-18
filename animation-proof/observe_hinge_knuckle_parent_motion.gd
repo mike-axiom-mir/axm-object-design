@@ -170,8 +170,8 @@ func _initialize() -> void:
             var kid := String(row["id"])
             var node = nodes[kid] as Node3D
             var expected := expected_position(sample, kid)
-            var observed := node.global_position
-            var residual := observed.distance_to(expected)
+            var observed: Vector3 = node.global_position
+            var residual: float = observed.distance_to(expected)
             max_position_residual = maxf(max_position_residual, residual)
             if residual > POSITION_TOL_M:
                 fail(
