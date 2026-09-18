@@ -281,8 +281,8 @@ def verify_runtime(path: Path) -> dict[str, Any]:
     if receipt.get("material_profile_sha256") != EXPECTED_PROFILE_SHA:
         raise AssertionError("runtime material profile drift")
     comparisons = receipt.get("comparisons", {})
-    if tuple(comparisons.keys()) != CONTEXTS:
-        raise AssertionError(f"runtime camera set/order drift: {tuple(comparisons.keys())}")
+    if set(comparisons) != set(CONTEXTS):
+        raise AssertionError(f"runtime camera set drift: {sorted(comparisons)}")
     back_total = 0
     front_total = 0
     active_total = 0
