@@ -1,0 +1,116 @@
+{
+  "schema": "axm.object-hinge-successor002-hardware-steel-base-value-successor/v0.1",
+  "review_id": "modular-equipment-case-001-hinge-successor002-hardware-steel-base-value-successor-001",
+  "asset_id": "modular-equipment-case-001",
+  "source_path": "assets/modular-equipment-case-001/source.json",
+  "source_sha256": "49b1f9ed9865893d6de6f1ec8f069576732df694853fde4e3fcff366de32644a",
+  "material_profile_path": "lookdev/object_material_profile_001.json",
+  "material_profile_sha256": "dc200229d6c25fa84063aa51f66103abc022efa54b2167e4432a5b47fc40360c",
+  "baseline_materials_owner": {
+    "exact_head": "90789442be09aac60125f9423d1d5f7d65c1c1a3",
+    "artifact_id": 10533132418,
+    "artifact_sha256": "af712862f420a4a070c2a731136ba123f87cc40d1aca4613100a7a60d9b5dc84",
+    "expected_result": "PASS_OBJECT_HINGE_SUCCESSOR002_FULL_RECEIVER_MATERIAL_REVIEW_EVIDENCE_READY"
+  },
+  "failed_roughness_reference": {
+    "exact_head": "db68a6b76e04ae2f19bb09cb7207f2874e19797b",
+    "artifact_id": 10534614828,
+    "artifact_sha256": "ece743ffc1735a9aa4eb5ce1b569b9a3e269d1ce3b667a329394df04c527220a",
+    "evidence_decision": "EVIDENCE_READY_OBJECT_HINGE_SUCCESSOR002_HARDWARE_STEEL_ROUGHNESS_SUCCESSOR_001",
+    "art_result": "FAIL_ART_DIRECTION_OBJECT_HINGE_ROUGHNESS048_046__BROADENED_SPECULAR_BAND_WORSENS_HIERARCHY"
+  },
+  "technical_art_owner": {
+    "repository": "mike-axiom-mir/axm-object-design",
+    "pull_request": 16,
+    "exact_head": "f430d00d98e694dcf8302fd4df3c64a074f6f30e",
+    "artifact_id": 10531541834,
+    "artifact_sha256": "5e1134d0ebdf786d04ae789a841493ce9cf684f16aedd7dbad597f2e02b3ad5e",
+    "target_glb_sha256": "f81a9bccd9de1033476da4e5bbea3871b01e2ebf9fb65fcf909447fd14c43e40",
+    "target_triangle_index_transform": "GODOT_4_7_2_GLTFDOCUMENT_RECEIVER_LOCAL_[a,b,c]_TO_[a,c,b]"
+  },
+  "art_direction_request": {
+    "status_blob": "9ca48b36888767c2fa28882dd6974f5b53ec0c9e",
+    "direction_packet_commit": "f2803615caf5688837410ceb3102fcdec50cdb1f",
+    "review_id": 5245176382,
+    "failure": "FAIL_ART_DIRECTION_OBJECT_HINGE_ROUGHNESS048_046__BROADENED_SPECULAR_BAND_WORSENS_HIERARCHY",
+    "restore": "RESTORE_OBJECT_HINGE_HARDWARE_STEEL_ROUGHNESS_032_CONTROL",
+    "request": "REQUEST_ONE_BASE_VALUE_ONLY_HARDWARE_STEEL_SUCCESSOR__R032_M088_GEOMETRY_TRANSPORT_CAMERA_LIGHT_FROZEN",
+    "hold": "HOLD_FINAL_OBJECT_HINGE_SUCCESSOR002_VISUAL_ADOPTION__ART_QA_RUNTIME_TARGET_DEVICE_PENDING"
+  },
+  "visual_qa_return": {
+    "status_blob": "34062ce08d3ad86fbe8930583af2c2ec8f92f9d4",
+    "review_id": 5245090483,
+    "evidence_result": "PASS_OBJECT_HINGE_ROUGHNESS048_ONE_VARIABLE_EVIDENCE_INTEGRITY__FROZEN_RECEIVER_AND_RENDER_CONTEXT",
+    "rear_result": "FAIL_OBJECT_HINGE_ROUGHNESS048_REAR_HIERARCHY_REPAIR__BRIGHT_STRIPE_PERSISTS_AND_REAR_GRAZING_INTENSIFIES",
+    "side_result": "FAIL_OBJECT_HINGE_ROUGHNESS048_SIDE_REFERENCE_PRESERVATION__HINGE_ENTERS_BRIGHTEST1PCT"
+  },
+  "review_scope": {
+    "expected_total_mesh_nodes": 31,
+    "expected_total_triangles": 1052,
+    "hinge_components": [
+      "hinge_body_b0",
+      "hinge_lid_l0",
+      "hinge_body_b1",
+      "hinge_lid_l1",
+      "hinge_body_b2"
+    ],
+    "expected_hinge_triangles": 480,
+    "camera_contexts": [
+      "full_rear_three_quarter",
+      "full_rear_grazing",
+      "full_side_three_quarter"
+    ],
+    "control_hardware_steel": {
+      "albedo": "#9AA3A8FF",
+      "metallic": 0.88,
+      "roughness": 0.32
+    },
+    "failed_roughness_negative": {
+      "albedo": "#9AA3A8FF",
+      "metallic": 0.88,
+      "roughness": 0.48
+    },
+    "successor_hardware_steel": {
+      "albedo": "#7E868AFF",
+      "metallic": 0.88,
+      "roughness": 0.32,
+      "base_value_scale_srgb8": 0.82,
+      "base_value_transform": "ROUND_EACH_CONTROL_RGB8_CHANNEL_TIMES_0P82"
+    },
+    "successor_applies_only_to_hinge_components": true,
+    "all_non_hinge_materials_frozen": true,
+    "geometry_uv_texture_camera_light_exposure_transport_frozen": true,
+    "selection_method": "ONE_ATTRIBUTABLE_BASE_VALUE_SUCCESSOR_NOT_A_SCALAR_SWEEP",
+    "visual_intent": "reduce repeated high-brightness rear-edge pull without broadening highlight footprint while retaining metallic steel, bore readability, knuckle separation and the side-three-quarter hierarchy"
+  },
+  "renderer": {
+    "engine": "Godot",
+    "version": "4.7.2-stable",
+    "rendering_method": "gl_compatibility"
+  },
+  "provenance": {
+    "method": "self-authored single base-value-only lookdev successor requested by Art Direction 046",
+    "external_textures": [],
+    "external_material_assets": [],
+    "technical_art_glb_bytes_edited_by_materials": false,
+    "technical_art_triangle_transform_reimplemented_by_materials": false,
+    "shared_material_profile_edited_for_successor": false,
+    "base_value_sweep_performed": false,
+    "roughness_changed_from_restored_control": false,
+    "metallic_changed": false
+  },
+  "truth_boundary": {
+    "art_direction_acceptance": false,
+    "visual_qa_acceptance": false,
+    "source_successor_default_adopted": false,
+    "technical_art_transport_adopted_as_object_default": false,
+    "final_hardware_steel_material_values": false,
+    "uvs_changed": false,
+    "textures_changed": false,
+    "geometry_changed": false,
+    "runtime_or_physics_accepted": false,
+    "arbitrary_renderer_equivalence": false,
+    "canon": false,
+    "production_ready": false
+  }
+}
