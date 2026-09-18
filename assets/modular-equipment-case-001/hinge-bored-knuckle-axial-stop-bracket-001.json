@@ -18,6 +18,8 @@
     "stop_thickness_m": 0.006,
     "left_stop_inward_face_x_m": -0.344,
     "right_stop_inward_face_x_m": 0.344,
+    "left_stop_outward_face_x_m": -0.35,
+    "right_stop_outward_face_x_m": 0.35,
     "knuckle_stack_min_x_m": -0.33,
     "knuckle_stack_max_x_m": 0.33,
     "left_static_axial_gap_m": 0.014,
