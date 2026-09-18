@@ -53,6 +53,9 @@ func expected_position(sample: Dictionary, knuckle_id: String) -> Vector3:
     return vec3(mapping[knuckle_id])
 
 func _initialize() -> void:
+    call_deferred("_run_observation")
+
+func _run_observation() -> void:
     var payload := read_json(INPUT_PATH)
     if payload.get("schema") != "axm.object-animation-hinge-knuckle-parent-motion-godot-input/v0.1":
         fail("PARENT_MOTION_MISMATCH missing exact Animation parent-motion input")
