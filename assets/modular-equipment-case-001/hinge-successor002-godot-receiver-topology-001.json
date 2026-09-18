@@ -3,7 +3,7 @@
   "asset_id": "modular-equipment-case-001",
   "successor_id": "modular-equipment-case-001/hinge-bored-knuckle-phase-invariant-source-successor-002",
   "source_geometry_head": "96abb2830ddabca9ed270b42a9447534d007ce64",
-  "source_geometry_contract_git_blob_sha1": "0de4dbbfe61cc2989689a070371181fe264e16a0",
+  "source_geometry_contract_git_blob_sha1": "0de4dbb01df9cb49493ace474168bd2d99d169a5",
   "source_geometry_verifier_git_blob_sha1": "2d1306c9b4c7e89cb29a230c75bcf894f12b64a9",
   "source_geometry_result": "PASS_OBJECT_PHASE_INVARIANT_BORED_KNUCKLE_SUCCESSOR_GENUS1_TOPOLOGY_REBIND",
   "technical_art_head": "f430d00d98e694dcf8302fd4df3c64a074f6f30e",
