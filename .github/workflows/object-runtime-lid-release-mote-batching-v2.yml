@@ -1,0 +1,209 @@
+name: Object Runtime lid-release mote v2 MultiMesh rebind
+
+on:
+  push:
+    branches: [studio/runtime-object-lid-release-mote-batching-001]
+    paths:
+      - 'animation-proof/observe_lid_release_motes_runtime_batching_v2.gd'
+      - 'tools/verify_object_runtime_lid_release_mote_batching_v2.py'
+      - '.github/workflows/object-runtime-lid-release-mote-batching-v2.yml'
+  pull_request:
+    paths:
+      - 'animation-proof/observe_lid_release_motes_runtime_batching_v2.gd'
+      - 'tools/verify_object_runtime_lid_release_mote_batching_v2.py'
+      - '.github/workflows/object-runtime-lid-release-mote-batching-v2.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  RUNTIME_PREDECESSOR_HEAD: b45dfee4c0a6ae92b8bc5056d4846331075fdadc
+  VFX_V2_HEAD: bc114ee7ec876107892ccedeefc8e5020315488a
+  VFX_V2_ARTIFACT_ID: '10521288521'
+  VFX_V2_ARTIFACT_NAME: object-vfx-lid-release-motes-irregularity-repair-v2-bc114ee7ec876107892ccedeefc8e5020315488a
+  VFX_V2_ARTIFACT_SHA256: 521575306651a0c3b41280315da4c75df6d55ae3a2ae0e6e8b40ba740bf81d17
+  VFX_V2_EFFECT_SHA256: 9f16e2789e547f420781af09d2a90724ead5bf4155783c5ecfd96b8f4e8ff6d7
+
+jobs:
+  exact-runtime-v2-multimesh-rebind:
+    runs-on: ubuntu-latest
+    timeout-minutes: 32
+    steps:
+      - name: Checkout exact Runtime head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+
+      - name: Bind Runtime lineage and exact current VFX-v2 owner head
+        run: |
+          set -euo pipefail
+          EXACT_RUNTIME_HEAD="$(git rev-parse HEAD)"
+          echo "EXACT_RUNTIME_HEAD=$EXACT_RUNTIME_HEAD" >> "$GITHUB_ENV"
+          git merge-base --is-ancestor "$RUNTIME_PREDECESSOR_HEAD" HEAD
+          git fetch --no-tags origin studio/vfx-object-lid-release-motes-001
+          test "$(git rev-parse FETCH_HEAD)" = "$VFX_V2_HEAD"
+          test "$(git rev-parse "${VFX_V2_HEAD}:assets/modular-equipment-case-001/lid-open-release-motes-001-irregularity-candidate-v2.json")" != ""
+          echo 'Runtime predecessor + exact VFX v2 head binding PASS'
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Run complete Object suite on Python 3.11
+        run: |
+          python -m compileall -q tools tests
+          python -m unittest discover -s tests -v
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Run complete Object suite on Python 3.13
+        run: |
+          python -m compileall -q tools tests
+          python -m unittest discover -s tests -v
+
+      - name: Download and verify exact green VFX-v2 owner artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          rm -rf .vfx-v2-evidence /tmp/object-vfx-v2.zip
+          mkdir -p .vfx-v2-evidence
+          meta_digest="$(gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/${VFX_V2_ARTIFACT_ID}" --jq '.digest')"
+          meta_name="$(gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/${VFX_V2_ARTIFACT_ID}" --jq '.name')"
+          test "$meta_digest" = "sha256:${VFX_V2_ARTIFACT_SHA256}"
+          test "$meta_name" = "$VFX_V2_ARTIFACT_NAME"
+          gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/${VFX_V2_ARTIFACT_ID}/zip" > /tmp/object-vfx-v2.zip
+          echo "${VFX_V2_ARTIFACT_SHA256}  /tmp/object-vfx-v2.zip" | sha256sum -c -
+          unzip -q /tmp/object-vfx-v2.zip -d .vfx-v2-evidence
+          test "$(cat .vfx-v2-evidence/animation-proof/generated/exact-presentation-head.txt)" = "$VFX_V2_HEAD"
+          test "$(sha256sum .vfx-v2-evidence/animation-proof/generated/lid-open-release-motes-001-irregularity-candidate-v2.json | cut -d' ' -f1)" = "$VFX_V2_EFFECT_SHA256"
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          r=json.loads(Path('.vfx-v2-evidence/animation-proof/vfx-lid-release-motes-irregularity-v2-receipt.json').read_text())
+          assert r['state']=='PASS_TARGET_HOST_OWNER_SEED_IRREGULARITY_V2_TWO_CONTEXT_PRESENTATION',r
+          assert r['presentation_head']=='bc114ee7ec876107892ccedeefc8e5020315488a',r
+          assert r['owner_seed']==41027 and r['parameter_sampling']=='DECORRELATED_INTEGER_MIX_V2_IRREGULAR_MARKS',r
+          print('exact VFX v2 artifact PASS')
+          PY
+
+      - name: Assemble exact VFX-v2 receiving inputs
+        run: |
+          set -euo pipefail
+          rm -rf animation-proof/generated
+          mkdir -p animation-proof/generated
+          cp .vfx-v2-evidence/animation-proof/generated/object-rigid-components-rebound.glb animation-proof/generated/
+          cp .vfx-v2-evidence/animation-proof/generated/uc-rigid-scene-handoff-receipt.json animation-proof/generated/
+          cp .vfx-v2-evidence/animation-proof/generated/lid-latch-motion-evidence.json animation-proof/generated/
+          cp .vfx-v2-evidence/animation-proof/generated/front-latch-articulation.receipt.json animation-proof/generated/
+          cp .vfx-v2-evidence/animation-proof/generated/lid-latch-motion-sequence-001.json animation-proof/generated/
+          cp .vfx-v2-evidence/animation-proof/generated/lid-open-release-motes-001-irregularity-candidate-v2.json animation-proof/generated/
+          cp .vfx-v2-evidence/animation-proof/generated/exact-animation-parent.txt animation-proof/generated/
+          cp .vfx-v2-evidence/animation-proof/generated/exact-technical-art-head.txt animation-proof/generated/
+          cp .vfx-v2-evidence/animation-proof/generated/exact-uc-head.txt animation-proof/generated/
+          printf '%s\n' "$VFX_V2_HEAD" > animation-proof/generated/exact-runtime-parent-vfx-head.txt
+          printf '%s\n' "$EXACT_RUNTIME_HEAD" > animation-proof/generated/exact-runtime-head.txt
+
+      - name: Download pinned Godot 4.7.2
+        env:
+          GODOT_URL: https://github.com/godotengine/godot-builds/releases/download/4.7.2-stable/Godot_v4.7.2-stable_linux.x86_64.zip
+          GODOT_SHA256: cadd3204e728a35d3f13adb7fd0d7902636b79f6b95c40c265eb73b6c35329e4
+        run: |
+          set -euo pipefail
+          mkdir -p .godot-bin
+          curl --fail --location --retry 3 --retry-delay 2 "$GODOT_URL" --output .godot-bin/godot.zip
+          echo "$GODOT_SHA256  .godot-bin/godot.zip" | sha256sum --check --strict
+          unzip -q .godot-bin/godot.zip -d .godot-bin
+          chmod +x .godot-bin/Godot_v4.7.2-stable_linux.x86_64
+          .godot-bin/Godot_v4.7.2-stable_linux.x86_64 --version
+
+      - name: Install virtual display when needed
+        run: |
+          if ! command -v xvfb-run >/dev/null 2>&1; then
+            sudo apt-get update
+            sudo apt-get install -y xvfb
+          fi
+
+      - name: Measure exact VFX-v2 legacy presentation versus one-MultiMesh rebind
+        run: |
+          set -euo pipefail
+          rm -f animation-proof/runtime-lid-release-mote-batching-v2-receipt.json animation-proof/runtime-mote-*.png
+          xvfb-run --auto-servernum --server-args="-screen 0 1000x760x24" \
+            .godot-bin/Godot_v4.7.2-stable_linux.x86_64 \
+            --display-driver x11 \
+            --rendering-method gl_compatibility \
+            --path animation-proof \
+            --script observe_lid_release_motes_runtime_batching_v2.gd
+
+      - name: Verify exact Runtime v2 measurement receipt and VFX-v2 raster binding
+        run: python tools/verify_object_runtime_lid_release_mote_batching_v2.py
+
+      - name: Prove draw-call non-win fails closed
+        run: |
+          set -euo pipefail
+          cp animation-proof/runtime-lid-release-mote-batching-v2-receipt.json /tmp/runtime-mote-v2-good.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('animation-proof/runtime-lid-release-mote-batching-v2-receipt.json')
+          r=json.loads(p.read_text())
+          q=r['draw_call_probe_040s_continuity']
+          q['batched_draw_calls_in_frame']=q['legacy_draw_calls_in_frame']
+          q['draw_calls_saved']=0
+          q['draw_call_reduction_fraction']=0.0
+          p.write_text(json.dumps(r,indent=2)+'\n')
+          PY
+          if python tools/verify_object_runtime_lid_release_mote_batching_v2.py; then
+            echo 'ERROR: non-win mutation was accepted' >&2
+            exit 1
+          fi
+          cp /tmp/runtime-mote-v2-good.json animation-proof/runtime-lid-release-mote-batching-v2-receipt.json
+
+      - name: Prove visual-equivalence regression fails closed
+        run: |
+          set -euo pipefail
+          cp animation-proof/runtime-lid-release-mote-batching-v2-receipt.json /tmp/runtime-mote-v2-good.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('animation-proof/runtime-lid-release-mote-batching-v2-receipt.json')
+          r=json.loads(p.read_text())
+          r['visual_comparisons'][2]['legacy_vs_batched']['changed_pixels_over_1lsb']=1
+          r['visual_tradeoff_summary']['total_active_legacy_vs_batched_changed_pixels_over_1lsb']=1
+          p.write_text(json.dumps(r,indent=2)+'\n')
+          PY
+          if python tools/verify_object_runtime_lid_release_mote_batching_v2.py; then
+            echo 'ERROR: visual regression mutation was accepted' >&2
+            exit 1
+          fi
+          cp /tmp/runtime-mote-v2-good.json animation-proof/runtime-lid-release-mote-batching-v2-receipt.json
+          python tools/verify_object_runtime_lid_release_mote_batching_v2.py
+
+      - name: Retain exact Runtime VFX-v2 batching evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: object-runtime-lid-release-mote-batching-v2-${{ github.event.pull_request.head.sha || github.sha }}
+          path: |
+            animation-proof/observe_lid_release_motes_runtime_batching_v2.gd
+            tools/verify_object_runtime_lid_release_mote_batching_v2.py
+            animation-proof/generated/exact-runtime-head.txt
+            animation-proof/generated/exact-runtime-parent-vfx-head.txt
+            animation-proof/generated/exact-animation-parent.txt
+            animation-proof/generated/exact-technical-art-head.txt
+            animation-proof/generated/exact-uc-head.txt
+            animation-proof/generated/uc-rigid-scene-handoff-receipt.json
+            animation-proof/generated/lid-latch-motion-evidence.json
+            animation-proof/generated/front-latch-articulation.receipt.json
+            animation-proof/generated/lid-latch-motion-sequence-001.json
+            animation-proof/generated/lid-open-release-motes-001-irregularity-candidate-v2.json
+            animation-proof/runtime-lid-release-mote-batching-v2-receipt.json
+            animation-proof/runtime-mote-*.png
+            .vfx-v2-evidence/animation-proof/vfx-lid-release-motes-irregularity-v2-receipt.json
+          if-no-files-found: warn
+          retention-days: 30
