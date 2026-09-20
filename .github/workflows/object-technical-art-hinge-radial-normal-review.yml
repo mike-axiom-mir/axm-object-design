@@ -27,6 +27,7 @@ jobs:
     timeout-minutes: 40
     env:
       BASELINE_TA_HEAD: f430d00d98e694dcf8302fd4df3c64a074f6f30e
+      PROVEN_NORMAL_REVIEW_TA_HEAD: 36f653ef0409a66d5d00def18a8f9dccd00c3336
       BASELINE_TA_ARTIFACT_ID: "10531541834"
       BASELINE_TA_ARTIFACT_SHA256: 5e1134d0ebdf786d04ae789a841493ce9cf684f16aedd7dbad597f2e02b3ad5e
       CONTROL_GLB_SHA256: f81a9bccd9de1033476da4e5bbea3871b01e2ebf9fb65fcf909447fd14c43e40
@@ -57,23 +58,29 @@ jobs:
           set -euo pipefail
           exact="${{ github.event.pull_request.head.sha || github.sha }}"
           test "$(git rev-parse HEAD)" = "$exact"
-          git merge-base --is-ancestor "$BASELINE_TA_HEAD" HEAD
-          python - <<'PY'
-          import subprocess
-          expected={
-            '.github/workflows/object-technical-art-hinge-radial-normal-review.yml',
-            'contracts/object_hinge_successor002_analytic_radial_normal_review_048.json',
-            'rigid-proof/hinge_radial_normal_review_observe.gd',
-            'tools/build_object_hinge_successor002_analytic_radial_normal_review.py',
-          }
-          changed=set(subprocess.check_output(['git','diff','--name-only','f430d00d98e694dcf8302fd4df3c64a074f6f30e','HEAD'],text=True).splitlines())
-          if changed != expected:
-              raise SystemExit(f'bounded Direction-048 Technical Art delta drift: {sorted(changed)}')
-          PY
-          python -m json.tool contracts/object_hinge_successor002_analytic_radial_normal_review_048.json >/dev/null
-          python -m py_compile tools/build_object_hinge_successor002_analytic_radial_normal_review.py
-          python -m unittest discover -s tests -v
+          git merge-base --is-ancestor "$PROVEN_NORMAL_REVIEW_TA_HEAD" HEAD
           mkdir -p rigid-proof/normal-review-owner rigid-proof/generated/object-hinge-analytic-radial-normal-review
+          python tools/verify_ta_evidence_lane_continuity.py \
+            --baseline "$PROVEN_NORMAL_REVIEW_TA_HEAD" \
+            --receipt rigid-proof/normal-review-owner/lane-continuity-receipt.json \
+            --protected contracts/object_hinge_successor002_analytic_radial_normal_review_048.json \
+            --protected rigid-proof/hinge_radial_normal_review_observe.gd \
+            --protected tools/build_object_hinge_successor002_analytic_radial_normal_review.py
+          cp contracts/object_hinge_successor002_analytic_radial_normal_review_048.json /tmp/normal-review-contract.json
+          printf '\n' >> contracts/object_hinge_successor002_analytic_radial_normal_review_048.json
+          if python tools/verify_ta_evidence_lane_continuity.py \
+            --baseline "$PROVEN_NORMAL_REVIEW_TA_HEAD" \
+            --protected contracts/object_hinge_successor002_analytic_radial_normal_review_048.json \
+            --protected rigid-proof/hinge_radial_normal_review_observe.gd \
+            --protected tools/build_object_hinge_successor002_analytic_radial_normal_review.py; then
+            echo 'ERROR: lane continuity guard accepted a mutated protected file' >&2
+            exit 1
+          fi
+          mv /tmp/normal-review-contract.json contracts/object_hinge_successor002_analytic_radial_normal_review_048.json
+          echo PASS_PROTECTED_NORMAL_REVIEW_LANE_MUTATION_REJECTED > rigid-proof/normal-review-owner/negative-lane-continuity-mutation.txt
+          python -m json.tool contracts/object_hinge_successor002_analytic_radial_normal_review_048.json >/dev/null
+          python -m py_compile tools/build_object_hinge_successor002_analytic_radial_normal_review.py tools/verify_ta_evidence_lane_continuity.py
+          python -m unittest discover -s tests -v
           git rev-parse HEAD > rigid-proof/normal-review-owner/exact-technical-art-head.txt
 
       - name: Checkout exact external owners and generic UC
