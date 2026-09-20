@@ -7,6 +7,12 @@ on:
 permissions:
   contents: read
 
+env:
+  SOURCE_MECHANICAL_AUTHORITY_HEAD: 56aaaecb45b520fdff9e08fe2d4ea42562f5690f
+  CAPTURE_POLICY_BLOB_SHA: b96df9c5469dffb20e674edd4b176941eda81b8e
+  HISTORICAL_RIGGING_HEAD: 3b667ff5d30c46ec2fe7da7679518970f8610018
+  PRIOR_RIGGING_BINDING_HEAD: a1acd2bcb2074f41e536562f2673508e2cb0a4d5
+
 jobs:
   structural:
     strategy:
@@ -25,30 +31,107 @@ jobs:
         run: python -m compileall tools tests
       - name: Test full repository suite
         run: python -m unittest discover -s tests -v
-      - name: Materialize historical Rigging observation donor
+
+      - name: Materialize exact source authority and historical Rigging donors
         if: matrix.python-version == '3.11'
         run: |
-          mkdir -p evidence/front-latch-source-rig-rebind
-          git cat-file -e 3b667ff5d30c46ec2fe7da7679518970f8610018^{commit}
-          git show 3b667ff5d30c46ec2fe7da7679518970f8610018:assets/modular-equipment-case-001/front-latch-articulation-001.json > /tmp/front-latch-articulation-001.json
-          printf '%s\n' 3b667ff5d30c46ec2fe7da7679518970f8610018 > evidence/front-latch-source-rig-rebind/historical-rigging-observation-head.txt
-          printf '%s\n' 6086f39a3da344c57a68653f90d040e03e04cec2 > evidence/front-latch-source-rig-rebind/source-interface-donor-head.txt
-      - name: Build exact source-owned latch Rigging rebind evidence
+          set -euo pipefail
+          mkdir -p evidence/front-latch-source-rig-rebind /tmp/source-capture-evidence
+          git fetch --no-tags origin "$SOURCE_MECHANICAL_AUTHORITY_HEAD" "$HISTORICAL_RIGGING_HEAD" "$PRIOR_RIGGING_BINDING_HEAD"
+          git cat-file -e "$SOURCE_MECHANICAL_AUTHORITY_HEAD^{commit}"
+          git cat-file -e "$HISTORICAL_RIGGING_HEAD^{commit}"
+          git cat-file -e "$PRIOR_RIGGING_BINDING_HEAD^{commit}"
+          git show "$HISTORICAL_RIGGING_HEAD:assets/modular-equipment-case-001/front-latch-articulation-001.json" > /tmp/front-latch-articulation-001.json
+          git show "$SOURCE_MECHANICAL_AUTHORITY_HEAD:assets/modular-equipment-case-001/front-latch-pivot-interface-001.json" > /tmp/front-latch-pivot-interface-current.json
+          git show "$SOURCE_MECHANICAL_AUTHORITY_HEAD:assets/modular-equipment-case-001/front-latch-capture-envelope-001.json" > /tmp/front-latch-capture-envelope-001.json
+          git show "$SOURCE_MECHANICAL_AUTHORITY_HEAD:tools/verify_front_latch_capture_envelope.py" > /tmp/verify_front_latch_capture_envelope.py
+          test "$(git hash-object /tmp/front-latch-capture-envelope-001.json)" = "$CAPTURE_POLICY_BLOB_SHA"
+          printf '%s\n' "$HISTORICAL_RIGGING_HEAD" > evidence/front-latch-source-rig-rebind/historical-rigging-observation-head.txt
+          printf '%s\n' "$PRIOR_RIGGING_BINDING_HEAD" > evidence/front-latch-source-rig-rebind/prior-rigging-binding-head.txt
+          printf '%s\n' "$SOURCE_MECHANICAL_AUTHORITY_HEAD" > evidence/front-latch-source-rig-rebind/source-mechanical-authority-head.txt
+
+      - name: Rebuild exact Hard-Surface capture-envelope receipt
         if: matrix.python-version == '3.11'
         run: |
+          set -euo pipefail
+          PYTHONPATH="$PWD/tools" python /tmp/verify_front_latch_capture_envelope.py \
+            --host assets/modular-equipment-case-001/source.json \
+            --interface /tmp/front-latch-pivot-interface-current.json \
+            --policy /tmp/front-latch-capture-envelope-001.json \
+            --out /tmp/source-capture-evidence
+          grep -q 'PASS_SOURCE_OWNED_FRONT_LATCH_CAPTURE_TO_CLEARANCE_ENVELOPE' /tmp/source-capture-evidence/receipt.json
+          grep -q '"z_aabb_only_is_not_capture_threshold": true' /tmp/source-capture-evidence/receipt.json
+
+      - name: Build exact source-owned latch Rigging capture-envelope rebind evidence
+        if: matrix.python-version == '3.11'
+        run: |
+          set -euo pipefail
           python tools/verify_front_latch_source_rig_binding.py \
             --host assets/modular-equipment-case-001/source.json \
             --ownership assets/modular-equipment-case-001/front-latch-ownership-001.json \
-            --interface assets/modular-equipment-case-001/front-latch-pivot-interface-001.json \
+            --interface /tmp/front-latch-pivot-interface-current.json \
             --historical-plan /tmp/front-latch-articulation-001.json \
-            --binding assets/modular-equipment-case-001/front-latch-source-rig-binding-002.json \
+            --capture-policy /tmp/front-latch-capture-envelope-001.json \
+            --capture-receipt /tmp/source-capture-evidence/receipt.json \
+            --binding assets/modular-equipment-case-001/front-latch-source-rig-binding-003.json \
             --out evidence/front-latch-source-rig-rebind
           cp assets/modular-equipment-case-001/source.json evidence/front-latch-source-rig-rebind/host-source.json
           cp assets/modular-equipment-case-001/front-latch-ownership-001.json evidence/front-latch-source-rig-rebind/latch-ownership-contract.json
-          cp assets/modular-equipment-case-001/front-latch-pivot-interface-001.json evidence/front-latch-source-rig-rebind/source-pivot-interface.json
-          cp assets/modular-equipment-case-001/front-latch-source-rig-binding-002.json evidence/front-latch-source-rig-rebind/rig-binding.json
+          cp assets/modular-equipment-case-001/front-latch-source-rig-binding-002.json evidence/front-latch-source-rig-rebind/historical-pre-capture-rig-binding.json
+          cp assets/modular-equipment-case-001/front-latch-source-rig-binding-003.json evidence/front-latch-source-rig-rebind/current-rig-binding.json
+          cp /tmp/front-latch-pivot-interface-current.json evidence/front-latch-source-rig-rebind/source-pivot-interface.json
+          cp /tmp/front-latch-capture-envelope-001.json evidence/front-latch-source-rig-rebind/source-capture-envelope-policy.json
+          cp /tmp/source-capture-evidence/receipt.json evidence/front-latch-source-rig-rebind/source-capture-envelope-receipt.json
           cp /tmp/front-latch-articulation-001.json evidence/front-latch-source-rig-rebind/historical-rigging-observation-plan.json
           git rev-parse HEAD > evidence/front-latch-source-rig-rebind/exact-head.txt
+
+      - name: Prove Rigging fails closed if Z-AABB is relabelled as capture truth
+        if: matrix.python-version == '3.11'
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          source = Path('/tmp/source-capture-evidence/receipt.json')
+          bad = json.loads(source.read_text())
+          bad['truth_boundary']['z_aabb_only_is_not_capture_threshold'] = False
+          Path('/tmp/bad-source-capture-receipt.json').write_text(json.dumps(bad, indent=2) + '\n')
+          PY
+          set +e
+          python tools/verify_front_latch_source_rig_binding.py \
+            --host assets/modular-equipment-case-001/source.json \
+            --ownership assets/modular-equipment-case-001/front-latch-ownership-001.json \
+            --interface /tmp/front-latch-pivot-interface-current.json \
+            --historical-plan /tmp/front-latch-articulation-001.json \
+            --capture-policy /tmp/front-latch-capture-envelope-001.json \
+            --capture-receipt /tmp/bad-source-capture-receipt.json \
+            --binding assets/modular-equipment-case-001/front-latch-source-rig-binding-003.json \
+            --out /tmp/bad-rig-evidence \
+            > /tmp/bad-rig.stdout 2> /tmp/bad-rig.stderr
+          code=$?
+          set -e
+          if [ "$code" -eq 0 ]; then
+            echo 'negative control unexpectedly passed' >&2
+            exit 1
+          fi
+          grep -q 'capture receipt lost broad-phase distinction' /tmp/bad-rig.stderr
+          printf '%s\n' 'PASS_FAILS_CLOSED_ON_FALSE_Z_AABB_CAPTURE_RELABEL' > evidence/front-latch-source-rig-rebind/negative-control.txt
+          cp /tmp/bad-rig.stderr evidence/front-latch-source-rig-rebind/negative-control.stderr.txt
+
+      - name: Assert bounded Rigging result and non-claims
+        if: matrix.python-version == '3.11'
+        run: |
+          set -euo pipefail
+          receipt=evidence/front-latch-source-rig-rebind/front-latch-source-rig-binding-evidence.json
+          grep -q 'PASS_SOURCE_OWNED_FRONT_LATCH_RIG_CAPTURE_ENVELOPE_REBIND' "$receipt"
+          grep -q '"historical_interface_threshold_reclassified_as": "Z_AABB_BROAD_PHASE_ONLY_NOT_CAPTURE_THRESHOLD"' "$receipt"
+          grep -q '"motion_envelope_retuned": false' "$receipt"
+          grep -q '"animation_timing_or_playback_accepted": false' "$receipt"
+          grep -q '"runtime_controller_or_device_accepted": false' "$receipt"
+          grep -q '"physical_latch_retention_or_forces_proven": false' "$receipt"
+          grep -q '"continuous_full_assembly_collision_freedom_proven": false' "$receipt"
+          grep -q 'PASS_FAILS_CLOSED_ON_FALSE_Z_AABB_CAPTURE_RELABEL' evidence/front-latch-source-rig-rebind/negative-control.txt
+
       - name: Upload retained evidence
         if: matrix.python-version == '3.11'
         uses: actions/upload-artifact@v4
