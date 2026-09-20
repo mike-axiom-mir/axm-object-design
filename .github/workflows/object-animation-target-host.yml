@@ -16,8 +16,14 @@ permissions:
   contents: read
 
 env:
-  TECHNICAL_ART_HEAD: 965fb2f24dbd0b0cbb748d9f8b8712d62966315f
+  PREVIOUS_TECHNICAL_ART_HEAD: dad13ce23a0fd8e0ec3e612ac1e72f01c5155284
+  HISTORICAL_TECHNICAL_ART_HEAD: 965fb2f24dbd0b0cbb748d9f8b8712d62966315f
+  TECHNICAL_ART_HEAD: b9848c62b2adde84e9e0afc219088113216799d6
+  TECHNICAL_ART_REBOUND_GLB_SHA256: 9788bc7d405b1837961409de20bc9f76d72facae63726cdc7bf7a3ffd2ac3914
   UC_HEAD: 6dc465987e01362264f88b7cef4213609ae50763
+  LID_TARGET_RIG_HEAD: f6dab93a342330175a7494274f3f40a4e53d4c85
+  LATCH_TARGET_RIG_HEAD: f59e0f205de2d81611cfed0cbf795faa2c3f22b3
+  CURRENT_LATCH_SOURCE_RIG_HEAD: 3a17a02528918ec63a46e954e883179f752c8151
   LID_RIG_HEAD: 4b72c9918c5fc1e89bd18a0be24fb4afac6e7775
   LATCH_RIG_HEAD: 3b667ff5d30c46ec2fe7da7679518970f8610018
   LATCH_OWNERSHIP_HEAD: d3fa10a270faae7925811f44f03381fe5c5d0215
@@ -43,6 +49,62 @@ jobs:
           repository: mike-axiom-mir/axm-object-design
           ref: ${{ env.TECHNICAL_ART_HEAD }}
           path: .technical-art
+          fetch-depth: 0
+
+      - name: Prove Technical Art successor continuity before replay
+        run: |
+          set -euo pipefail
+          test "$(git -C .technical-art rev-parse HEAD)" = "$TECHNICAL_ART_HEAD"
+          git -C .technical-art merge-base --is-ancestor "$PREVIOUS_TECHNICAL_ART_HEAD" "$TECHNICAL_ART_HEAD"
+          for path in \
+            assets/modular-equipment-case-001/source.json \
+            assets/modular-equipment-case-001/front-latch-ownership-001.json \
+            tools/build_object_uc_rigid_scene_handoff.py \
+            rigid-proof/observe.gd
+          do
+            previous_blob="$(git -C .technical-art rev-parse "${PREVIOUS_TECHNICAL_ART_HEAD}:${path}")"
+            current_blob="$(git -C .technical-art rev-parse "${TECHNICAL_ART_HEAD}:${path}")"
+            test "$previous_blob" = "$current_blob"
+            printf '%s %s\n' "$current_blob" "$path"
+          done
+
+      - name: Checkout exact current lid target-Rigging receiver
+        uses: actions/checkout@v4
+        with:
+          repository: mike-axiom-mir/axm-object-design
+          ref: ${{ env.LID_TARGET_RIG_HEAD }}
+          path: .lid-target-rig
+
+      - name: Checkout exact current front-latch target-Rigging receiver
+        uses: actions/checkout@v4
+        with:
+          repository: mike-axiom-mir/axm-object-design
+          ref: ${{ env.LATCH_TARGET_RIG_HEAD }}
+          path: .latch-target-rig
+
+      - name: Checkout exact current source-Rigging authority
+        uses: actions/checkout@v4
+        with:
+          repository: mike-axiom-mir/axm-object-design
+          ref: ${{ env.CURRENT_LATCH_SOURCE_RIG_HEAD }}
+          path: .current-latch-source-rig
+
+      - name: Checkout exact historical lid-motion Rigging donor
+        uses: actions/checkout@v4
+        with:
+          repository: mike-axiom-mir/axm-object-design
+          ref: ${{ env.LID_RIG_HEAD }}
+          path: .lid-rig
+
+      - name: Verify current receiver identities
+        run: |
+          set -euo pipefail
+          test "$(git -C .lid-target-rig rev-parse HEAD)" = "$LID_TARGET_RIG_HEAD"
+          test "$(git -C .latch-target-rig rev-parse HEAD)" = "$LATCH_TARGET_RIG_HEAD"
+          test "$(git -C .current-latch-source-rig rev-parse HEAD)" = "$CURRENT_LATCH_SOURCE_RIG_HEAD"
+          test "$(git -C .lid-rig rev-parse HEAD)" = "$LID_RIG_HEAD"
+          test "$(git -C .current-latch-source-rig rev-parse "HEAD:assets/modular-equipment-case-001/front-latch-source-rig-binding-003.json")" = "0331d30528f58d353fa9396d7ca129a020e8c6ce"
+          test "$(git -C .lid-rig rev-parse "HEAD:assets/modular-equipment-case-001/articulation.json")" = "0e7f56ae96f17bb2a5b38852aac12fad6854a4d0"
 
       - name: Checkout exact UC rigid-scene donor
         uses: actions/checkout@v4
@@ -86,8 +148,54 @@ jobs:
           )
           test "$(git -C .technical-art rev-parse HEAD)" = "$TECHNICAL_ART_HEAD"
           test "$(git -C .uc rev-parse HEAD)" = "$UC_HEAD"
+          echo "$TECHNICAL_ART_REBOUND_GLB_SHA256  .technical-art/rigid-proof/generated/object-rigid-components-rebound.glb" | sha256sum -c -
 
-      - name: Materialize exact Animation and latch donors
+      - name: Build current target-Rigging receiver contracts
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/axm-current-target-rig
+          mkdir -p /tmp/axm-current-target-rig
+          python .lid-target-rig/tools/build_object_target_lid_rig_binding.py \
+            --source assets/modular-equipment-case-001/source.json \
+            --lid-rig-plan .lid-rig/assets/modular-equipment-case-001/articulation.json \
+            --tech-receipt .technical-art/rigid-proof/generated/uc-rigid-scene-handoff-receipt.json \
+            --rebound-glb .technical-art/rigid-proof/generated/object-rigid-components-rebound.glb \
+            --out /tmp/axm-current-target-rig/target-lid-rig-binding.json
+          python .latch-target-rig/tools/build_object_target_front_latch_rig_binding.py \
+            --source-rig-binding .current-latch-source-rig/assets/modular-equipment-case-001/front-latch-source-rig-binding-003.json \
+            --interface .current-latch-source-rig/assets/modular-equipment-case-001/front-latch-pivot-interface-001.json \
+            --tech-receipt .technical-art/rigid-proof/generated/uc-rigid-scene-handoff-receipt.json \
+            --rebound-glb .technical-art/rigid-proof/generated/object-rigid-components-rebound.glb \
+            --observed-source-rig-head "$CURRENT_LATCH_SOURCE_RIG_HEAD" \
+            --observed-tech-art-head "$TECHNICAL_ART_HEAD" \
+            --observed-uc-head "$UC_HEAD" \
+            --out /tmp/axm-current-target-rig/target-front-latch-rig-binding.json
+          python - <<'PY'
+          import hashlib, json, os
+          from pathlib import Path
+          root=Path('/tmp/axm-current-target-rig')
+          lid=json.loads((root/'target-lid-rig-binding.json').read_text())
+          latch=json.loads((root/'target-front-latch-rig-binding.json').read_text())
+          glb=hashlib.sha256(Path('.technical-art/rigid-proof/generated/object-rigid-components-rebound.glb').read_bytes()).hexdigest()
+          assert lid['result']=='PASS_EXACT_LID_RIG_TO_UC_TARGET_BINDING_READY',lid
+          assert latch['result']=='PASS_SOURCE_OWNED_FRONT_LATCH_CAPTURE_ENVELOPE_TO_UC_TARGET_BINDING_READY',latch
+          assert lid['technical_art_donor_head']==latch['technical_art_donor_head']==os.environ['TECHNICAL_ART_HEAD'],(lid,latch)
+          assert lid['technical_art_historical_donor_head']==latch['technical_art_historical_donor_head']==os.environ['HISTORICAL_TECHNICAL_ART_HEAD'],(lid,latch)
+          assert lid['technical_art_provenance_rebind']['historical_receipts_reused_as_current_evidence'] is False,lid
+          assert latch['technical_art_provenance_rebind']['historical_receipts_reused_as_current_evidence'] is False,latch
+          assert lid['technical_art_rebound_glb_sha256']==latch['technical_art_rebound_glb_sha256']==glb,(lid,latch,glb)
+          assert lid['lid_rig_donor_head']==os.environ['LID_RIG_HEAD'],lid
+          assert latch['source_rig_donor_head']==os.environ['CURRENT_LATCH_SOURCE_RIG_HEAD'],latch
+          assert lid['target_x_rotation_sign']==1,lid
+          assert latch['target_x_rotation_sign']==-1,latch
+          assert latch['source_capture_transition_bracket_deg']==[9.25,9.30],latch
+          assert latch['source_z_aabb_only_transition_bracket_deg']==[48.65,48.70],latch
+          assert lid['truth_boundary']['final_visual_acceptance'] is False,lid
+          assert latch['truth_boundary']['final_visual_acceptance'] is False,latch
+          print('current target-Rigging receiver gate PASS')
+          PY
+
+      - name: Materialize exact Animation and historical motion donors
         run: |
           set -euo pipefail
           rm -rf /tmp/axm-animation-target-donors /tmp/axm-latch-rig-evidence /tmp/axm-lid-motion /tmp/axm-lid-latch
@@ -138,28 +246,45 @@ jobs:
           cp .technical-art/rigid-proof/generated/uc-rigid-scene-handoff-receipt.json animation-proof/generated/
           cp /tmp/axm-lid-latch/lid-latch-motion-evidence.json animation-proof/generated/
           cp /tmp/axm-latch-rig-evidence/front-latch-articulation.receipt.json animation-proof/generated/
+          cp /tmp/axm-current-target-rig/target-lid-rig-binding.json animation-proof/generated/
+          cp /tmp/axm-current-target-rig/target-front-latch-rig-binding.json animation-proof/generated/
           printf '%s\n' "$EXACT_HEAD_SHA" > animation-proof/generated/exact-animation-head.txt
           printf '%s\n' "$TECHNICAL_ART_HEAD" > animation-proof/generated/exact-technical-art-head.txt
+          printf '%s\n' "$HISTORICAL_TECHNICAL_ART_HEAD" > animation-proof/generated/historical-technical-art-head.txt
+          printf '%s\n' "$LID_TARGET_RIG_HEAD" > animation-proof/generated/exact-lid-target-rig-head.txt
+          printf '%s\n' "$LATCH_TARGET_RIG_HEAD" > animation-proof/generated/exact-latch-target-rig-head.txt
+          printf '%s\n' "$CURRENT_LATCH_SOURCE_RIG_HEAD" > animation-proof/generated/exact-current-latch-source-rig-head.txt
           printf '%s\n' "$UC_HEAD" > animation-proof/generated/exact-uc-head.txt
 
       - name: Validate exact cross-repo identity before target host
         run: |
           python - <<'PY'
-          import json, os
+          import hashlib, json, os
           from pathlib import Path
           root=Path('animation-proof/generated')
           t=json.loads((root/'uc-rigid-scene-handoff-receipt.json').read_text())
           s=json.loads((root/'lid-latch-motion-evidence.json').read_text())
           r=json.loads((root/'front-latch-articulation.receipt.json').read_text())
+          lid_target=json.loads((root/'target-lid-rig-binding.json').read_text())
+          latch_target=json.loads((root/'target-front-latch-rig-binding.json').read_text())
+          glb_sha=hashlib.sha256((root/'object-rigid-components-rebound.glb').read_bytes()).hexdigest()
           assert t['result']=='PASS_OBJECT_SOURCE_OWNED_RIGID_PARTS_THROUGH_UC_SCENE_GRAPH',t
           assert t['source_repository_head']==os.environ['TECHNICAL_ART_HEAD'],t
           assert t['observed_uc_commit']==os.environ['UC_HEAD'],t
+          assert t['rebound_glb_sha256']==os.environ['TECHNICAL_ART_REBOUND_GLB_SHA256']==glb_sha,(t,glb_sha)
           assert s['result']=='PASS_ORDERED_LATCH_RELEASE_LID_CLIP_REENGAGE_SEQUENCE',s
           assert s['exact_receiving_head']==os.environ['EXACT_HEAD_SHA'],s
           assert s['host_source_sha256']==t['source_sha256'],(s,t)
           assert s['latch_rig_dependency_head']==os.environ['LATCH_RIG_HEAD'],s
           assert r['result']=='PASS_BOUNDED_FRONT_LATCH_LEVER_ARTICULATION',r
           assert r['host_source_sha256']==s['host_source_sha256'],(r,s)
+          assert lid_target['result']=='PASS_EXACT_LID_RIG_TO_UC_TARGET_BINDING_READY',lid_target
+          assert latch_target['result']=='PASS_SOURCE_OWNED_FRONT_LATCH_CAPTURE_ENVELOPE_TO_UC_TARGET_BINDING_READY',latch_target
+          assert lid_target['technical_art_donor_head']==latch_target['technical_art_donor_head']==os.environ['TECHNICAL_ART_HEAD'],(lid_target,latch_target)
+          assert latch_target['source_rig_donor_head']==os.environ['CURRENT_LATCH_SOURCE_RIG_HEAD'],latch_target
+          assert (root/'exact-lid-target-rig-head.txt').read_text().strip()==os.environ['LID_TARGET_RIG_HEAD']
+          assert (root/'exact-latch-target-rig-head.txt').read_text().strip()==os.environ['LATCH_TARGET_RIG_HEAD']
+          assert (root/'exact-current-latch-source-rig-head.txt').read_text().strip()==os.environ['CURRENT_LATCH_SOURCE_RIG_HEAD']
           assert s['endpoint_inclusive_sample_count']==101 and s['sample_rate_hz']==40 and s['duration_s']==2.5,s
           print('cross-repo identity gate PASS')
           PY
@@ -206,6 +331,10 @@ jobs:
           assert r['technical_art_object_head']==os.environ['TECHNICAL_ART_HEAD'],r
           assert r['uc_commit']==os.environ['UC_HEAD'],r
           assert r['animation_sequence_head']==os.environ['EXACT_HEAD_SHA'],r
+          assert r['technical_art_historical_head']==os.environ['HISTORICAL_TECHNICAL_ART_HEAD'],r
+          assert r['lid_target_binding_result']=='PASS_EXACT_LID_RIG_TO_UC_TARGET_BINDING_READY',r
+          assert r['front_latch_target_binding_result']=='PASS_SOURCE_OWNED_FRONT_LATCH_CAPTURE_ENVELOPE_TO_UC_TARGET_BINDING_READY',r
+          assert r['current_latch_source_rig_head']==os.environ['CURRENT_LATCH_SOURCE_RIG_HEAD'],r
           assert r['sample_rate_hz']==40 and r['duration_s']==2.5 and r['endpoint_inclusive_sample_count']==101,r
           assert r['animationplayer_track_count']==3,r
           assert r['animationplayer_key_counts']==[101,101,101],r
@@ -224,6 +353,10 @@ jobs:
           assert r['truth_boundary']['wall_clock_40hz_playback_pacing_observed'] is False,r
           assert r['truth_boundary']['runtime_controller_or_state_machine'] is False,r
           assert r['truth_boundary']['gameplay_acceptance'] is False,r
+          assert r['truth_boundary']['current_lid_target_rig_binding_consumed'] is True,r
+          assert r['truth_boundary']['current_front_latch_target_rig_binding_consumed'] is True,r
+          assert r['truth_boundary']['historical_latch_motion_receipt_used_only_for_frozen_sequence_authorship'] is True,r
+          assert r['truth_boundary']['technical_art_final_visual_acceptance'] is False,r
           assert len(r['selected_sample_observations'])==10,r
           assert len(r['captures'])==10,r
           for index in [0,5,10,25,40,50,60,90,95,100]:
@@ -243,8 +376,14 @@ jobs:
             animation-proof/generated/uc-rigid-scene-handoff-receipt.json
             animation-proof/generated/lid-latch-motion-evidence.json
             animation-proof/generated/front-latch-articulation.receipt.json
+            animation-proof/generated/target-lid-rig-binding.json
+            animation-proof/generated/target-front-latch-rig-binding.json
             animation-proof/generated/exact-animation-head.txt
             animation-proof/generated/exact-technical-art-head.txt
+            animation-proof/generated/historical-technical-art-head.txt
+            animation-proof/generated/exact-lid-target-rig-head.txt
+            animation-proof/generated/exact-latch-target-rig-head.txt
+            animation-proof/generated/exact-current-latch-source-rig-head.txt
             animation-proof/generated/exact-uc-head.txt
             animation-proof/animationplayer-target-receipt.json
             animation-proof/frame-*.png

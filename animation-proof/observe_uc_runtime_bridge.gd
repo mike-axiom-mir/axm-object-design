@@ -1,6 +1,8 @@
 extends "res://observe_interpolation_v3.gd"
 
 const BRIDGE_PATH: String = "res://generated/uc-animation-runtime-bridge.json"
+const LID_TARGET_BINDING_PATH: String = "res://generated/target-lid-rig-binding.json"
+const LATCH_TARGET_BINDING_PATH: String = "res://generated/target-front-latch-rig-binding.json"
 const BRIDGE_RECEIPT_PATH: String = "res://uc-runtime-godot-bridge-receipt.json"
 const BRIDGE_MOTION_NAME: String = "uc_runtime_clock_bound_object_motion"
 
@@ -38,6 +40,8 @@ func _initialize() -> void:
     var technical: Dictionary = read_json(TECH_RECEIPT_PATH)
     var sequence: Dictionary = read_json(SEQUENCE_PATH)
     var rig: Dictionary = read_json(RIG_RECEIPT_PATH)
+    var lid_target: Dictionary = read_json(LID_TARGET_BINDING_PATH)
+    var latch_target: Dictionary = read_json(LATCH_TARGET_BINDING_PATH)
     var bridge: Dictionary = read_json(BRIDGE_PATH)
     if technical.get("result") != "PASS_OBJECT_SOURCE_OWNED_RIGID_PARTS_THROUGH_UC_SCENE_GRAPH":
         fail("technical-art rigid-scene donor missing or not green")
@@ -46,7 +50,19 @@ func _initialize() -> void:
         fail("animation sequence prerequisite missing or not green")
         return
     if rig.get("result") != "PASS_BOUNDED_FRONT_LATCH_LEVER_ARTICULATION":
-        fail("rigging articulation prerequisite missing or not green")
+        fail("historical motion-authoring rig receipt missing or not green")
+        return
+    if lid_target.get("result") != "PASS_EXACT_LID_RIG_TO_UC_TARGET_BINDING_READY":
+        fail("current lid target-Rigging binding missing or not green")
+        return
+    if latch_target.get("result") != "PASS_SOURCE_OWNED_FRONT_LATCH_CAPTURE_ENVELOPE_TO_UC_TARGET_BINDING_READY":
+        fail("current front-latch target-Rigging binding missing or not green")
+        return
+    if String(lid_target.get("technical_art_donor_head", "")) != String(technical.get("source_repository_head", "")):
+        fail("lid target-Rigging Technical Art identity drift")
+        return
+    if String(latch_target.get("technical_art_donor_head", "")) != String(technical.get("source_repository_head", "")):
+        fail("front-latch target-Rigging Technical Art identity drift")
         return
     if bridge.get("result") != "PASS_UC_RUNTIME_OBJECT_TARGET_CLOCK_BINDING":
         fail("UC runtime clock binding missing or not green")
@@ -100,28 +116,42 @@ func _initialize() -> void:
     var rig_rows: Array = rig.get("station_results", []) as Array
     var samples: Array = sequence.get("samples", []) as Array
     var first_sample: Dictionary = samples[0] as Dictionary
-    var rig_by_station: Dictionary = station_lookup(rig_rows)
+    var historical_rig_by_station: Dictionary = station_lookup(rig_rows)
+    var target_rig_by_lever: Dictionary = {}
+    for target_row_value: Variant in latch_target.get("stations", []):
+        var target_row: Dictionary = target_row_value as Dictionary
+        target_rig_by_lever[String(target_row["lever_component"])] = target_row
     var sample0_stations: Dictionary = station_lookup(first_sample.get("stations", []) as Array)
-    if rig_by_station.size() != 2 or sample0_stations.size() != 2:
-        fail("expected exactly two bilateral latch stations")
+    if historical_rig_by_station.size() != 2 or target_rig_by_lever.size() != 2 or sample0_stations.size() != 2:
+        fail("expected exactly two bilateral latch stations in historical authorship, current target Rigging and sequence")
         return
 
     var pivot_by_station: Dictionary = {}
     for station_key: Variant in sample0_stations.keys():
         var station_id: String = String(station_key)
-        if not rig_by_station.has(station_id):
-            fail("sequence station missing exact rig row: " + station_id)
+        if not historical_rig_by_station.has(station_id):
+            fail("sequence station missing historical motion-authoring rig row: " + station_id)
             return
         var station_sample: Dictionary = sample0_stations[station_id] as Dictionary
-        var rig_row: Dictionary = rig_by_station[station_id] as Dictionary
         var component: String = String(station_sample["lever_component"])
+        if not target_rig_by_lever.has(component):
+            fail("sequence lever missing current target-Rigging component identity: " + component)
+            return
+        var target_row: Dictionary = target_rig_by_lever[component] as Dictionary
+        if String(station_sample["keeper_component"]) != String(target_row["keeper_component"]):
+            fail("sequence keeper identity drift against current target-Rigging binding: " + station_id)
+            return
         var lever: Node3D = find_node(imported, component)
         if lever == null:
             fail("target lever node missing: " + component)
             return
+        var pivot_values: Array = target_row["pivot_target_m"] as Array
+        if pivot_values.size() != 3:
+            fail("current target-Rigging pivot is not vec3: " + component)
+            return
         var pivot: Node3D = Node3D.new()
         pivot.name = "uc_runtime_bridge_pivot_" + station_id
-        pivot.position = source_to_uc(rig_row["pivot_m"] as Array)
+        pivot.position = Vector3(float(pivot_values[0]), float(pivot_values[1]), float(pivot_values[2]))
         imported.add_child(pivot)
         lever.reparent(pivot, true)
         pivot_by_station[station_id] = pivot
@@ -250,6 +280,10 @@ func _initialize() -> void:
     receipt["godot_version"] = Engine.get_version_info()
     receipt["glb_sha256"] = glb_sha
     receipt["technical_art_object_head"] = technical.get("source_repository_head")
+    receipt["technical_art_historical_head"] = lid_target.get("technical_art_historical_donor_head")
+    receipt["lid_target_binding_result"] = lid_target.get("result")
+    receipt["front_latch_target_binding_result"] = latch_target.get("result")
+    receipt["current_latch_source_rig_head"] = latch_target.get("source_rig_donor_head")
     receipt["uc_rigid_scene_commit"] = technical.get("observed_uc_commit")
     receipt["uc_runtime_commit"] = bridge.get("uc_runtime_commit")
     receipt["uc_runtime_module_git_blob_sha"] = bridge.get("uc_runtime_module_git_blob_sha")
@@ -273,6 +307,9 @@ func _initialize() -> void:
         "exact_uc_runtime_clip_times_consumed_by_godot": true,
         "exact_animationplayer_target_pose_observed_at_each_checkpoint": true,
         "runtime_clip_retimed_by_technical_art": false,
+        "current_lid_target_rig_binding_consumed": true,
+        "current_front_latch_target_rig_binding_consumed": true,
+        "historical_latch_motion_receipt_used_only_for_frozen_sequence_authorship": true,
         "embedded_uc_python_runtime_inside_godot": false,
         "wall_clock_playback_pacing_observed": false,
         "runtime_controller_or_input": false,

@@ -1,0 +1,83 @@
+{
+  "schema": "axm.object-animation-phase-boundary-review-plan/v0.1",
+  "plan_id": "lid-latch-phase-boundary-review-001",
+  "sequence_id": "lid-latch-open-hold-close-001",
+  "sequence_digest": "0a3523cf792264f610881552fd2ebd438aabdfd05e30e92af9dbb33ded1fa2d3",
+  "motion_change": false,
+  "retimed": false,
+  "retargeted": false,
+  "key_count_changed": false,
+  "basis": {
+    "derivative_diagnosis_head": "7e9c7e6f3a3d8c7743cec0c0756e206b5d0d5339",
+    "derivative_result": "PASS_OBJECT_PHASE_DERIVATIVE_DIAGNOSIS_MOTION_UNCHANGED",
+    "target_host_observer": "animation-proof/observe_interpolation_v3.gd",
+    "target_host_state": "PASS_TARGET_HOST_LINEAR_INTERPOLATION_SUBSAMPLE_FIDELITY",
+    "reason": "Retain target-host views immediately before and after the exact authored phase boundaries highlighted by derivative diagnosis, while preserving the five prior review captures. This is an evidence-selection improvement only; it does not alter motion."
+  },
+  "critical_boundary_pairs": [
+    {
+      "boundary_id": "latch_release_to_lid_open",
+      "authored_boundary_sample_index": 10,
+      "authored_boundary_time_s": 0.25,
+      "pre_interval_index": 9,
+      "post_interval_index": 10
+    },
+    {
+      "boundary_id": "lid_open_to_hold",
+      "authored_boundary_sample_index": 40,
+      "authored_boundary_time_s": 1.0,
+      "pre_interval_index": 39,
+      "post_interval_index": 40
+    },
+    {
+      "boundary_id": "hold_to_lid_close",
+      "authored_boundary_sample_index": 60,
+      "authored_boundary_time_s": 1.5,
+      "pre_interval_index": 59,
+      "post_interval_index": 60
+    },
+    {
+      "boundary_id": "lid_close_to_latch_reengage",
+      "authored_boundary_sample_index": 90,
+      "authored_boundary_time_s": 2.25,
+      "pre_interval_index": 89,
+      "post_interval_index": 90
+    },
+    {
+      "boundary_id": "repeat_seam",
+      "authored_boundary_sample_index": 100,
+      "authored_boundary_time_s": 2.5,
+      "pre_interval_index": 99,
+      "post_interval_index": 0
+    }
+  ],
+  "capture_intervals": [
+    {"interval_index": 0, "time_s": 0.0125, "role": "repeat_seam_post"},
+    {"interval_index": 4, "time_s": 0.1125, "role": "prior_review_latch_release"},
+    {"interval_index": 9, "time_s": 0.2375, "role": "latch_release_to_lid_open_pre"},
+    {"interval_index": 10, "time_s": 0.2625, "role": "latch_release_to_lid_open_post"},
+    {"interval_index": 20, "time_s": 0.5125, "role": "prior_review_lid_open"},
+    {"interval_index": 39, "time_s": 0.9875, "role": "lid_open_to_hold_pre"},
+    {"interval_index": 40, "time_s": 1.0125, "role": "lid_open_to_hold_post"},
+    {"interval_index": 49, "time_s": 1.2375, "role": "prior_review_hold"},
+    {"interval_index": 59, "time_s": 1.4875, "role": "hold_to_lid_close_pre"},
+    {"interval_index": 60, "time_s": 1.5125, "role": "hold_to_lid_close_post"},
+    {"interval_index": 70, "time_s": 1.7625, "role": "prior_review_lid_close"},
+    {"interval_index": 89, "time_s": 2.2375, "role": "lid_close_to_latch_reengage_pre"},
+    {"interval_index": 90, "time_s": 2.2625, "role": "lid_close_to_latch_reengage_post"},
+    {"interval_index": 95, "time_s": 2.3875, "role": "prior_review_latch_reengage"},
+    {"interval_index": 99, "time_s": 2.4875, "role": "repeat_seam_pre"}
+  ],
+  "preserved_prior_capture_intervals": [4, 20, 49, 70, 95],
+  "truth_boundary": {
+    "direct_target_host_capture_required": true,
+    "motion_is_unchanged": true,
+    "perceptual_quality_acceptance": false,
+    "c1_repair_or_smoothing": false,
+    "wall_clock_pacing_acceptance": false,
+    "runtime_controller_or_state_machine": false,
+    "collision_or_physics_acceptance": false,
+    "gameplay_acceptance": false,
+    "production_readiness": false
+  }
+}

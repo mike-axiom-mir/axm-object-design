@@ -1,0 +1,285 @@
+name: Object Animation phase-invariant hinge successor motion rebind
+
+on:
+  pull_request:
+    paths:
+      - 'assets/modular-equipment-case-001/hinge-phase-invariant-successor-motion-rebind-002.json'
+      - 'tools/verify_animation_hinge_phase_invariant_successor_motion_rebind.py'
+      - 'animation-proof/observe_hinge_phase_invariant_successor_motion.gd'
+      - '.github/workflows/object-animation-hinge-phase-invariant-successor-motion-rebind.yml'
+      - 'assets/modular-equipment-case-001/lid-motion-clip.json'
+      - 'assets/modular-equipment-case-001/lid-latch-motion-sequence-001.json'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  SOURCE_SUCCESSOR_HEAD: a6d18b9fe729304dc4d95d962ed27527adce211f
+  SOURCE_SUCCESSOR_BLOB: 7e078189d5c80508b28932563326cd5629c4efa6
+  RIGGING_RECEIVER_HEAD: cf377074f70ce7f7e386f1378c51705b3db4d305
+  RIGGING_RECEIVER_BLOB: 813a4e97973a023b6a1027582a03e2fb437103ea
+  LID_RIG_HEAD: 4b72c9918c5fc1e89bd18a0be24fb4afac6e7775
+  LATCH_RIG_HEAD: 3b667ff5d30c46ec2fe7da7679518970f8610018
+  LATCH_OWNERSHIP_HEAD: d3fa10a270faae7925811f44f03381fe5c5d0215
+  LATCH_RIG_PLAN_SHA256: 81c27ab7b73ed9a43cb3f554b56c3f4294b893712075e33d13f5b02e008455db
+  LATCH_OWNERSHIP_SHA256: 0702e4180f858d29c42ff8c38a61eaa16278d6848c8ce6f3ecfae172969ca8ae
+
+jobs:
+  successor-motion-rebind:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout exact Animation PR head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+
+      - name: Bind exact Animation head
+        run: echo "EXACT_HEAD_SHA=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
+
+      - name: Checkout exact Hard-Surface successor 002
+        uses: actions/checkout@v4
+        with:
+          repository: mike-axiom-mir/axm-object-design
+          ref: ${{ env.SOURCE_SUCCESSOR_HEAD }}
+          path: .source-successor
+          fetch-depth: 1
+
+      - name: Checkout exact Rigging successor receiver
+        uses: actions/checkout@v4
+        with:
+          repository: mike-axiom-mir/axm-object-design
+          ref: ${{ env.RIGGING_RECEIVER_HEAD }}
+          path: .rigging-receiver
+          fetch-depth: 1
+
+      - name: Checkout historical lid rig
+        uses: actions/checkout@v4
+        with:
+          repository: mike-axiom-mir/axm-object-design
+          ref: ${{ env.LID_RIG_HEAD }}
+          path: .lid-rig
+          fetch-depth: 1
+
+      - name: Checkout historical latch rig
+        uses: actions/checkout@v4
+        with:
+          repository: mike-axiom-mir/axm-object-design
+          ref: ${{ env.LATCH_RIG_HEAD }}
+          path: .latch-rig
+          fetch-depth: 1
+
+      - name: Checkout latch ownership
+        uses: actions/checkout@v4
+        with:
+          repository: mike-axiom-mir/axm-object-design
+          ref: ${{ env.LATCH_OWNERSHIP_HEAD }}
+          path: .latch-ownership
+          fetch-depth: 1
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Verify exact donor identities and inherited Object suite
+        run: |
+          set -euo pipefail
+          test "$(git -C .source-successor rev-parse HEAD)" = "$SOURCE_SUCCESSOR_HEAD"
+          test "$(git -C .rigging-receiver rev-parse HEAD)" = "$RIGGING_RECEIVER_HEAD"
+          test "$(git -C .lid-rig rev-parse HEAD)" = "$LID_RIG_HEAD"
+          test "$(git -C .latch-rig rev-parse HEAD)" = "$LATCH_RIG_HEAD"
+          test "$(git -C .latch-ownership rev-parse HEAD)" = "$LATCH_OWNERSHIP_HEAD"
+          test "$(git -C .source-successor rev-parse "${SOURCE_SUCCESSOR_HEAD}:assets/modular-equipment-case-001/hinge-bored-knuckle-phase-invariant-source-successor-002.json")" = "$SOURCE_SUCCESSOR_BLOB"
+          test "$(git -C .rigging-receiver rev-parse "${RIGGING_RECEIVER_HEAD}:assets/modular-equipment-case-001/hinge-phase-invariant-bored-knuckle-rig-compatibility-002.json")" = "$RIGGING_RECEIVER_BLOB"
+          echo "$LATCH_OWNERSHIP_SHA256  .latch-ownership/assets/modular-equipment-case-001/front-latch-ownership-001.json" | sha256sum -c -
+          echo "$LATCH_RIG_PLAN_SHA256  .latch-rig/assets/modular-equipment-case-001/front-latch-articulation-001.json" | sha256sum -c -
+          python -m compileall -q tools tests
+          python -m unittest discover -s tests -v
+
+      - name: Rebuild unchanged 101-key Animation sequence
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/axm-successor-lid /tmp/axm-successor-latch-rig /tmp/axm-successor-sequence
+          python tools/build_lid_motion_evidence.py \
+            --source assets/modular-equipment-case-001/source.json \
+            --rig .lid-rig/assets/modular-equipment-case-001/articulation.json \
+            --clip assets/modular-equipment-case-001/lid-motion-clip.json \
+            --out /tmp/axm-successor-lid \
+            --exact-head "$EXACT_HEAD_SHA"
+          PYTHONPATH="$PWD/tools" python .latch-rig/tools/verify_front_latch_articulation.py \
+            --host assets/modular-equipment-case-001/source.json \
+            --ownership .latch-ownership/assets/modular-equipment-case-001/front-latch-ownership-001.json \
+            --plan .latch-rig/assets/modular-equipment-case-001/front-latch-articulation-001.json \
+            --out /tmp/axm-successor-latch-rig
+          python tools/build_lid_latch_motion_evidence.py \
+            --source assets/modular-equipment-case-001/source.json \
+            --sequence assets/modular-equipment-case-001/lid-latch-motion-sequence-001.json \
+            --motion-evidence /tmp/axm-successor-lid/lid-motion-evidence.json \
+            --ownership .latch-ownership/assets/modular-equipment-case-001/front-latch-ownership-001.json \
+            --rig-receipt /tmp/axm-successor-latch-rig/front-latch-articulation.receipt.json \
+            --rig-head "$LATCH_RIG_HEAD" \
+            --rig-plan-sha256 "$LATCH_RIG_PLAN_SHA256" \
+            --out /tmp/axm-successor-sequence \
+            --exact-head "$EXACT_HEAD_SHA"
+          grep -q 'PASS_ORDERED_LATCH_RELEASE_LID_CLIP_REENGAGE_SEQUENCE' /tmp/axm-successor-sequence/lid-latch-motion-evidence.json
+          grep -q '"sequence_digest": "0a3523cf792264f610881552fd2ebd438aabdfd05e30e92af9dbb33ded1fa2d3"' /tmp/axm-successor-sequence/lid-latch-motion-evidence.json
+          grep -q '"endpoint_inclusive_sample_count": 101' /tmp/axm-successor-sequence/lid-latch-motion-evidence.json
+
+      - name: Build exact successor Animation rebind input
+        run: |
+          set -euo pipefail
+          rm -rf animation-proof/generated/hinge-phase-invariant-successor-motion
+          PYTHONPATH="$PWD/tools" python tools/verify_animation_hinge_phase_invariant_successor_motion_rebind.py \
+            --contract assets/modular-equipment-case-001/hinge-phase-invariant-successor-motion-rebind-002.json \
+            --source assets/modular-equipment-case-001/source.json \
+            --sequence-evidence /tmp/axm-successor-sequence/lid-latch-motion-evidence.json \
+            --source-successor .source-successor/assets/modular-equipment-case-001/hinge-bored-knuckle-phase-invariant-source-successor-002.json \
+            --rigging-compatibility .rigging-receiver/assets/modular-equipment-case-001/hinge-phase-invariant-bored-knuckle-rig-compatibility-002.json \
+            --lid-plan .lid-rig/assets/modular-equipment-case-001/articulation.json \
+            --exact-head "$EXACT_HEAD_SHA" \
+            --observed-successor-head "$SOURCE_SUCCESSOR_HEAD" \
+            --observed-successor-blob "$SOURCE_SUCCESSOR_BLOB" \
+            --observed-rigging-head "$RIGGING_RECEIVER_HEAD" \
+            --observed-rigging-blob "$RIGGING_RECEIVER_BLOB" \
+            --out animation-proof/generated/hinge-phase-invariant-successor-motion
+          cp /tmp/axm-successor-sequence/lid-latch-motion-evidence.json animation-proof/generated/hinge-phase-invariant-successor-motion/sequence-evidence.json
+          cp .source-successor/assets/modular-equipment-case-001/hinge-bored-knuckle-phase-invariant-source-successor-002.json animation-proof/generated/hinge-phase-invariant-successor-motion/source-successor-002.json
+          cp .rigging-receiver/assets/modular-equipment-case-001/hinge-phase-invariant-bored-knuckle-rig-compatibility-002.json animation-proof/generated/hinge-phase-invariant-successor-motion/rigging-compatibility-002.json
+          grep -q 'PASS_OBJECT_ANIMATION_PHASE_INVARIANT_HINGE_SUCCESSOR_REBIND_INPUT' animation-proof/generated/hinge-phase-invariant-successor-motion/structural-receipt.json
+
+      - name: Prove fail-closed production adoption and motion-envelope boundaries
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          c=Path('assets/modular-equipment-case-001/hinge-phase-invariant-successor-motion-rebind-002.json')
+          row=json.loads(c.read_text())
+          row['bounded_receiver_decision']['production_default_adoption']=True
+          Path('/tmp/bad-successor-contract.json').write_text(json.dumps(row,indent=2)+'\n')
+          seq=json.loads(Path('/tmp/axm-successor-sequence/lid-latch-motion-evidence.json').read_text())
+          peak=max(range(len(seq['samples'])),key=lambda i: float(seq['samples'][i]['lid_open_angle_deg']))
+          seq['samples'][peak]['lid_open_angle_deg']=111.0
+          seq['samples'][peak]['lid_mathematical_rotation_deg']=-111.0
+          Path('/tmp/bad-successor-sequence.json').write_text(json.dumps(seq,indent=2)+'\n')
+          PY
+
+          code=0
+          PYTHONPATH="$PWD/tools" python tools/verify_animation_hinge_phase_invariant_successor_motion_rebind.py \
+            --contract /tmp/bad-successor-contract.json \
+            --source assets/modular-equipment-case-001/source.json \
+            --sequence-evidence /tmp/axm-successor-sequence/lid-latch-motion-evidence.json \
+            --source-successor .source-successor/assets/modular-equipment-case-001/hinge-bored-knuckle-phase-invariant-source-successor-002.json \
+            --rigging-compatibility .rigging-receiver/assets/modular-equipment-case-001/hinge-phase-invariant-bored-knuckle-rig-compatibility-002.json \
+            --lid-plan .lid-rig/assets/modular-equipment-case-001/articulation.json \
+            --exact-head "$EXACT_HEAD_SHA" \
+            --observed-successor-head "$SOURCE_SUCCESSOR_HEAD" \
+            --observed-successor-blob "$SOURCE_SUCCESSOR_BLOB" \
+            --observed-rigging-head "$RIGGING_RECEIVER_HEAD" \
+            --observed-rigging-blob "$RIGGING_RECEIVER_BLOB" \
+            --out /tmp/bad-successor-contract-out > /tmp/bad-successor-contract.stdout 2> /tmp/bad-successor-contract.stderr || code=$?
+          test "$code" -ne 0
+          grep -q 'bounded receiver boundary production_default_adoption' /tmp/bad-successor-contract.stderr
+
+          code=0
+          PYTHONPATH="$PWD/tools" python tools/verify_animation_hinge_phase_invariant_successor_motion_rebind.py \
+            --contract assets/modular-equipment-case-001/hinge-phase-invariant-successor-motion-rebind-002.json \
+            --source assets/modular-equipment-case-001/source.json \
+            --sequence-evidence /tmp/bad-successor-sequence.json \
+            --source-successor .source-successor/assets/modular-equipment-case-001/hinge-bored-knuckle-phase-invariant-source-successor-002.json \
+            --rigging-compatibility .rigging-receiver/assets/modular-equipment-case-001/hinge-phase-invariant-bored-knuckle-rig-compatibility-002.json \
+            --lid-plan .lid-rig/assets/modular-equipment-case-001/articulation.json \
+            --exact-head "$EXACT_HEAD_SHA" \
+            --observed-successor-head "$SOURCE_SUCCESSOR_HEAD" \
+            --observed-successor-blob "$SOURCE_SUCCESSOR_BLOB" \
+            --observed-rigging-head "$RIGGING_RECEIVER_HEAD" \
+            --observed-rigging-blob "$RIGGING_RECEIVER_BLOB" \
+            --out /tmp/bad-successor-sequence-out > /tmp/bad-successor-sequence.stdout 2> /tmp/bad-successor-sequence.stderr || code=$?
+          test "$code" -ne 0
+          grep -q 'escaped Rigging owner range' /tmp/bad-successor-sequence.stderr
+
+      - name: Download pinned Godot 4.7.2
+        env:
+          GODOT_URL: https://github.com/godotengine/godot-builds/releases/download/4.7.2-stable/Godot_v4.7.2-stable_linux.x86_64.zip
+          GODOT_SHA256: cadd3204e728a35d3f13adb7fd0d7902636b79f6b95c40c265eb73b6c35329e4
+        run: |
+          set -euo pipefail
+          mkdir -p .godot-bin
+          curl --fail --location --retry 3 --retry-delay 2 "$GODOT_URL" --output .godot-bin/godot.zip
+          echo "$GODOT_SHA256  .godot-bin/godot.zip" | sha256sum --check --strict
+          unzip -q .godot-bin/godot.zip -d .godot-bin
+          chmod +x .godot-bin/Godot_v4.7.2-stable_linux.x86_64
+          .godot-bin/Godot_v4.7.2-stable_linux.x86_64 --version
+
+      - name: Prove wrong parent fails real successor AnimationPlayer motion
+        run: |
+          set -euo pipefail
+          rm -f animation-proof/hinge-phase-invariant-successor-motion-godot-receipt.json
+          code=0
+          (
+            cd animation-proof
+            AXM_MUTATE_PARENT=b1 ../.godot-bin/Godot_v4.7.2-stable_linux.x86_64 \
+              --headless \
+              --path . \
+              --script observe_hinge_phase_invariant_successor_motion.gd
+          ) > /tmp/godot-successor-negative.log 2>&1 || code=$?
+          test "$code" -ne 0
+          grep -q 'SUCCESSOR_MOTION_MISMATCH' /tmp/godot-successor-negative.log
+          cp /tmp/godot-successor-negative.log animation-proof/hinge-phase-invariant-successor-motion-negative.log
+
+      - name: Observe exact successor-bound motion in real Godot AnimationPlayer
+        run: |
+          set -euo pipefail
+          rm -f animation-proof/hinge-phase-invariant-successor-motion-godot-receipt.json
+          (
+            cd animation-proof
+            ../.godot-bin/Godot_v4.7.2-stable_linux.x86_64 \
+              --headless \
+              --path . \
+              --script observe_hinge_phase_invariant_successor_motion.gd
+          )
+          test -s animation-proof/hinge-phase-invariant-successor-motion-godot-receipt.json
+
+      - name: Validate bounded result and truth boundary
+        run: |
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          structural=json.loads(Path('animation-proof/generated/hinge-phase-invariant-successor-motion/structural-receipt.json').read_text())
+          target=json.loads(Path('animation-proof/hinge-phase-invariant-successor-motion-godot-receipt.json').read_text())
+          assert structural['result']=='PASS_OBJECT_ANIMATION_PHASE_INVARIANT_HINGE_SUCCESSOR_REBIND_INPUT',structural
+          assert target['result']=='PASS_OBJECT_ANIMATION_GODOT_PHASE_INVARIANT_HINGE_SUCCESSOR_MOTION_REBIND',target
+          assert target['exact_animation_head']==os.environ['EXACT_HEAD_SHA'],target
+          assert target['source_successor_head']==os.environ['SOURCE_SUCCESSOR_HEAD'],target
+          assert target['source_successor_blob']==os.environ['SOURCE_SUCCESSOR_BLOB'],target
+          assert target['rigging_receiver_head']==os.environ['RIGGING_RECEIVER_HEAD'],target
+          assert target['rigging_receiver_blob']==os.environ['RIGGING_RECEIVER_BLOB'],target
+          assert target['sample_rate_hz']==40 and target['duration_s']==2.5,target
+          assert target['endpoint_inclusive_sample_count']==101 and target['observed_sample_count']==101,target
+          assert target['animationplayer_key_count']==101,target
+          assert abs(float(target['peak_lid_open_angle_deg'])-100.0)<=1e-6,target
+          assert float(target['phase_independent_radial_clearance_lower_bound_m'])>=0.001-1e-12,target
+          assert float(target['maximum_world_position_residual_m'])<=1e-6,target
+          assert float(target['maximum_body_knuckle_world_drift_m'])<=1e-6,target
+          assert float(target['maximum_lid_knuckle_world_move_m'])>=0.001,target
+          assert float(target['endpoint_parent_motion_closure_m'])<=1e-6,target
+          truth=target['truth_boundary']
+          assert truth['source_successor_bounded_animation_proof_consumed'] is True
+          for key in ('production_default_adoption','phase_independent_clearance_owned_by_animation','technical_art_target_host_adopted','runtime_controller_or_state_machine_accepted','physics_or_collision_accepted','gameplay_accepted','target_device_performance_accepted','final_visual_motion_accepted','canon_or_production_ready'):
+              assert truth[key] is False,(key,truth)
+          print(json.dumps({'structural':structural,'target':target},indent=2))
+          PY
+
+      - name: Retain exact successor-motion evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: object-animation-phase-invariant-successor-${{ env.EXACT_HEAD_SHA }}
+          path: |
+            assets/modular-equipment-case-001/hinge-phase-invariant-successor-motion-rebind-002.json
+            animation-proof/generated/hinge-phase-invariant-successor-motion/
+            animation-proof/hinge-phase-invariant-successor-motion-godot-receipt.json
+            animation-proof/hinge-phase-invariant-successor-motion-negative.log
+          if-no-files-found: error
+          retention-days: 30

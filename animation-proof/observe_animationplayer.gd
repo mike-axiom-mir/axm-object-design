@@ -4,6 +4,8 @@ const GLB_PATH := "res://generated/object-rigid-components-rebound.glb"
 const TECH_RECEIPT_PATH := "res://generated/uc-rigid-scene-handoff-receipt.json"
 const SEQUENCE_PATH := "res://generated/lid-latch-motion-evidence.json"
 const RIG_RECEIPT_PATH := "res://generated/front-latch-articulation.receipt.json"
+const LID_TARGET_BINDING_PATH := "res://generated/target-lid-rig-binding.json"
+const LATCH_TARGET_BINDING_PATH := "res://generated/target-front-latch-rig-binding.json"
 const TARGET_RECEIPT_PATH := "res://animationplayer-target-receipt.json"
 const MOTION_NAME := "lid_latch_open_hold_close_discrete_review"
 const EPS_DEG := 0.00001
@@ -66,6 +68,12 @@ func source_to_uc(values: Array) -> Vector3:
         fail("source pivot is not vec3")
         return Vector3.ZERO
     return Vector3(float(values[0]), float(values[2]), float(values[1]))
+
+func vec3(values: Array) -> Vector3:
+    if values.size() != 3:
+        fail("target pivot is not vec3")
+        return Vector3.ZERO
+    return Vector3(float(values[0]), float(values[1]), float(values[2]))
 
 func pixel_diff_count(a: Image, b: Image) -> int:
     if a.get_width() != b.get_width() or a.get_height() != b.get_height():
@@ -157,6 +165,8 @@ func _initialize() -> void:
     var technical := read_json(TECH_RECEIPT_PATH)
     var sequence := read_json(SEQUENCE_PATH)
     var rig := read_json(RIG_RECEIPT_PATH)
+    var lid_target := read_json(LID_TARGET_BINDING_PATH)
+    var latch_target := read_json(LATCH_TARGET_BINDING_PATH)
     if technical.get("result") != "PASS_OBJECT_SOURCE_OWNED_RIGID_PARTS_THROUGH_UC_SCENE_GRAPH":
         fail("technical-art rigid-scene donor missing or not green")
         return
@@ -164,7 +174,19 @@ func _initialize() -> void:
         fail("animation sequence prerequisite missing or not green")
         return
     if rig.get("result") != "PASS_BOUNDED_FRONT_LATCH_LEVER_ARTICULATION":
-        fail("rigging articulation prerequisite missing or not green")
+        fail("historical motion-authoring rig receipt missing or not green")
+        return
+    if lid_target.get("result") != "PASS_EXACT_LID_RIG_TO_UC_TARGET_BINDING_READY":
+        fail("current lid target-Rigging binding missing or not green")
+        return
+    if latch_target.get("result") != "PASS_SOURCE_OWNED_FRONT_LATCH_CAPTURE_ENVELOPE_TO_UC_TARGET_BINDING_READY":
+        fail("current front-latch target-Rigging binding missing or not green")
+        return
+    if String(lid_target.get("technical_art_donor_head", "")) != String(technical.get("source_repository_head", "")):
+        fail("lid target-Rigging Technical Art identity drift")
+        return
+    if String(latch_target.get("technical_art_donor_head", "")) != String(technical.get("source_repository_head", "")):
+        fail("front-latch target-Rigging Technical Art identity drift")
         return
     if not FileAccess.file_exists(GLB_PATH):
         fail("exact rebound GLB missing")
@@ -216,26 +238,36 @@ func _initialize() -> void:
         "latch_1_lever": world_mesh_center(lever1)
     }
 
-    var rig_by_station := station_lookup(rig.get("station_results", []))
+    var historical_rig_by_station := station_lookup(rig.get("station_results", []))
+    var target_rig_by_lever := {}
+    for target_row in latch_target.get("stations", []):
+        target_rig_by_lever[String(target_row["lever_component"])] = target_row
     var sample0_stations := station_lookup(sequence["samples"][0]["stations"])
-    if rig_by_station.size() != 2 or sample0_stations.size() != 2:
-        fail("expected exactly two bilateral latch stations")
+    if historical_rig_by_station.size() != 2 or target_rig_by_lever.size() != 2 or sample0_stations.size() != 2:
+        fail("expected exactly two bilateral latch stations in historical authoring, current target Rigging and sequence")
         return
 
     var pivot_by_station := {}
     var lever_node_by_station := {}
     for station_id in sample0_stations.keys():
-        if not rig_by_station.has(station_id):
-            fail("sequence station missing exact rig row: " + String(station_id))
+        if not historical_rig_by_station.has(station_id):
+            fail("sequence station missing historical motion-authoring rig row: " + String(station_id))
             return
         var component := String(sample0_stations[station_id]["lever_component"])
+        if not target_rig_by_lever.has(component):
+            fail("sequence lever missing current target-Rigging component identity: " + component)
+            return
+        var target_row: Dictionary = target_rig_by_lever[component]
+        if String(sample0_stations[station_id]["keeper_component"]) != String(target_row["keeper_component"]):
+            fail("sequence keeper identity drift against current target-Rigging binding: " + String(station_id))
+            return
         var lever := find_node(imported, component)
         if lever == null:
             fail("target lever node missing: " + component)
             return
         var pivot := Node3D.new()
         pivot.name = "animation_pivot_" + String(station_id)
-        pivot.position = source_to_uc(rig_by_station[station_id]["pivot_m"])
+        pivot.position = vec3(target_row["pivot_target_m"])
         imported.add_child(pivot)
         lever.reparent(pivot, true)
         pivot_by_station[station_id] = pivot
@@ -361,8 +393,12 @@ func _initialize() -> void:
     receipt["godot_version"] = Engine.get_version_info()
     receipt["glb_sha256"] = glb_sha
     receipt["technical_art_object_head"] = technical.get("source_repository_head")
+    receipt["technical_art_historical_head"] = lid_target.get("technical_art_historical_donor_head")
     receipt["uc_commit"] = technical.get("observed_uc_commit")
     receipt["animation_sequence_head"] = sequence.get("exact_receiving_head")
+    receipt["lid_target_binding_result"] = lid_target.get("result")
+    receipt["front_latch_target_binding_result"] = latch_target.get("result")
+    receipt["current_latch_source_rig_head"] = latch_target.get("source_rig_donor_head")
     receipt["sequence_id"] = sequence.get("sequence_id")
     receipt["sequence_digest"] = sequence.get("sequence_digest")
     receipt["sample_rate_hz"] = sequence.get("sample_rate_hz")
@@ -394,6 +430,10 @@ func _initialize() -> void:
         "discrete_exact_authored_sample_seek_equivalence_observed": true,
         "source_owned_keeper_parentage_preserved": true,
         "latch_proof_pivots_bound_to_exact_rig_receipt": true,
+        "current_lid_target_rig_binding_consumed": true,
+        "current_front_latch_target_rig_binding_consumed": true,
+        "historical_latch_motion_receipt_used_only_for_frozen_sequence_authorship": true,
+        "technical_art_final_visual_acceptance": false,
         "wall_clock_40hz_playback_pacing_observed": false,
         "continuous_interpolation_between_authored_samples": false,
         "runtime_controller_or_state_machine": false,

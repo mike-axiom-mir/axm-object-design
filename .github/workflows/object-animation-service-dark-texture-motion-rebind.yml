@@ -1,0 +1,293 @@
+name: Object Animation service-dark texture motion rebind
+
+on:
+  push:
+    branches: [studio/animation-object-lid-open-close-001]
+    paths:
+      - 'assets/modular-equipment-case-001/service-dark-texture-motion-rebind-001.json'
+      - 'animation-proof/observe_service_dark_texture_motion.gd'
+      - '.github/workflows/object-animation-service-dark-texture-motion-rebind.yml'
+  pull_request:
+    paths:
+      - 'assets/modular-equipment-case-001/service-dark-texture-motion-rebind-001.json'
+      - 'animation-proof/observe_service_dark_texture_motion.gd'
+      - '.github/workflows/object-animation-service-dark-texture-motion-rebind.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  LID_RIG_HEAD: 4b72c9918c5fc1e89bd18a0be24fb4afac6e7775
+  OWNERSHIP_HEAD: d3fa10a270faae7925811f44f03381fe5c5d0215
+  LATCH_RIG_HEAD: 3b667ff5d30c46ec2fe7da7679518970f8610018
+  LATCH_RIG_PLAN_SHA256: 81c27ab7b73ed9a43cb3f554b56c3f4294b893712075e33d13f5b02e008455db
+  TECHNICAL_ART_HEAD: cddf0a2f3ba89572e794579db1fcec2f0deecaf6
+  TECHNICAL_ART_ARTIFACT_ID: '10486764098'
+  TECHNICAL_ART_ARTIFACT_SHA256: 244a0bc3d0a9e6eeb66978d3fe4e96fde5f2fcb41d429dcb27ab217c482c1cb8
+  TECHNICAL_ART_GLB_SHA256: 1de850a64c709554f3f7e376724b5f1627d35f2c2565bf35758ac02f57026da4
+  MATERIALS_HEAD: 4c12a0a57f6aa8778cff41efad321e13567c6c91
+  UC_HEAD: 6ad6ad51e6f40a3dc1d0cccd3af7f7c7ab28fb33
+
+jobs:
+  exact-service-dark-texture-motion-rebind:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout exact Animation head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Bind exact Animation head
+        run: echo "EXACT_HEAD_SHA=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
+
+      - name: Checkout exact lid Rigging donor
+        uses: actions/checkout@v4
+        with:
+          repository: mike-axiom-mir/axm-object-design
+          ref: ${{ env.LID_RIG_HEAD }}
+          path: .lid-rig
+
+      - name: Checkout exact latch ownership donor
+        uses: actions/checkout@v4
+        with:
+          repository: mike-axiom-mir/axm-object-design
+          ref: ${{ env.OWNERSHIP_HEAD }}
+          path: .ownership
+
+      - name: Checkout exact lower-latch Rigging donor
+        uses: actions/checkout@v4
+        with:
+          repository: mike-axiom-mir/axm-object-design
+          ref: ${{ env.LATCH_RIG_HEAD }}
+          path: .latch-rig
+
+      - name: Run complete Object suite on Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: |
+          python -m compileall -q tools tests
+          python -m unittest discover -s tests -v
+
+      - name: Repeat complete Object suite on Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - run: |
+          python -m compileall -q tools tests
+          python -m unittest discover -s tests -v
+
+      - name: Return to Python 3.11 for exact evidence builders
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Validate exact Animation contract pins
+        run: |
+          set -euo pipefail
+          test "$(git -C .lid-rig rev-parse HEAD)" = "$LID_RIG_HEAD"
+          test "$(git -C .ownership rev-parse HEAD)" = "$OWNERSHIP_HEAD"
+          test "$(git -C .latch-rig rev-parse HEAD)" = "$LATCH_RIG_HEAD"
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          c=json.loads(Path('assets/modular-equipment-case-001/service-dark-texture-motion-rebind-001.json').read_text())
+          assert c['schema']=='axm.object-animation-service-dark-texture-motion-rebind/v0.1',c
+          assert c['motion_mutation_policy']=='FORBIDDEN_REBIND_ONLY',c
+          assert c['host_source_sha256']=='49b1f9ed9865893d6de6f1ec8f069576732df694853fde4e3fcff366de32644a',c
+          assert c['motion_identity']['sequence_id']=='lid-latch-open-hold-close-001',c
+          assert c['motion_identity']['base_lid_clip_digest']=='9e149195ab315f83f2d6f7d76f374f4be245567f77402de3e8a1d40ab79ef340',c
+          assert c['motion_identity']['duration_s']==2.5 and c['motion_identity']['sample_rate_hz']==40 and c['motion_identity']['endpoint_inclusive_sample_count']==101,c
+          assert c['technical_art_dependency']['exact_head']==os.environ['TECHNICAL_ART_HEAD'],c
+          assert str(c['technical_art_dependency']['artifact_id'])==os.environ['TECHNICAL_ART_ARTIFACT_ID'],c
+          assert c['technical_art_dependency']['artifact_sha256']==os.environ['TECHNICAL_ART_ARTIFACT_SHA256'],c
+          assert c['technical_art_dependency']['glb_sha256']==os.environ['TECHNICAL_ART_GLB_SHA256'],c
+          assert c['technical_art_dependency']['materials_authority_head']==os.environ['MATERIALS_HEAD'],c
+          assert c['technical_art_dependency']['uc_head']==os.environ['UC_HEAD'],c
+          assert c['source_hinge']['origin_source_m']==[0.0,0.252,0.306],c
+          assert c['source_hinge']['target_origin_uc_m']==[0.0,0.306,0.252],c
+          assert c['source_hinge']['source_positive_angle_to_target_sign']==-1.0,c
+          assert c['truth_boundary']['runtime_controller_or_state_machine_accepted'] is False,c
+          assert c['truth_boundary']['input_or_gameplay_accepted'] is False,c
+          print('exact service-dark Animation contract pins PASS')
+          PY
+
+      - name: Rebuild unchanged exact lid + lower-latch Animation sequence
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/axm-service-dark-lid-motion /tmp/axm-service-dark-latch-rig /tmp/axm-service-dark-sequence
+          python tools/build_lid_motion_evidence.py \
+            --source assets/modular-equipment-case-001/source.json \
+            --rig .lid-rig/assets/modular-equipment-case-001/articulation.json \
+            --clip assets/modular-equipment-case-001/lid-motion-clip.json \
+            --out /tmp/axm-service-dark-lid-motion \
+            --exact-head "$EXACT_HEAD_SHA"
+          PYTHONPATH=".latch-rig/tools" python .latch-rig/tools/verify_front_latch_articulation.py \
+            --host assets/modular-equipment-case-001/source.json \
+            --ownership .ownership/assets/modular-equipment-case-001/front-latch-ownership-001.json \
+            --plan .latch-rig/assets/modular-equipment-case-001/front-latch-articulation-001.json \
+            --out /tmp/axm-service-dark-latch-rig
+          python tools/build_lid_latch_motion_evidence.py \
+            --source assets/modular-equipment-case-001/source.json \
+            --sequence assets/modular-equipment-case-001/lid-latch-motion-sequence-001.json \
+            --motion-evidence /tmp/axm-service-dark-lid-motion/lid-motion-evidence.json \
+            --ownership .ownership/assets/modular-equipment-case-001/front-latch-ownership-001.json \
+            --rig-receipt /tmp/axm-service-dark-latch-rig/front-latch-articulation.receipt.json \
+            --rig-head "$LATCH_RIG_HEAD" \
+            --rig-plan-sha256 "$LATCH_RIG_PLAN_SHA256" \
+            --out /tmp/axm-service-dark-sequence \
+            --exact-head "$EXACT_HEAD_SHA"
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          s=json.loads(Path('/tmp/axm-service-dark-sequence/lid-latch-motion-evidence.json').read_text())
+          assert s['result']=='PASS_ORDERED_LATCH_RELEASE_LID_CLIP_REENGAGE_SEQUENCE',s
+          assert s['endpoint_inclusive_sample_count']==101 and s['sample_rate_hz']==40 and s['duration_s']==2.5,s
+          assert s['base_lid_clip_digest']=='9e149195ab315f83f2d6f7d76f374f4be245567f77402de3e8a1d40ab79ef340',s
+          print('unchanged exact 101-sample motion sequence PASS')
+          PY
+
+      - name: Download and verify exact retained Technical Art artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/axm-service-dark-ta /tmp/axm-service-dark-ta.zip
+          mkdir -p /tmp/axm-service-dark-ta
+          curl --fail --location --retry 3 --retry-delay 2 \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/${{ github.repository }}/actions/artifacts/$TECHNICAL_ART_ARTIFACT_ID/zip" \
+            --output /tmp/axm-service-dark-ta.zip
+          echo "$TECHNICAL_ART_ARTIFACT_SHA256  /tmp/axm-service-dark-ta.zip" | sha256sum --check --strict
+          unzip -q /tmp/axm-service-dark-ta.zip -d /tmp/axm-service-dark-ta
+          test "$(cat /tmp/axm-service-dark-ta/technical-art-proof/technical-art-head.txt)" = "$TECHNICAL_ART_HEAD"
+          test "$(cat /tmp/axm-service-dark-ta/technical-art-proof/uc-head.txt)" = "$UC_HEAD"
+          echo "$TECHNICAL_ART_ARTIFACT_SHA256  artifact-10486764098.zip" > /tmp/axm-service-dark-ta/technical-art-artifact.sha256.txt
+          python - <<'PY'
+          import json, os, hashlib
+          from pathlib import Path
+          root=Path('/tmp/axm-service-dark-ta/creations/technical-art-proof/generated')
+          receipt=json.loads((root/'technical-art-uc-texture-transport-receipt.json').read_text())
+          glb=root/'service-dark-two-surface.glb'
+          assert receipt['result']=='PASS_OBJECT_SERVICE_DARK_EXACT_ATLAS_RGB_TO_CURRENT_UC_TEXTURED_GLB',receipt
+          assert receipt['technical_art_head']==os.environ['TECHNICAL_ART_HEAD'],receipt
+          assert receipt['materials_authority_head']==os.environ['MATERIALS_HEAD'],receipt
+          assert receipt['uc_head']==os.environ['UC_HEAD'],receipt
+          digest=hashlib.sha256(glb.read_bytes()).hexdigest()
+          assert digest==os.environ['TECHNICAL_ART_GLB_SHA256']==receipt['glb_sha256'],(digest,receipt)
+          print('exact retained Technical Art GLB + receipt PASS')
+          PY
+
+      - name: Assemble target-host service-dark motion inputs
+        run: |
+          set -euo pipefail
+          rm -rf animation-proof/generated
+          mkdir -p animation-proof/generated
+          cp /tmp/axm-service-dark-ta/creations/technical-art-proof/generated/service-dark-two-surface.glb animation-proof/generated/
+          cp /tmp/axm-service-dark-ta/creations/technical-art-proof/generated/technical-art-uc-texture-transport-receipt.json animation-proof/generated/
+          cp /tmp/axm-service-dark-sequence/lid-latch-motion-evidence.json animation-proof/generated/
+          cp assets/modular-equipment-case-001/service-dark-texture-motion-rebind-001.json animation-proof/generated/
+          printf '%s\n' "$EXACT_HEAD_SHA" > animation-proof/generated/exact-animation-head.txt
+          printf '%s\n' "$TECHNICAL_ART_HEAD" > animation-proof/generated/exact-technical-art-head.txt
+          printf '%s\n' "$TECHNICAL_ART_ARTIFACT_SHA256" > animation-proof/generated/exact-technical-art-artifact-sha256.txt
+
+      - name: Download pinned Godot 4.7.2
+        env:
+          GODOT_URL: https://github.com/godotengine/godot-builds/releases/download/4.7.2-stable/Godot_v4.7.2-stable_linux.x86_64.zip
+          GODOT_SHA256: cadd3204e728a35d3f13adb7fd0d7902636b79f6b95c40c265eb73b6c35329e4
+        run: |
+          set -euo pipefail
+          mkdir -p .godot-bin
+          curl --fail --location --retry 3 --retry-delay 2 "$GODOT_URL" --output .godot-bin/godot.zip
+          echo "$GODOT_SHA256  .godot-bin/godot.zip" | sha256sum --check --strict
+          unzip -q .godot-bin/godot.zip -d .godot-bin
+          chmod +x .godot-bin/Godot_v4.7.2-stable_linux.x86_64
+          .godot-bin/Godot_v4.7.2-stable_linux.x86_64 --version
+
+      - name: Negative control rejects one-millimetre target-hinge drift
+        run: |
+          set -euo pipefail
+          cp animation-proof/generated/service-dark-texture-motion-rebind-001.json /tmp/service-dark-texture-motion-rebind.original.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('animation-proof/generated/service-dark-texture-motion-rebind-001.json')
+          d=json.loads(p.read_text())
+          d['source_hinge']['target_origin_uc_m'][1]+=0.001
+          p.write_text(json.dumps(d,indent=2,sort_keys=True)+'\n')
+          PY
+          rm -f animation-proof/service-dark-texture-motion-rebind-receipt.json animation-proof/service-dark-texture-motion-samples.csv
+          set +e
+          .godot-bin/Godot_v4.7.2-stable_linux.x86_64 \
+            --headless \
+            --path animation-proof \
+            --script observe_service_dark_texture_motion.gd \
+            > /tmp/service-dark-negative.log 2>&1
+          code=$?
+          set -e
+          test "$code" -ne 0
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          r=json.loads(Path('animation-proof/service-dark-texture-motion-rebind-receipt.json').read_text())
+          assert r['result']=='FAIL_TARGET_HINGE_IDENTITY_DRIFT',r
+          print('PASS_NEGATIVE_CONTROL_TARGET_HINGE_DRIFT_REJECTED')
+          PY
+          cp /tmp/service-dark-texture-motion-rebind.original.json animation-proof/generated/service-dark-texture-motion-rebind-001.json
+          rm -f animation-proof/service-dark-texture-motion-rebind-receipt.json animation-proof/service-dark-texture-motion-samples.csv
+
+      - name: Exercise exact textured surfaces through all authored target-host samples
+        run: |
+          set -euo pipefail
+          .godot-bin/Godot_v4.7.2-stable_linux.x86_64 \
+            --headless \
+            --path animation-proof \
+            --script observe_service_dark_texture_motion.gd \
+            | tee /tmp/service-dark-positive.log
+
+      - name: Validate scoped target-host receipt
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          r=json.loads(Path('animation-proof/service-dark-texture-motion-rebind-receipt.json').read_text())
+          assert r['result']=='PASS_TARGET_HOST_SERVICE_DARK_TEXTURE_SURFACE_MOTION_REBIND_101_SAMPLES',r
+          assert r['sample_count']==101 and r['sample_rate_hz']==40 and r['duration_s']==2.5,r
+          assert r['technical_art_head']=='cddf0a2f3ba89572e794579db1fcec2f0deecaf6',r
+          assert r['glb_sha256']=='1de850a64c709554f3f7e376724b5f1627d35f2c2565bf35758ac02f57026da4',r
+          assert r['max_lid_world_vertex_error_m']<=1e-6,r
+          assert r['max_front_static_drift_m']<=1e-6,r
+          assert r['max_lid_uv_drift']<=1e-7 and r['max_front_uv_drift']<=1e-7,r
+          assert r['endpoint_lid_neutral_drift_m']<=1e-6,r
+          assert r['max_lid_displacement_from_neutral_m']>0.1,r
+          assert r['material_resource_identity_stable'] is True and r['texture_resource_identity_stable'] is True,r
+          assert r['lid_texture_size_px']==[512,512] and r['front_texture_size_px']==[512,512],r
+          assert r['truth_boundary']['runtime_controller_or_state_machine_accepted'] is False,r
+          assert r['truth_boundary']['input_or_gameplay_accepted'] is False,r
+          print(json.dumps(r,indent=2))
+          PY
+
+      - name: Retain exact Animation service-dark motion evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: object-animation-service-dark-texture-motion-rebind-${{ github.event.pull_request.head.sha || github.sha }}
+          path: |
+            animation-proof/generated/exact-animation-head.txt
+            animation-proof/generated/exact-technical-art-head.txt
+            animation-proof/generated/exact-technical-art-artifact-sha256.txt
+            animation-proof/generated/service-dark-texture-motion-rebind-001.json
+            animation-proof/generated/lid-latch-motion-evidence.json
+            animation-proof/generated/technical-art-uc-texture-transport-receipt.json
+            animation-proof/generated/service-dark-two-surface.glb
+            animation-proof/service-dark-texture-motion-rebind-receipt.json
+            animation-proof/service-dark-texture-motion-samples.csv
+            /tmp/service-dark-negative.log
+            /tmp/service-dark-positive.log
+          if-no-files-found: warn
+          retention-days: 30

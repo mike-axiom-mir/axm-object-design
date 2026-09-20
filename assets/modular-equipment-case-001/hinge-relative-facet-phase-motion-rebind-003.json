@@ -1,0 +1,74 @@
+{
+  "schema": "axm.object-animation-relative-facet-phase-motion-rebind/v0.1",
+  "contract_id": "modular-equipment-case-001/animation-relative-facet-phase-motion-rebind-003",
+  "asset_id": "modular-equipment-case-001",
+  "legacy_host_source_sha256": "49b1f9ed9865893d6de6f1ec8f069576732df694853fde4e3fcff366de32644a",
+  "animation_sequence": {
+    "sequence_id": "lid-latch-open-hold-close-001",
+    "sequence_digest": "0a3523cf792264f610881552fd2ebd438aabdfd05e30e92af9dbb33ded1fa2d3",
+    "sample_rate_hz": 40,
+    "duration_s": 2.5,
+    "endpoint_inclusive_sample_count": 101,
+    "maximum_lid_open_angle_deg": 100.0,
+    "motion_mutation_policy": "FORBIDDEN_REBIND_ONLY"
+  },
+  "source_successor": {
+    "repository": "mike-axiom-mir/axm-object-design",
+    "hard_surface_pr": 25,
+    "exact_head": "ef1dfc2f2c1adbe3c90ba089c66ac09d223df25c",
+    "contract_git_blob_sha1": "e7a44523ea80e567a745cd61af7fd7005757cc12",
+    "schema": "axm.object-hinge-bored-knuckle-relative-facet-phase-source-successor/v0.1",
+    "successor_id": "modular-equipment-case-001/hinge-bored-knuckle-relative-facet-phase-source-successor-003",
+    "replacement_scope": "HINGE_KNUCKLE_CROSS_SECTION_ORIENTATION_ONLY",
+    "body_phase_deg": 0.0,
+    "lid_phase_deg": 15.0,
+    "relative_lid_minus_body_phase_deg": 15.0
+  },
+  "rigging_receiver": {
+    "repository": "mike-axiom-mir/axm-object-design",
+    "rigging_pr": 27,
+    "exact_head": "0974a97af10fedf62a5803a88921faf96f3448d5",
+    "compatibility_contract_git_blob_sha1": "6d3e78476ea2b79ca48ad96d823d80d956e5bf49",
+    "schema": "axm.object-hinge-relative-facet-phase-rig-compatibility/v0.1",
+    "compatibility_id": "modular-equipment-case-001/hinge-relative-facet-phase-rig-compatibility-003",
+    "historical_lid_rig_head": "4b72c9918c5fc1e89bd18a0be24fb4afac6e7775",
+    "lid_rig_plan_digest": "0ad6dc2ca22676cf301579932e599a441eb7c4bccce31991d1b727aeb22ac422",
+    "joint_id": "rear-lid-hinge-001",
+    "axis": [1, 0, 0],
+    "angle_limit_deg": [0, 110],
+    "opening_rotation_sign": -1,
+    "moving_lid_knuckles": ["l0", "l1"],
+    "fixed_body_knuckles": ["b0", "b1", "b2"]
+  },
+  "bounded_receiver_decision": {
+    "adopt_source_successor_for_this_animation_proof": true,
+    "production_default_adoption": false,
+    "automatic_downstream_adoption": false,
+    "technical_art_receiver_adoption": false,
+    "runtime_controller_or_state_machine_accepted": false,
+    "gameplay_accepted": false
+  },
+  "preservation_contract": {
+    "retimed": false,
+    "keys_changed": false,
+    "easing_changed": false,
+    "amplitude_changed": false,
+    "legacy_host_source_rewritten": false,
+    "source_successor_rewritten": false,
+    "source_owner_phase_changed": false,
+    "rigging_constraint_rewritten": false,
+    "parent_partition_changed": false
+  },
+  "truth_boundary": {
+    "animation_motion_rebind_owned": true,
+    "source_successor_bounded_animation_proof_consumed": true,
+    "source_owner_phase_preservation_observed": true,
+    "technical_art_target_host_adopted": false,
+    "runtime_controller_or_state_machine_accepted": false,
+    "physics_or_collision_accepted": false,
+    "gameplay_accepted": false,
+    "target_device_performance_accepted": false,
+    "final_visual_motion_accepted": false,
+    "canon_or_production_ready": false
+  }
+}

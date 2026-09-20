@@ -1,0 +1,44 @@
+{
+  "schema": "axm.object-animation-mechanical-phase-guard/v0.1",
+  "contract_id": "lid-latch-continuous-moving-phase-guard-001",
+  "asset_id": "modular-equipment-case-001",
+  "sequence_dependency": {
+    "sequence_id": "lid-latch-open-hold-close-001",
+    "sequence_digest": "0a3523cf792264f610881552fd2ebd438aabdfd05e30e92af9dbb33ded1fa2d3",
+    "required_sample_rate_hz": 40,
+    "required_duration_s": 2.5,
+    "required_terminal_latch_angle_deg": 50.0
+  },
+  "rigging_dependency": {
+    "exact_head": "44e0a56872a823cf768c749672116fd026b1ef5e",
+    "artifact_id": 10483747546,
+    "artifact_sha256": "2785d67b29325a4041f5761033b56d07b93aa30ca9645db05434d432892b4a9e",
+    "receipt_schema": "axm.object-keeper-lever-continuous-lid-clearance/v0.1",
+    "required_result": "PASS_CONTINUOUS_KEEPER_LEVER_CLEARANCE_DURING_LID_MOTION__ENGAGEMENT_OVERLAP_HELD",
+    "historical_animation_pose_set_head": "82b0c22e3a9eb346f2b06745b958a570d41beb15",
+    "required_latch_angle_deg": 50.0,
+    "required_lid_open_interval_deg": [
+      0.0,
+      100.0
+    ],
+    "minimum_continuous_separation_lower_bound_m": 0.0015728659779459253
+  },
+  "composition_policy": {
+    "release_phase": "LID_MUST_REMAIN_NEUTRAL_WHILE_LATCH_TRANSITIONS_0_TO_50",
+    "moving_lid_phase": "LATCH_MUST_REMAIN_EXACTLY_50_WHILE_LID_MAY_MOVE_0_TO_100",
+    "reengagement_phase": "LID_MUST_REMAIN_NEUTRAL_WHILE_LATCH_TRANSITIONS_50_TO_0",
+    "continuous_claim": "ONLY_COMPOSE_RIGGING_CONTINUOUS_CLEARANCE_OVER_THE_EXACT_50_DEG_MOVING_LID_PHASE",
+    "failure_policy": "FAIL_CLOSED_NO_RETIME_NO_KEY_EDIT_NO_RIG_REDERIVATION_NO_CONTROLLER_PROMOTION"
+  },
+  "truth_boundary": {
+    "motion_authorship_changed": false,
+    "continuous_moving_lid_keeper_lever_clearance_may_be_composed": true,
+    "continuous_latch_release_clearance_proven": false,
+    "continuous_latch_reengagement_clearance_proven": false,
+    "physical_latch_capture_or_retention_proven": false,
+    "runtime_controller_accepted": false,
+    "gameplay_accepted": false,
+    "final_visual_motion_accepted": false,
+    "canon_or_production_ready": false
+  }
+}
