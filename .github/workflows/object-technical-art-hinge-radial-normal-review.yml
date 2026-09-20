@@ -1,0 +1,361 @@
+name: Object Technical Art hinge analytic radial normal review
+
+on:
+  push:
+    branches:
+      - studio/technical-art-rigid-scene-handoff-001
+    paths:
+      - "contracts/object_hinge_successor002_analytic_radial_normal_review_048.json"
+      - "tools/build_object_hinge_successor002_analytic_radial_normal_review.py"
+      - "rigid-proof/hinge_radial_normal_review_observe.gd"
+      - ".github/workflows/object-technical-art-hinge-radial-normal-review.yml"
+  pull_request:
+    paths:
+      - "contracts/object_hinge_successor002_analytic_radial_normal_review_048.json"
+      - "tools/build_object_hinge_successor002_analytic_radial_normal_review.py"
+      - "rigid-proof/hinge_radial_normal_review_observe.gd"
+      - ".github/workflows/object-technical-art-hinge-radial-normal-review.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  normal-review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      BASELINE_TA_HEAD: f430d00d98e694dcf8302fd4df3c64a074f6f30e
+      PROVEN_NORMAL_REVIEW_TA_HEAD: 36f653ef0409a66d5d00def18a8f9dccd00c3336
+      BASELINE_TA_ARTIFACT_ID: "10531541834"
+      BASELINE_TA_ARTIFACT_SHA256: 5e1134d0ebdf786d04ae789a841493ce9cf684f16aedd7dbad597f2e02b3ad5e
+      CONTROL_GLB_SHA256: f81a9bccd9de1033476da4e5bbea3871b01e2ebf9fb65fcf909447fd14c43e40
+      HARD_SURFACE_HEAD: 5d8f767af79b744b6f3d31ce91dc4c908b3a440b
+      HARD_SURFACE_DISPOSITION_BLOB: 289d7cb333ca5adb2d87e71feab451fd864249c3
+      MATERIALS_HEAD: 5509084acbaca2a7d45f072203b98174c621d5ef
+      MATERIALS_REVIEW_BLOB: ce6c29e19967013b1eea3276e378689f926ef6e0
+      COORDINATION_HEAD: f55363657ae63f88460559b3f0f210cd70a7cb57
+      ART_DIRECTION_BLOB: 910871c06902d9c5bb42a2246aa07bdfaa029045
+      CURRENT_UC_HEAD: 376b5c49a8bdbff344fe20e61cd89a73b8a96c75
+      UC_PROCEDURAL_BLOB: cdb654d4d0f68a4ca7539d98a985d7a70cf7ee36
+      UC_SCENE_GRAPH_BLOB: fada5e5e06e110b48c7c9886e6a7f73c5c3a2d44
+
+    steps:
+      - name: Checkout exact Technical Art head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Bind bounded Technical Art delta
+        run: |
+          set -euo pipefail
+          exact="${{ github.event.pull_request.head.sha || github.sha }}"
+          test "$(git rev-parse HEAD)" = "$exact"
+          git merge-base --is-ancestor "$PROVEN_NORMAL_REVIEW_TA_HEAD" HEAD
+          mkdir -p rigid-proof/normal-review-owner rigid-proof/generated/object-hinge-analytic-radial-normal-review
+          python tools/verify_ta_evidence_lane_continuity.py \
+            --baseline "$PROVEN_NORMAL_REVIEW_TA_HEAD" \
+            --receipt rigid-proof/normal-review-owner/lane-continuity-receipt.json \
+            --protected contracts/object_hinge_successor002_analytic_radial_normal_review_048.json \
+            --protected rigid-proof/hinge_radial_normal_review_observe.gd \
+            --protected tools/build_object_hinge_successor002_analytic_radial_normal_review.py
+          cp contracts/object_hinge_successor002_analytic_radial_normal_review_048.json /tmp/normal-review-contract.json
+          printf '\n' >> contracts/object_hinge_successor002_analytic_radial_normal_review_048.json
+          if python tools/verify_ta_evidence_lane_continuity.py \
+            --baseline "$PROVEN_NORMAL_REVIEW_TA_HEAD" \
+            --protected contracts/object_hinge_successor002_analytic_radial_normal_review_048.json \
+            --protected rigid-proof/hinge_radial_normal_review_observe.gd \
+            --protected tools/build_object_hinge_successor002_analytic_radial_normal_review.py; then
+            echo 'ERROR: lane continuity guard accepted a mutated protected file' >&2
+            exit 1
+          fi
+          mv /tmp/normal-review-contract.json contracts/object_hinge_successor002_analytic_radial_normal_review_048.json
+          echo PASS_PROTECTED_NORMAL_REVIEW_LANE_MUTATION_REJECTED > rigid-proof/normal-review-owner/negative-lane-continuity-mutation.txt
+          python -m json.tool contracts/object_hinge_successor002_analytic_radial_normal_review_048.json >/dev/null
+          python -m py_compile tools/build_object_hinge_successor002_analytic_radial_normal_review.py tools/verify_ta_evidence_lane_continuity.py
+          python -m unittest discover -s tests -v
+          git rev-parse HEAD > rigid-proof/normal-review-owner/exact-technical-art-head.txt
+
+      - name: Checkout exact external owners and generic UC
+        uses: actions/checkout@v4
+        with:
+          repository: mike-axiom-mir/axm-object-design
+          ref: ${{ env.HARD_SURFACE_HEAD }}
+          path: .hard-surface
+          fetch-depth: 1
+
+      - uses: actions/checkout@v4
+        with:
+          repository: mike-axiom-mir/axm-object-design
+          ref: ${{ env.MATERIALS_HEAD }}
+          path: .materials
+          fetch-depth: 1
+
+      - uses: actions/checkout@v4
+        with:
+          repository: mike-axiom-mir/axm-create-me
+          ref: ${{ env.COORDINATION_HEAD }}
+          path: .coordination
+          fetch-depth: 1
+
+      - uses: actions/checkout@v4
+        with:
+          repository: mike-axiom-mir/axm-universal-creation
+          ref: ${{ env.CURRENT_UC_HEAD }}
+          path: .uc
+          fetch-depth: 1
+
+      - name: Verify exact owner and UC executable identities
+        run: |
+          set -euo pipefail
+          test "$(git -C .hard-surface rev-parse HEAD)" = "$HARD_SURFACE_HEAD"
+          test "$(git -C .materials rev-parse HEAD)" = "$MATERIALS_HEAD"
+          test "$(git -C .coordination rev-parse HEAD)" = "$COORDINATION_HEAD"
+          test "$(git -C .uc rev-parse HEAD)" = "$CURRENT_UC_HEAD"
+          test "$(git -C .hard-surface rev-parse HEAD:assets/modular-equipment-case-001/hinge-bored-knuckle-relative-facet-phase-disposition-048.json)" = "$HARD_SURFACE_DISPOSITION_BLOB"
+          test "$(git -C .materials rev-parse HEAD:lookdev/object_hinge_successor003_relative_facet_phase_material_review_001.json)" = "$MATERIALS_REVIEW_BLOB"
+          test "$(git -C .coordination rev-parse HEAD:studio/direction/OBJECT_HINGE_SHADING_NORMAL_DIRECTION_048.md)" = "$ART_DIRECTION_BLOB"
+          test "$(git -C .uc rev-parse HEAD:src/axm_uc/procedural_3d.py)" = "$UC_PROCEDURAL_BLOB"
+          test "$(git -C .uc rev-parse HEAD:src/axm_uc/rigid_scene_graph.py)" = "$UC_SCENE_GRAPH_BLOB"
+          printf '%s\n' "$HARD_SURFACE_HEAD" > rigid-proof/normal-review-owner/exact-hard-surface-head.txt
+          printf '%s\n' "$MATERIALS_HEAD" > rigid-proof/normal-review-owner/exact-materials-head.txt
+          printf '%s\n' "$COORDINATION_HEAD" > rigid-proof/normal-review-owner/exact-coordination-head.txt
+          printf '%s\n' "$CURRENT_UC_HEAD" > rigid-proof/normal-review-owner/exact-current-uc-head.txt
+          printf '%s  %s\n' "$UC_PROCEDURAL_BLOB" src/axm_uc/procedural_3d.py > rigid-proof/normal-review-owner/uc-executable-blobs.txt
+          printf '%s  %s\n' "$UC_SCENE_GRAPH_BLOB" src/axm_uc/rigid_scene_graph.py >> rigid-proof/normal-review-owner/uc-executable-blobs.txt
+
+      - name: Download exact frozen Technical Art successor002 evidence
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          root=rigid-proof/normal-review-owner
+          mkdir -p "$root/ta-artifact"
+          curl --fail --location --retry 3 --retry-delay 2 \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts/${BASELINE_TA_ARTIFACT_ID}/zip" \
+            -o "$root/ta-artifact.zip"
+          echo "$BASELINE_TA_ARTIFACT_SHA256  $root/ta-artifact.zip" | sha256sum --check --strict
+          unzip -q "$root/ta-artifact.zip" -d "$root/ta-artifact"
+          python - <<'PY'
+          from pathlib import Path
+          import shutil
+          root=Path('rigid-proof/normal-review-owner')
+          src=root/'ta-artifact'
+          wanted={
+            'object-rigid-components-hinge-successor002.surface.json':'baseline-successor002.surface.json',
+            'object-rigid-scene-graph-hinge-successor002.json':'baseline-successor002.scene-graph.json',
+            'object-rigid-components-hinge-successor002-rebound.glb':'frozen-control-successor002.glb',
+            'object-hinge-successor002-ta-transport-rebind-receipt.json':'baseline-successor002-ta-receipt.json',
+          }
+          for name,dest in wanted.items():
+              matches=list(src.rglob(name))
+              if len(matches)!=1:
+                  raise SystemExit(f'expected exactly one {name}, got {matches}')
+              shutil.copy2(matches[0], root/dest)
+          PY
+          echo "$CONTROL_GLB_SHA256  $root/frozen-control-successor002.glb" | sha256sum --check --strict
+
+      - name: Materialize exact Materials-owned frozen review mapping
+        run: |
+          set -euo pipefail
+          PYTHONPATH=.materials/tools python - <<'PY'
+          from pathlib import Path
+          import json
+          import verify_object_hinge_successor003_relative_facet_phase_material_review as review
+          source=Path('.materials/assets/modular-equipment-case-001/source.json')
+          profile=Path('.materials/lookdev/object_material_profile_001.json')
+          materials,mapping=review.normalized_materials(source,profile)
+          payload={
+            'schema':'axm.object-materials-normalized-review-donor/v0.1',
+            'exact_materials_head':'5509084acbaca2a7d45f072203b98174c621d5ef',
+            'review_contract_blob_sha1':'ce6c29e19967013b1eea3276e378689f926ef6e0',
+            'materials':materials,
+            'group_materials':mapping,
+          }
+          path=Path('rigid-proof/normal-review-owner/materials-normalized-review-payload.json')
+          path.write_text(json.dumps(payload,indent=2,sort_keys=True)+'\n')
+          steel=materials['hardware_steel']
+          assert steel['albedo_hex']=='#7E868AFF',steel
+          assert steel['metallic']==0.88 and steel['roughness']==0.32,steel
+          assert len(mapping)==31,mapping
+          PY
+
+      - name: Build exactly one analytic-radial outer-normal review carrier on fresh UC
+        run: |
+          set -euo pipefail
+          root=rigid-proof/normal-review-owner
+          out=rigid-proof/generated/object-hinge-analytic-radial-normal-review
+          PYTHONPATH=.uc/src python tools/build_object_hinge_successor002_analytic_radial_normal_review.py \
+            --contract contracts/object_hinge_successor002_analytic_radial_normal_review_048.json \
+            --baseline-surface "$root/baseline-successor002.surface.json" \
+            --baseline-manifest "$root/baseline-successor002.scene-graph.json" \
+            --baseline-receipt "$root/baseline-successor002-ta-receipt.json" \
+            --frozen-control-glb "$root/frozen-control-successor002.glb" \
+            --hard-surface-disposition .hard-surface/assets/modular-equipment-case-001/hinge-bored-knuckle-relative-facet-phase-disposition-048.json \
+            --material-payload "$root/materials-normalized-review-payload.json" \
+            --uc-root .uc \
+            --out "$out"
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('rigid-proof/generated/object-hinge-analytic-radial-normal-review/object-hinge-analytic-radial-normal-review-build-receipt.json')
+          r=json.loads(p.read_text())
+          assert r['result']=='PASS_OBJECT_HINGE_SUCCESSOR002_ANALYTIC_RADIAL_OUTER_NORMAL_REVIEW_CARRIER_READY',r
+          assert r['fresh_uc_reproduced_frozen_control_byte_for_byte'] is True,r
+          assert r['control_glb_sha256']=='f81a9bccd9de1033476da4e5bbea3871b01e2ebf9fb65fcf909447fd14c43e40',r
+          assert r['mesh_nodes']==31 and r['triangles']==1052 and r['hinge_triangles']==480,r
+          n=r['normal_change']
+          assert n['outer_side_triangles_total']==120 and n['changed_normal_entries_total']==360,n
+          assert all(v['outer_side_triangles']==24 and v['changed_normal_entries']==72 for v in n['per_component'].values()),n
+          assert r['truth_boundary']['art_direction_acceptance'] is False,r
+          assert r['truth_boundary']['uc_inferred_object_normal_policy'] is False,r
+          print(json.dumps(r,indent=2))
+          PY
+
+      - name: Prove frozen-geometry drift and authority inflation fail closed
+        run: |
+          set -euo pipefail
+          root=rigid-proof/normal-review-owner
+          out=/tmp/normal-review-negative
+          python - <<'PY'
+          import json
+          p='rigid-proof/normal-review-owner/baseline-successor002.surface.json'
+          v=json.load(open(p))
+          v['primitives'][0]['positions'][0][0]+=0.0001
+          json.dump(v,open('/tmp/mutated-surface.json','w'),indent=2,sort_keys=True)
+          c=json.load(open('contracts/object_hinge_successor002_analytic_radial_normal_review_048.json'))
+          c['authority']['visual_or_art_acceptance_claimed']=True
+          json.dump(c,open('/tmp/inflated-normal-contract.json','w'),indent=2,sort_keys=True)
+          PY
+          if PYTHONPATH=.uc/src python tools/build_object_hinge_successor002_analytic_radial_normal_review.py \
+            --contract contracts/object_hinge_successor002_analytic_radial_normal_review_048.json \
+            --baseline-surface /tmp/mutated-surface.json \
+            --baseline-manifest "$root/baseline-successor002.scene-graph.json" \
+            --baseline-receipt "$root/baseline-successor002-ta-receipt.json" \
+            --frozen-control-glb "$root/frozen-control-successor002.glb" \
+            --hard-surface-disposition .hard-surface/assets/modular-equipment-case-001/hinge-bored-knuckle-relative-facet-phase-disposition-048.json \
+            --material-payload "$root/materials-normalized-review-payload.json" \
+            --uc-root .uc --out "$out/geometry"; then
+            echo 'ERROR: frozen geometry mutation unexpectedly passed' >&2; exit 1
+          fi
+          echo PASS_FROZEN_GEOMETRY_DRIFT_REJECTED > "$root/negative-frozen-geometry-drift.txt"
+
+          if PYTHONPATH=.uc/src python tools/build_object_hinge_successor002_analytic_radial_normal_review.py \
+            --contract /tmp/inflated-normal-contract.json \
+            --baseline-surface "$root/baseline-successor002.surface.json" \
+            --baseline-manifest "$root/baseline-successor002.scene-graph.json" \
+            --baseline-receipt "$root/baseline-successor002-ta-receipt.json" \
+            --frozen-control-glb "$root/frozen-control-successor002.glb" \
+            --hard-surface-disposition .hard-surface/assets/modular-equipment-case-001/hinge-bored-knuckle-relative-facet-phase-disposition-048.json \
+            --material-payload "$root/materials-normalized-review-payload.json" \
+            --uc-root .uc --out "$out/authority"; then
+            echo 'ERROR: Art-authority inflation unexpectedly passed' >&2; exit 1
+          fi
+          echo PASS_ART_AUTHORITY_INFLATION_REJECTED > "$root/negative-authority-inflation.txt"
+
+      - name: Download pinned Godot 4.7.2
+        env:
+          GODOT_URL: https://github.com/godotengine/godot-builds/releases/download/4.7.2-stable/Godot_v4.7.2-stable_linux.x86_64.zip
+          GODOT_SHA256: cadd3204e728a35d3f13adb7fd0d7902636b79f6b95c40c265eb73b6c35329e4
+        run: |
+          set -euo pipefail
+          mkdir -p .godot-bin
+          curl --fail --location --retry 3 --retry-delay 2 "$GODOT_URL" -o .godot-bin/godot.zip
+          echo "$GODOT_SHA256  .godot-bin/godot.zip" | sha256sum --check --strict
+          unzip -q .godot-bin/godot.zip -d .godot-bin
+          chmod +x .godot-bin/Godot_v4.7.2-stable_linux.x86_64
+          if ! command -v xvfb-run >/dev/null 2>&1; then sudo apt-get update && sudo apt-get install -y xvfb; fi
+
+      - name: Render exact control/candidate in real Godot with frozen Materials context
+        run: |
+          set -euo pipefail
+          rm -f rigid-proof/hinge-analytic-radial-normal-review-runtime-receipt.json rigid-proof/hinge-normal-review-*.png
+          xvfb-run --auto-servernum --server-args="-screen 0 1000x760x24" \
+            .godot-bin/Godot_v4.7.2-stable_linux.x86_64 \
+            --display-driver x11 --rendering-method gl_compatibility \
+            --path rigid-proof --script hinge_radial_normal_review_observe.gd
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('rigid-proof/hinge-analytic-radial-normal-review-runtime-receipt.json')
+          r=json.loads(p.read_text())
+          assert r['state']=='PASS_EVIDENCE_READY_OBJECT_HINGE_ANALYTIC_RADIAL_NORMAL_REVIEW_048',r
+          assert r['decision']=='EVIDENCE_READY_NOT_VISUAL_ACCEPTANCE',r
+          assert r['silhouette_masks_pixel_identical_all_contexts'] is True,r
+          assert r['aggregate_changed_pixels_gt_1lsb']>0,r
+          assert sorted(r['contexts'])==['full_rear_grazing','full_rear_three_quarter','full_side_three_quarter'],r
+          for context,row in r['contexts'].items():
+              assert row['mask_pixel_identity'] is True,(context,row)
+              assert row['visual_diff']['state']=='PASS',(context,row)
+          assert r['truth_boundary']['visual_acceptance_claimed'] is False,r
+          assert r['truth_boundary']['uc_inferred_object_normal_policy'] is False,r
+          print(json.dumps(r,indent=2))
+          PY
+
+      - name: Assemble retained Direction 048 evidence index
+        if: always()
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import hashlib,json
+          from pathlib import Path
+          root=Path('rigid-proof')
+          generated=root/'generated/object-hinge-analytic-radial-normal-review'
+          evidence={
+            'schema':'axm.object-technical-art-hinge-normal-review-retained-index/v0.1',
+            'technical_art_head':Path('rigid-proof/normal-review-owner/exact-technical-art-head.txt').read_text().strip(),
+            'owner_heads':{
+              'hard_surface':Path('rigid-proof/normal-review-owner/exact-hard-surface-head.txt').read_text().strip(),
+              'materials':Path('rigid-proof/normal-review-owner/exact-materials-head.txt').read_text().strip(),
+              'coordination':Path('rigid-proof/normal-review-owner/exact-coordination-head.txt').read_text().strip(),
+              'uc':Path('rigid-proof/normal-review-owner/exact-current-uc-head.txt').read_text().strip(),
+            },
+            'files':{},
+            'promotion_effect':'NONE',
+          }
+          paths=[]
+          for p in [
+            Path('contracts/object_hinge_successor002_analytic_radial_normal_review_048.json'),
+            Path('tools/build_object_hinge_successor002_analytic_radial_normal_review.py'),
+            Path('rigid-proof/hinge_radial_normal_review_observe.gd'),
+            generated/'object-hinge-analytic-radial-normal-review-build-receipt.json',
+            generated/'object_hinge_analytic_radial_normal_review_payload.json',
+            generated/'control-successor002.glb',
+            generated/'candidate-analytic-radial-normal.glb',
+            Path('rigid-proof/hinge-analytic-radial-normal-review-runtime-receipt.json'),
+          ]:
+              if p.exists(): paths.append(p)
+          paths.extend(sorted(root.glob('hinge-normal-review-*.png')))
+          for p in paths:
+              evidence['files'][str(p)]={
+                'bytes':p.stat().st_size,
+                'sha256':hashlib.sha256(p.read_bytes()).hexdigest(),
+              }
+          Path('rigid-proof/normal-review-owner/retained-index.json').write_text(json.dumps(evidence,indent=2,sort_keys=True)+'\n')
+          PY
+
+      - name: Retain exact Direction 048 Technical Art evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: object-technical-art-hinge-radial-normal-review-${{ github.event.pull_request.head.sha || github.sha }}
+          path: |
+            contracts/object_hinge_successor002_analytic_radial_normal_review_048.json
+            tools/build_object_hinge_successor002_analytic_radial_normal_review.py
+            rigid-proof/hinge_radial_normal_review_observe.gd
+            rigid-proof/normal-review-owner/
+            rigid-proof/generated/object-hinge-analytic-radial-normal-review/
+            rigid-proof/hinge-analytic-radial-normal-review-runtime-receipt.json
+            rigid-proof/hinge-normal-review-*.png
+          if-no-files-found: warn
+          retention-days: 30

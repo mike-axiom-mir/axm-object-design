@@ -15,7 +15,8 @@ SOURCE_MECHANICAL_AUTHORITY_HEAD = "56aaaecb45b520fdff9e08fe2d4ea42562f5690f"
 SOURCE_INTERFACE_SHA256 = "bcbbe098371eb702bc9289a97370744093105925202eda6036bdced6e25e34d3"
 SOURCE_CAPTURE_BLOB = "b96df9c5469dffb20e674edd4b176941eda81b8e"
 PRIOR_RIGGING_HEAD = "a1acd2bcb2074f41e536562f2673508e2cb0a4d5"
-TECH_ART_HEAD = "965fb2f24dbd0b0cbb748d9f8b8712d62966315f"
+TECH_ART_HEAD = "b9848c62b2adde84e9e0afc219088113216799d6"
+HISTORICAL_TECH_ART_HEAD = "965fb2f24dbd0b0cbb748d9f8b8712d62966315f"
 UC_HEAD = "6dc465987e01362264f88b7cef4213609ae50763"
 SOURCE_SHA256 = "49b1f9ed9865893d6de6f1ec8f069576732df694853fde4e3fcff366de32644a"
 EXPECTED_SOURCE_ANGLES = [0.0, 9.25, 9.30, 25.0, 48.65, 48.70, 50.0]
@@ -200,6 +201,13 @@ def build_binding(
         "source_interface_sha256": observed_interface_sha,
         "source_capture_envelope_git_blob": SOURCE_CAPTURE_BLOB,
         "technical_art_donor_head": TECH_ART_HEAD,
+        "technical_art_historical_donor_head": HISTORICAL_TECH_ART_HEAD,
+        "technical_art_provenance_rebind": {
+            "historical_head": HISTORICAL_TECH_ART_HEAD,
+            "current_head": TECH_ART_HEAD,
+            "historical_receipts_reused_as_current_evidence": False,
+            "current_receipt_rebuilt_from_current_head": True,
+        },
         "technical_art_receipt_sha256": sha256_file(tech_receipt_path),
         "technical_art_rebound_glb_sha256": observed_glb_sha,
         "uc_donor_head": UC_HEAD,
@@ -222,6 +230,8 @@ def build_binding(
             "exact_source_owned_mechanical_authority_pinned": True,
             "proof_volume_capture_and_z_aabb_broad_phase_kept_distinct": True,
             "exact_technical_art_target_identity_pinned": True,
+            "historical_technical_art_identity_retained_separately": True,
+            "historical_receipts_reused_as_current_evidence": False,
             "coordinate_handedness_conversion_explicit": True,
             "static_target_boundary_pose_fidelity_only": True,
             "target_host_independently_proves_capture_contact": False,

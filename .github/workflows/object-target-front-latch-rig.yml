@@ -17,7 +17,8 @@ env:
   SOURCE_RIG_BINDING_BLOB: 0331d30528f58d353fa9396d7ca129a020e8c6ce
   SOURCE_MECHANICAL_AUTHORITY_HEAD: 56aaaecb45b520fdff9e08fe2d4ea42562f5690f
   HISTORICAL_RIGGING_HEAD: 3b667ff5d30c46ec2fe7da7679518970f8610018
-  TECH_ART_HEAD: 965fb2f24dbd0b0cbb748d9f8b8712d62966315f
+  TECH_ART_HEAD: b9848c62b2adde84e9e0afc219088113216799d6
+  HISTORICAL_TECH_ART_HEAD: 965fb2f24dbd0b0cbb748d9f8b8712d62966315f
   UC_HEAD: 6dc465987e01362264f88b7cef4213609ae50763
 
 jobs:
@@ -141,6 +142,8 @@ jobs:
           git rev-parse HEAD > latch-rig-target-proof/generated/exact-candidate-head.txt
           printf '%s\n' "$OBSERVED_SOURCE_RIG_HEAD" > latch-rig-target-proof/generated/exact-source-rig-head.txt
           printf '%s\n' "$OBSERVED_TECH_ART_HEAD" > latch-rig-target-proof/generated/exact-technical-art-head.txt
+            latch-rig-target-proof/generated/historical-technical-art-head.txt
+          printf '%s\n' "$HISTORICAL_TECH_ART_HEAD" > latch-rig-target-proof/generated/historical-technical-art-head.txt
           printf '%s\n' "$OBSERVED_UC_HEAD" > latch-rig-target-proof/generated/exact-uc-head.txt
 
       - name: Validate binding identity and fail-closed semantics
@@ -154,7 +157,10 @@ jobs:
           assert b['result']=='PASS_SOURCE_OWNED_FRONT_LATCH_CAPTURE_ENVELOPE_TO_UC_TARGET_BINDING_READY',b
           assert b['source_rig_donor_head']=='3a17a02528918ec63a46e954e883179f752c8151',b
           assert b['source_mechanical_authority_head']=='56aaaecb45b520fdff9e08fe2d4ea42562f5690f',b
-          assert b['technical_art_donor_head']=='965fb2f24dbd0b0cbb748d9f8b8712d62966315f',b
+          assert b['technical_art_donor_head']=='b9848c62b2adde84e9e0afc219088113216799d6',b
+          assert b['technical_art_historical_donor_head']=='965fb2f24dbd0b0cbb748d9f8b8712d62966315f',b
+          assert b['technical_art_provenance_rebind']['historical_receipts_reused_as_current_evidence'] is False,b
+          assert b['technical_art_provenance_rebind']['current_receipt_rebuilt_from_current_head'] is True,b
           assert b['uc_donor_head']=='6dc465987e01362264f88b7cef4213609ae50763',b
           assert b['representative_source_angles_deg']==[0.0,9.25,9.30,25.0,48.65,48.70,50.0],b
           assert b['representative_target_angles_deg']==[-0.0,-9.25,-9.30,-25.0,-48.65,-48.70,-50.0],b
@@ -203,12 +209,21 @@ jobs:
           chmod +x .godot-bin/Godot_v4.7.2-stable_linux.x86_64
           .godot-bin/Godot_v4.7.2-stable_linux.x86_64 --version
 
+      - name: Install virtual display when needed
+        if: matrix.python-version == '3.11'
+        run: |
+          if ! command -v xvfb-run >/dev/null 2>&1; then
+            sudo apt-get update
+            sudo apt-get install -y xvfb
+          fi
+
       - name: Exercise exact current source-owned boundary poses on real target hierarchy
         if: matrix.python-version == '3.11'
         run: |
-          rm -f latch-rig-target-proof/target-front-latch-rig-receipt.json
-          .godot-bin/Godot_v4.7.2-stable_linux.x86_64 \
-            --headless \
+          rm -f latch-rig-target-proof/target-front-latch-rig-receipt.json latch-rig-target-proof/latch-pose-*.png
+          xvfb-run --auto-servernum --server-args="-screen 0 1000x760x24" \
+            .godot-bin/Godot_v4.7.2-stable_linux.x86_64 \
+            --display-driver x11 \
             --rendering-method gl_compatibility \
             --path latch-rig-target-proof \
             --script observe.gd
@@ -224,6 +239,8 @@ jobs:
           r=json.loads((root/'target-front-latch-rig-receipt.json').read_text())
           assert r['state']=='PASS_CURRENT_SOURCE_CAPTURE_ENVELOPE_RIG_ON_UC_TARGET_HIERARCHY',r
           assert r['glb_sha256']==b['technical_art_rebound_glb_sha256'],(b,r)
+          assert r['technical_art_donor_head']==b['technical_art_donor_head']=='b9848c62b2adde84e9e0afc219088113216799d6',r
+          assert r['technical_art_historical_donor_head']==b['technical_art_historical_donor_head']=='965fb2f24dbd0b0cbb748d9f8b8712d62966315f',r
           assert [row['source_angle_deg'] for row in r['representative_poses']]==[0.0,9.25,9.30,25.0,48.65,48.70,50.0],r
           assert [row['target_rotation_x_deg'] for row in r['representative_poses']]==[-0.0,-9.25,-9.30,-25.0,-48.65,-48.70,-50.0],r
           assert r['source_capture_transition_bracket_deg']==[9.25,9.30],r
@@ -238,6 +255,8 @@ jobs:
           assert r['truth_boundary']['continuous_between_pose_motion_accepted'] is False,r
           assert r['truth_boundary']['animationplayer_acceptance'] is False,r
           assert r['truth_boundary']['runtime_controller_or_state_machine_acceptance'] is False,r
+          for name in ['latch-pose-00.png','latch-pose-01.png','latch-pose-02.png','latch-pose-03.png','latch-pose-04.png','latch-pose-05.png','latch-pose-06.png','latch-pose-return-00.png']:
+              assert (root/name).stat().st_size>3000,name
           print(json.dumps(r,indent=2))
           PY
 
@@ -260,5 +279,6 @@ jobs:
             latch-rig-target-proof/generated/exact-technical-art-head.txt
             latch-rig-target-proof/generated/exact-uc-head.txt
             latch-rig-target-proof/target-front-latch-rig-receipt.json
+            latch-rig-target-proof/latch-pose-*.png
           if-no-files-found: warn
           retention-days: 30

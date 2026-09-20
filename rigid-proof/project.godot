@@ -1,0 +1,10 @@
+[application]
+config/name="AXM Object UC Rigid Scene Graph Proof"
+
+[display]
+window/size/viewport_width=900
+window/size/viewport_height=700
+
+[rendering]
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"

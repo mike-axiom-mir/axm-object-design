@@ -112,6 +112,65 @@ func rotation_about_pivot_x(pivot: Vector3, angle_deg: float) -> Transform3D:
     var rotation := Basis(Vector3.RIGHT, deg_to_rad(angle_deg))
     return Transform3D(Basis.IDENTITY, pivot) * Transform3D(rotation, Vector3.ZERO) * Transform3D(Basis.IDENTITY, -pivot)
 
+
+func make_viewport(imported_scene: Node3D) -> SubViewport:
+    var viewport := SubViewport.new()
+    viewport.size = Vector2i(820, 620)
+    viewport.own_world_3d = true
+    viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+    viewport.render_target_clear_mode = SubViewport.CLEAR_MODE_ALWAYS
+    get_root().add_child(viewport)
+    var root3d := Node3D.new()
+    viewport.add_child(root3d)
+    var env := Environment.new()
+    env.background_mode = Environment.BG_COLOR
+    env.background_color = Color(0.025, 0.030, 0.036, 1.0)
+    env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
+    env.ambient_light_color = Color(0.60, 0.64, 0.70, 1.0)
+    env.ambient_light_energy = 0.75
+    var world := WorldEnvironment.new()
+    world.environment = env
+    root3d.add_child(world)
+    var key := DirectionalLight3D.new()
+    key.light_energy = 2.0
+    key.rotation_degrees = Vector3(-48.0, -32.0, 0.0)
+    root3d.add_child(key)
+    var fill := OmniLight3D.new()
+    fill.light_energy = 2.1
+    fill.omni_range = 4.0
+    fill.position = Vector3(-1.0, 1.1, -0.8)
+    root3d.add_child(fill)
+    root3d.add_child(imported_scene)
+    var camera := Camera3D.new()
+    camera.near = 0.03
+    camera.far = 20.0
+    camera.fov = 40.0
+    root3d.add_child(camera)
+    camera.look_at_from_position(Vector3(1.22, 0.82, -1.38), Vector3(0.0, 0.21, 0.0), Vector3.UP)
+    camera.make_current()
+    return viewport
+
+func visible_pixels(image: Image) -> int:
+    var bg := Color(0.025, 0.030, 0.036, 1.0)
+    var changed := 0
+    for y in range(image.get_height()):
+        for x in range(image.get_width()):
+            var p := image.get_pixel(x, y)
+            var delta: float = maxf(absf(p.r-bg.r), maxf(absf(p.g-bg.g), absf(p.b-bg.b)))
+            if delta > 0.035:
+                changed += 1
+    return changed
+
+func retain_capture(viewport: SubViewport, filename: String) -> String:
+    var image := viewport.get_texture().get_image()
+    if image == null or image.is_empty() or visible_pixels(image) < 3000:
+        fail("target visual capture is empty or insufficient: " + filename)
+        return ""
+    if image.save_png(filename) != OK:
+        fail("could not save target visual capture: " + filename)
+        return ""
+    return sha256_file(filename)
+
 func _initialize() -> void:
     var binding := read_json(BINDING_PATH)
     if binding.get("result") != "PASS_SOURCE_OWNED_FRONT_LATCH_CAPTURE_ENVELOPE_TO_UC_TARGET_BINDING_READY":
@@ -135,8 +194,8 @@ func _initialize() -> void:
         fail("GLTFDocument generate_scene returned no Node3D")
         return
     var imported := generated as Node3D
-    get_root().add_child(imported)
-    for _tree_frame in range(2):
+    var viewport := make_viewport(imported)
+    for _tree_frame in range(8):
         await process_frame
 
     var stations = binding.get("stations", [])
@@ -216,8 +275,12 @@ func _initialize() -> void:
             motion_by_lever[lever_name] = motion
             var lever := levers[lever_name] as Node3D
             lever.global_transform = motion * (neutral_lever_transforms[lever_name] as Transform3D)
-        for _pose_frame in range(2):
+        for _pose_frame in range(8):
             await process_frame
+        var capture_filename := "res://latch-pose-%02d.png" % pose_index
+        var capture_sha := retain_capture(viewport, capture_filename)
+        if capture_sha == "":
+            return
 
         var station_rows: Array = []
         var movements: Array[float] = []
@@ -280,13 +343,18 @@ func _initialize() -> void:
             "station_results": station_rows,
             "bilateral_center_movement_residual_m": bilateral_residual,
             "maximum_fixed_component_center_drift_m": fixed_drift_at_pose,
+            "capture_file": "latch-pose-%02d.png" % pose_index,
+            "capture_sha256": capture_sha,
         })
 
     for lever_name in levers.keys():
         var lever := levers[lever_name] as Node3D
         lever.global_transform = neutral_lever_transforms[lever_name] as Transform3D
-    for _return_frame in range(2):
+    for _return_frame in range(8):
         await process_frame
+    var return_capture_sha := retain_capture(viewport, "res://latch-pose-return-00.png")
+    if return_capture_sha == "":
+        return
 
     var max_neutral_return_drift := 0.0
     for lever_name in levers.keys():
@@ -303,6 +371,8 @@ func _initialize() -> void:
     receipt["source_capture_transition_bracket_deg"] = binding["source_capture_transition_bracket_deg"]
     receipt["source_z_aabb_only_transition_bracket_deg"] = binding["source_z_aabb_only_transition_bracket_deg"]
     receipt["technical_art_donor_head"] = binding["technical_art_donor_head"]
+    receipt["technical_art_historical_donor_head"] = binding["technical_art_historical_donor_head"]
+    receipt["technical_art_provenance_rebind"] = binding["technical_art_provenance_rebind"]
     receipt["uc_donor_head"] = binding["uc_donor_head"]
     receipt["glb_sha256"] = sha256_file(GLB_PATH)
     receipt["representative_poses"] = pose_rows
@@ -312,6 +382,7 @@ func _initialize() -> void:
     receipt["maximum_fixed_component_center_drift_m"] = max_fixed_center_drift
     receipt["maximum_bilateral_center_movement_residual_m"] = max_bilateral_motion_residual
     receipt["maximum_neutral_return_transform_drift"] = max_neutral_return_drift
+    receipt["neutral_return_capture_sha256"] = return_capture_sha
     receipt["truth_boundary"] = binding["truth_boundary"]
     write_receipt()
     print(JSON.stringify(receipt, "  "))
