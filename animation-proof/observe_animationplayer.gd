@@ -239,9 +239,11 @@ func _initialize() -> void:
     }
 
     var historical_rig_by_station := station_lookup(rig.get("station_results", []))
-    var target_rig_by_station := station_lookup(latch_target.get("stations", []))
+    var target_rig_by_lever := {}
+    for target_row in latch_target.get("stations", []):
+        target_rig_by_lever[String(target_row["lever_component"])] = target_row
     var sample0_stations := station_lookup(sequence["samples"][0]["stations"])
-    if historical_rig_by_station.size() != 2 or target_rig_by_station.size() != 2 or sample0_stations.size() != 2:
+    if historical_rig_by_station.size() != 2 or target_rig_by_lever.size() != 2 or sample0_stations.size() != 2:
         fail("expected exactly two bilateral latch stations in historical authoring, current target Rigging and sequence")
         return
 
@@ -251,12 +253,13 @@ func _initialize() -> void:
         if not historical_rig_by_station.has(station_id):
             fail("sequence station missing historical motion-authoring rig row: " + String(station_id))
             return
-        if not target_rig_by_station.has(station_id):
-            fail("sequence station missing current target-Rigging row: " + String(station_id))
-            return
         var component := String(sample0_stations[station_id]["lever_component"])
-        if component != String(target_rig_by_station[station_id]["lever_component"]):
-            fail("sequence lever identity drift against current target-Rigging binding: " + String(station_id))
+        if not target_rig_by_lever.has(component):
+            fail("sequence lever missing current target-Rigging component identity: " + component)
+            return
+        var target_row: Dictionary = target_rig_by_lever[component]
+        if String(sample0_stations[station_id]["keeper_component"]) != String(target_row["keeper_component"]):
+            fail("sequence keeper identity drift against current target-Rigging binding: " + String(station_id))
             return
         var lever := find_node(imported, component)
         if lever == null:
@@ -264,7 +267,7 @@ func _initialize() -> void:
             return
         var pivot := Node3D.new()
         pivot.name = "animation_pivot_" + String(station_id)
-        pivot.position = vec3(target_rig_by_station[station_id]["pivot_target_m"])
+        pivot.position = vec3(target_row["pivot_target_m"])
         imported.add_child(pivot)
         lever.reparent(pivot, true)
         pivot_by_station[station_id] = pivot
