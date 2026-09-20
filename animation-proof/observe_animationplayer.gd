@@ -241,8 +241,8 @@ func _initialize() -> void:
     var historical_rig_by_station := station_lookup(rig.get("station_results", []))
     var target_rig_by_station := station_lookup(latch_target.get("target_stations", []))
     var sample0_stations := station_lookup(sequence["samples"][0]["stations"])
-    if rig_by_station.size() != 2 or sample0_stations.size() != 2:
-        fail("expected exactly two bilateral latch stations")
+    if historical_rig_by_station.size() != 2 or target_rig_by_station.size() != 2 or sample0_stations.size() != 2:
+        fail("expected exactly two bilateral latch stations in historical authoring, current target Rigging and sequence")
         return
 
     var pivot_by_station := {}
