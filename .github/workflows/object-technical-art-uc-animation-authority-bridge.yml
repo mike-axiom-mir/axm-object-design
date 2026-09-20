@@ -79,6 +79,13 @@ jobs:
           path: .current-latch-source-rig
 
 
+      - name: Checkout exact historical lid-motion Rigging donor
+        uses: actions/checkout@v4
+        with:
+          repository: mike-axiom-mir/axm-object-design
+          ref: ${{ env.LID_RIG_HEAD }}
+          path: .lid-rig
+
       - name: Verify current receiver identities
         run: |
           set -euo pipefail
