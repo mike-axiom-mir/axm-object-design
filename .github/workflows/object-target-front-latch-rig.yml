@@ -142,7 +142,6 @@ jobs:
           git rev-parse HEAD > latch-rig-target-proof/generated/exact-candidate-head.txt
           printf '%s\n' "$OBSERVED_SOURCE_RIG_HEAD" > latch-rig-target-proof/generated/exact-source-rig-head.txt
           printf '%s\n' "$OBSERVED_TECH_ART_HEAD" > latch-rig-target-proof/generated/exact-technical-art-head.txt
-            latch-rig-target-proof/generated/historical-technical-art-head.txt
           printf '%s\n' "$HISTORICAL_TECH_ART_HEAD" > latch-rig-target-proof/generated/historical-technical-art-head.txt
           printf '%s\n' "$OBSERVED_UC_HEAD" > latch-rig-target-proof/generated/exact-uc-head.txt
 
@@ -277,6 +276,7 @@ jobs:
             latch-rig-target-proof/generated/exact-candidate-head.txt
             latch-rig-target-proof/generated/exact-source-rig-head.txt
             latch-rig-target-proof/generated/exact-technical-art-head.txt
+            latch-rig-target-proof/generated/historical-technical-art-head.txt
             latch-rig-target-proof/generated/exact-uc-head.txt
             latch-rig-target-proof/target-front-latch-rig-receipt.json
             latch-rig-target-proof/latch-pose-*.png
