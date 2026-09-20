@@ -89,13 +89,22 @@ jobs:
           ref: ${{ env.CURRENT_LATCH_SOURCE_RIG_HEAD }}
           path: .current-latch-source-rig
 
+      - name: Checkout exact historical lid-motion Rigging donor
+        uses: actions/checkout@v4
+        with:
+          repository: mike-axiom-mir/axm-object-design
+          ref: ${{ env.LID_RIG_HEAD }}
+          path: .lid-rig
+
       - name: Verify current receiver identities
         run: |
           set -euo pipefail
           test "$(git -C .lid-target-rig rev-parse HEAD)" = "$LID_TARGET_RIG_HEAD"
           test "$(git -C .latch-target-rig rev-parse HEAD)" = "$LATCH_TARGET_RIG_HEAD"
           test "$(git -C .current-latch-source-rig rev-parse HEAD)" = "$CURRENT_LATCH_SOURCE_RIG_HEAD"
+          test "$(git -C .lid-rig rev-parse HEAD)" = "$LID_RIG_HEAD"
           test "$(git -C .current-latch-source-rig rev-parse "HEAD:assets/modular-equipment-case-001/front-latch-source-rig-binding-003.json")" = "0331d30528f58d353fa9396d7ca129a020e8c6ce"
+          test "$(git -C .lid-rig rev-parse "HEAD:assets/modular-equipment-case-001/articulation.json")" = "0e7f56ae96f17bb2a5b38852aac12fad6854a4d0"
 
       - name: Checkout exact UC rigid-scene donor
         uses: actions/checkout@v4
@@ -148,7 +157,7 @@ jobs:
           mkdir -p /tmp/axm-current-target-rig
           python .lid-target-rig/tools/build_object_target_lid_rig_binding.py \
             --source assets/modular-equipment-case-001/source.json \
-            --lid-rig-plan .lid-target-rig/assets/modular-equipment-case-001/articulation.json \
+            --lid-rig-plan .lid-rig/assets/modular-equipment-case-001/articulation.json \
             --tech-receipt .technical-art/rigid-proof/generated/uc-rigid-scene-handoff-receipt.json \
             --rebound-glb .technical-art/rigid-proof/generated/object-rigid-components-rebound.glb \
             --out /tmp/axm-current-target-rig/target-lid-rig-binding.json
