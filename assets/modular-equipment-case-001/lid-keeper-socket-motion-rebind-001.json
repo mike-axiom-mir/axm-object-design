@@ -1,0 +1,42 @@
+{
+  "schema": "axm.object-animation-keeper-socket-motion-rebind/v0.1",
+  "contract_id": "lid-keeper-socket-motion-rebind-001",
+  "asset_id": "modular-equipment-case-001",
+  "host_source_sha256": "49b1f9ed9865893d6de6f1ec8f069576732df694853fde4e3fcff366de32644a",
+  "sequence": {
+    "sequence_id": "lid-latch-open-hold-close-001",
+    "duration_s": 2.5,
+    "sample_rate_hz": 40,
+    "endpoint_inclusive_sample_count": 101,
+    "base_lid_clip_id": "lid-open-hold-close-001",
+    "base_lid_clip_digest": "9e149195ab315f83f2d6f7d76f374f4be245567f77402de3e8a1d40ab79ef340",
+    "motion_mutation_policy": "FORBIDDEN_REBIND_ONLY"
+  },
+  "keeper_rig_dependency": {
+    "exact_head": "4a743a8c934b72178ef04ae3f55947bdc7f8def0",
+    "required_result": "PASS_LID_OWNED_KEEPER_SOCKET_BINDING_111_POSES",
+    "ownership_head": "d3fa10a270faae7925811f44f03381fe5c5d0215",
+    "lid_rig_head": "4b72c9918c5fc1e89bd18a0be24fb4afac6e7775",
+    "previous_rigging_target_binding_head": "9556308c9986f71519bc488badc1b1a63e855e7e"
+  },
+  "lower_lever_animation_dependency": {
+    "historical_latch_rig_head": "3b667ff5d30c46ec2fe7da7679518970f8610018",
+    "required_result": "PASS_BOUNDED_FRONT_LATCH_LEVER_ARTICULATION"
+  },
+  "target_host": {
+    "technical_art_head": "965fb2f24dbd0b0cbb748d9f8b8712d62966315f",
+    "uc_head": "6dc465987e01362264f88b7cef4213609ae50763",
+    "required_result": "PASS_OBJECT_SOURCE_OWNED_RIGID_PARTS_THROUGH_UC_SCENE_GRAPH"
+  },
+  "evidence_policy": {
+    "observe_all_authored_samples_on_target_host": true,
+    "observe_animationplayer_play_path_without_capture_io": true,
+    "keeper_lid_local_socket_invariant_required": true,
+    "rig_reference_angles_deg": [0, 50, 100],
+    "negative_control_keeper_reference_offset_m": 0.001,
+    "runtime_controller_acceptance": false,
+    "gameplay_acceptance": false,
+    "perceptual_acceptance": false
+  },
+  "truth_boundary": "This contract rebinds the unchanged existing Object Animation sequence to the exact Rigging-owned lid-keeper socket evidence and observes those keepers through the existing target-host AnimationPlayer path. It does not add keeper keys, retime the sequence, prove latch capture/release, certify scheduler delivery, define a runtime controller or state machine, establish physics/gameplay behavior, or grant final visual/production acceptance."
+}

@@ -1,0 +1,73 @@
+{
+  "schema": "axm.object-exact-uc-glb-resource-reuse-contract/v0.2",
+  "asset_id": "modular-equipment-case-001",
+  "purpose": "prove that the exact repaired UC-transmitted Object GLB reuses the same moving target nodes, meshes and materials across the exact current lid/latch sequence and a bounded 2000-update stress workload without transferring the historical reconstructed-Materials comparison percentage",
+  "historical_runtime_evidence": {
+    "head": "2c1d6005124b2fc1cdb57667b251e5273ee80d27",
+    "result": "PASS_REUSE_HETEROGENEOUS_LID_LATCH_TARGET_HOST_RESOURCES",
+    "representation": "Godot articulated Materials proof reconstructed from exact source component dimensions",
+    "comparative_reduction_percent": 99.95,
+    "status": "HISTORICAL_ONLY_NOT_CURRENT_GLTF_EVIDENCE"
+  },
+  "receiving_technical_art_bridge_head": "08142be386016813e9cb10faff8b7aed0239e5b6",
+  "animation_authority_head": "86bdbe9771bf9eb1bc92bd4160442941763fab1d",
+  "technical_art": {
+    "current_head": "b9848c62b2adde84e9e0afc219088113216799d6",
+    "historical_head": "965fb2f24dbd0b0cbb748d9f8b8712d62966315f",
+    "uc_rigid_head": "6dc465987e01362264f88b7cef4213609ae50763",
+    "rebound_glb_sha256": "9788bc7d405b1837961409de20bc9f76d72facae63726cdc7bf7a3ffd2ac3914"
+  },
+  "target_rigging": {
+    "lid_head": "f6dab93a342330175a7494274f3f40a4e53d4c85",
+    "front_latch_head": "f59e0f205de2d81611cfed0cbf795faa2c3f22b3",
+    "current_latch_source_rig_head": "3a17a02528918ec63a46e954e883179f752c8151"
+  },
+  "animation_sequence": {
+    "id": "lid-latch-open-hold-close-001",
+    "digest": "0a3523cf792264f610881552fd2ebd438aabdfd05e30e92af9dbb33ded1fa2d3",
+    "duration_s": 2.5,
+    "sample_rate_hz": 40,
+    "endpoint_inclusive_sample_count": 101
+  },
+  "moving_components": [
+    "lid_shell",
+    "hinge_lid_l0",
+    "hinge_lid_l1",
+    "latch_0_keeper",
+    "latch_1_keeper",
+    "latch_0_lever",
+    "latch_1_lever"
+  ],
+  "workload": {
+    "repeated_visible_samples_per_cycle": 100,
+    "stress_cycles": 20,
+    "total_transform_updates": 2000,
+    "selected_capture_indices": [
+      0,
+      5,
+      10,
+      25,
+      40,
+      50,
+      60,
+      90,
+      95,
+      100
+    ]
+  },
+  "truth_boundary": {
+    "exact_repaired_uc_glb_required": true,
+    "current_target_rigging_required": true,
+    "current_animation_sequence_identity_required": true,
+    "candidate_resource_identity_stability_is_current_claim": true,
+    "historical_99_95_percent_reduction_is_not_transferred_to_exact_uc_glb": true,
+    "synthetic_rebuild_control_on_exact_uc_glb": false,
+    "runtime_controller_or_state_machine_acceptance": false,
+    "wall_clock_40hz_pacing_acceptance": false,
+    "target_device_fps_gpu_vram_or_allocator_acceptance": false,
+    "collision_physics_or_latch_retention": false,
+    "gameplay_acceptance": false,
+    "final_visual_or_art_direction_acceptance": false,
+    "canon_or_production_readiness": false
+  }
+}

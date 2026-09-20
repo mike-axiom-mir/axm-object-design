@@ -1,0 +1,258 @@
+name: Object AnimationPlayer wall-clock playback evidence
+
+on:
+  pull_request:
+    paths:
+      - 'assets/modular-equipment-case-001/source.json'
+      - 'assets/modular-equipment-case-001/lid-motion-clip.json'
+      - 'assets/modular-equipment-case-001/lid-latch-motion-sequence-001.json'
+      - 'tools/build_lid_motion_evidence.py'
+      - 'tools/build_lid_latch_motion_evidence.py'
+      - 'animation-proof/observe_wall_clock_playback.gd'
+      - '.github/workflows/object-animation-wall-clock-playback.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  TECHNICAL_ART_HEAD: 965fb2f24dbd0b0cbb748d9f8b8712d62966315f
+  UC_HEAD: 6dc465987e01362264f88b7cef4213609ae50763
+  LID_RIG_HEAD: 4b72c9918c5fc1e89bd18a0be24fb4afac6e7775
+  LATCH_RIG_HEAD: 3b667ff5d30c46ec2fe7da7679518970f8610018
+  LATCH_OWNERSHIP_HEAD: d3fa10a270faae7925811f44f03381fe5c5d0215
+  LATCH_RIG_PLAN_SHA256: 81c27ab7b73ed9a43cb3f554b56c3f4294b893712075e33d13f5b02e008455db
+  LATCH_OWNERSHIP_SHA256: 0702e4180f858d29c42ff8c38a61eaa16278d6848c8ce6f3ecfae172969ca8ae
+
+jobs:
+  wall-clock-animationplayer:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout exact Animation PR head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Bind exact Animation head
+        run: echo "EXACT_HEAD_SHA=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
+
+      - name: Checkout exact Technical Art rigid-scene donor
+        uses: actions/checkout@v4
+        with:
+          repository: mike-axiom-mir/axm-object-design
+          ref: ${{ env.TECHNICAL_ART_HEAD }}
+          path: .technical-art
+
+      - name: Checkout exact UC rigid-scene donor
+        uses: actions/checkout@v4
+        with:
+          repository: mike-axiom-mir/axm-universal-creation
+          ref: ${{ env.UC_HEAD }}
+          path: .uc
+
+      - name: Set up Python 3.11 and run full Object suite
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: |
+          python -m compileall -q tools tests
+          python -m unittest discover -s tests -v
+
+      - name: Set up Python 3.13 and repeat full Object suite
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - run: |
+          python -m compileall -q tools tests
+          python -m unittest discover -s tests -v
+
+      - name: Return to Python 3.11 for exact evidence builders
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Rebuild exact Technical Art UC rigid-scene donor output
+        run: |
+          set -euo pipefail
+          rm -rf .technical-art/rigid-proof/generated
+          mkdir -p .technical-art/rigid-proof/generated
+          (
+            cd .technical-art
+            PYTHONPATH=../.uc/src python tools/build_object_uc_rigid_scene_handoff.py \
+              --uc-root ../.uc \
+              --expected-uc-commit "$UC_HEAD" \
+              --out rigid-proof/generated
+          )
+          test "$(git -C .technical-art rev-parse HEAD)" = "$TECHNICAL_ART_HEAD"
+          test "$(git -C .uc rev-parse HEAD)" = "$UC_HEAD"
+
+      - name: Materialize exact Animation and latch donors
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/axm-animation-wall-clock-donors /tmp/axm-latch-rig-evidence /tmp/axm-lid-motion /tmp/axm-lid-latch
+          mkdir -p /tmp/axm-animation-wall-clock-donors/tools /tmp/axm-animation-wall-clock-donors/assets/modular-equipment-case-001
+          curl -fsSL \
+            "https://raw.githubusercontent.com/mike-axiom-mir/axm-object-design/${LID_RIG_HEAD}/assets/modular-equipment-case-001/articulation.json" \
+            -o /tmp/axm-animation-wall-clock-donors/assets/modular-equipment-case-001/articulation.json
+          ownership_base="https://raw.githubusercontent.com/mike-axiom-mir/axm-object-design/${LATCH_OWNERSHIP_HEAD}"
+          rig_base="https://raw.githubusercontent.com/mike-axiom-mir/axm-object-design/${LATCH_RIG_HEAD}"
+          curl -fsSL "$ownership_base/assets/modular-equipment-case-001/front-latch-ownership-001.json" -o /tmp/axm-animation-wall-clock-donors/assets/modular-equipment-case-001/front-latch-ownership-001.json
+          curl -fsSL "$ownership_base/tools/verify_front_latch_ownership.py" -o /tmp/axm-animation-wall-clock-donors/tools/verify_front_latch_ownership.py
+          curl -fsSL "$rig_base/assets/modular-equipment-case-001/front-latch-articulation-001.json" -o /tmp/axm-animation-wall-clock-donors/assets/modular-equipment-case-001/front-latch-articulation-001.json
+          curl -fsSL "$rig_base/tools/verify_front_latch_articulation.py" -o /tmp/axm-animation-wall-clock-donors/tools/verify_front_latch_articulation.py
+          echo "$LATCH_OWNERSHIP_SHA256  /tmp/axm-animation-wall-clock-donors/assets/modular-equipment-case-001/front-latch-ownership-001.json" | sha256sum -c -
+          echo "$LATCH_RIG_PLAN_SHA256  /tmp/axm-animation-wall-clock-donors/assets/modular-equipment-case-001/front-latch-articulation-001.json" | sha256sum -c -
+
+      - name: Rebuild exact lid clip and ordered latch/lid sequence
+        run: |
+          set -euo pipefail
+          python tools/build_lid_motion_evidence.py \
+            --source assets/modular-equipment-case-001/source.json \
+            --rig /tmp/axm-animation-wall-clock-donors/assets/modular-equipment-case-001/articulation.json \
+            --clip assets/modular-equipment-case-001/lid-motion-clip.json \
+            --out /tmp/axm-lid-motion \
+            --exact-head "$EXACT_HEAD_SHA"
+          PYTHONPATH="$PWD/tools" python /tmp/axm-animation-wall-clock-donors/tools/verify_front_latch_articulation.py \
+            --host assets/modular-equipment-case-001/source.json \
+            --ownership /tmp/axm-animation-wall-clock-donors/assets/modular-equipment-case-001/front-latch-ownership-001.json \
+            --plan /tmp/axm-animation-wall-clock-donors/assets/modular-equipment-case-001/front-latch-articulation-001.json \
+            --out /tmp/axm-latch-rig-evidence
+          python tools/build_lid_latch_motion_evidence.py \
+            --source assets/modular-equipment-case-001/source.json \
+            --sequence assets/modular-equipment-case-001/lid-latch-motion-sequence-001.json \
+            --motion-evidence /tmp/axm-lid-motion/lid-motion-evidence.json \
+            --ownership /tmp/axm-animation-wall-clock-donors/assets/modular-equipment-case-001/front-latch-ownership-001.json \
+            --rig-receipt /tmp/axm-latch-rig-evidence/front-latch-articulation.receipt.json \
+            --rig-head "$LATCH_RIG_HEAD" \
+            --rig-plan-sha256 "$LATCH_RIG_PLAN_SHA256" \
+            --out /tmp/axm-lid-latch \
+            --exact-head "$EXACT_HEAD_SHA"
+
+      - name: Assemble exact proof-host inputs
+        run: |
+          set -euo pipefail
+          rm -rf animation-proof/generated
+          mkdir -p animation-proof/generated
+          cp .technical-art/rigid-proof/generated/object-rigid-components-rebound.glb animation-proof/generated/
+          cp .technical-art/rigid-proof/generated/uc-rigid-scene-handoff-receipt.json animation-proof/generated/
+          cp /tmp/axm-lid-latch/lid-latch-motion-evidence.json animation-proof/generated/
+          cp /tmp/axm-latch-rig-evidence/front-latch-articulation.receipt.json animation-proof/generated/
+          printf '%s\n' "$EXACT_HEAD_SHA" > animation-proof/generated/exact-animation-head.txt
+          printf '%s\n' "$TECHNICAL_ART_HEAD" > animation-proof/generated/exact-technical-art-head.txt
+          printf '%s\n' "$UC_HEAD" > animation-proof/generated/exact-uc-head.txt
+
+      - name: Validate exact cross-repo identity before target host
+        run: |
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          root=Path('animation-proof/generated')
+          t=json.loads((root/'uc-rigid-scene-handoff-receipt.json').read_text())
+          s=json.loads((root/'lid-latch-motion-evidence.json').read_text())
+          r=json.loads((root/'front-latch-articulation.receipt.json').read_text())
+          assert t['result']=='PASS_OBJECT_SOURCE_OWNED_RIGID_PARTS_THROUGH_UC_SCENE_GRAPH',t
+          assert t['source_repository_head']==os.environ['TECHNICAL_ART_HEAD'],t
+          assert t['observed_uc_commit']==os.environ['UC_HEAD'],t
+          assert s['result']=='PASS_ORDERED_LATCH_RELEASE_LID_CLIP_REENGAGE_SEQUENCE',s
+          assert s['exact_receiving_head']==os.environ['EXACT_HEAD_SHA'],s
+          assert s['host_source_sha256']==t['source_sha256'],(s,t)
+          assert s['latch_rig_dependency_head']==os.environ['LATCH_RIG_HEAD'],s
+          assert r['result']=='PASS_BOUNDED_FRONT_LATCH_LEVER_ARTICULATION',r
+          assert r['host_source_sha256']==s['host_source_sha256'],(r,s)
+          assert s['endpoint_inclusive_sample_count']==101 and s['sample_rate_hz']==40 and s['duration_s']==2.5,s
+          print('cross-repo identity gate PASS')
+          PY
+
+      - name: Download pinned Godot 4.7.2
+        env:
+          GODOT_URL: https://github.com/godotengine/godot-builds/releases/download/4.7.2-stable/Godot_v4.7.2-stable_linux.x86_64.zip
+          GODOT_SHA256: cadd3204e728a35d3f13adb7fd0d7902636b79f6b95c40c265eb73b6c35329e4
+        run: |
+          set -euo pipefail
+          mkdir -p .godot-bin
+          curl --fail --location --retry 3 --retry-delay 2 "$GODOT_URL" --output .godot-bin/godot.zip
+          echo "$GODOT_SHA256  .godot-bin/godot.zip" | sha256sum --check --strict
+          unzip -q .godot-bin/godot.zip -d .godot-bin
+          chmod +x .godot-bin/Godot_v4.7.2-stable_linux.x86_64
+          .godot-bin/Godot_v4.7.2-stable_linux.x86_64 --version
+
+      - name: Install virtual display when needed
+        run: |
+          if ! command -v xvfb-run >/dev/null 2>&1; then
+            sudo apt-get update
+            sudo apt-get install -y xvfb
+          fi
+
+      - name: Play exact sampled sequence through wall-clock AnimationPlayer
+        run: |
+          set -euo pipefail
+          rm -f animation-proof/wall-clock-target-receipt.json animation-proof/wallclock-request-*.png
+          xvfb-run --auto-servernum --server-args="-screen 0 1000x760x24" \
+            .godot-bin/Godot_v4.7.2-stable_linux.x86_64 \
+            --display-driver x11 \
+            --rendering-method gl_compatibility \
+            --path animation-proof \
+            --script observe_wall_clock_playback.gd
+
+      - name: Validate retained wall-clock playback receipt
+        run: |
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          root=Path('animation-proof')
+          r=json.loads((root/'wall-clock-target-receipt.json').read_text())
+          assert r['state']=='PASS_PROOF_HOST_WALL_CLOCK_ANIMATIONPLAYER_TRACE_CAPTURED',r
+          assert r['technical_art_object_head']==os.environ['TECHNICAL_ART_HEAD'],r
+          assert r['uc_commit']==os.environ['UC_HEAD'],r
+          assert r['animation_sequence_head']==os.environ['EXACT_HEAD_SHA'],r
+          assert r['sample_rate_hz']==40 and r['duration_s']==2.5 and r['endpoint_inclusive_sample_count']==101,r
+          assert r['animationplayer_track_count']==3,r
+          assert r['animationplayer_key_counts']==[101,101,101],r
+          assert r['animation_update_mode']=='DISCRETE_AUTHORED_SAMPLES',r
+          assert r['animation_interpolation']=='NEAREST',r
+          assert r['playback_invocation']=='AnimationPlayer.play',r
+          assert r['trace_frame_count']>=60,r
+          assert r['authored_sample_slot_coverage_ratio']>=0.70,r
+          assert r['current_position_monotonic_violations']==0,r
+          assert r['ordering_violations']==0,r
+          assert r['max_lid_discrete_state_error_deg']<=1e-4,r
+          assert r['max_latch_discrete_state_error_deg']<=1e-4,r
+          assert r['endpoint_keeper_drift_m']<=1e-6,r
+          assert r['endpoint_lever_drift_m']<=1e-6,r
+          assert r['capture_count']>=8,r
+          assert r['truth_boundary']['animationplayer_play_wall_clock_presentation_observed'] is True,r
+          assert r['truth_boundary']['process_frame_slot_coverage_is_characterization_not_authored_40hz_delivery_guarantee'] is True,r
+          assert r['truth_boundary']['runtime_controller_or_state_machine'] is False,r
+          assert r['truth_boundary']['gameplay_acceptance'] is False,r
+          assert r['truth_boundary']['target_device_performance_acceptance'] is False,r
+          for c in r['captures']:
+              p=Path(str(c['path']).replace('res://','animation-proof/'))
+              assert p.exists() and p.stat().st_size>3000,p
+          print(json.dumps({k:r[k] for k in [
+              'state','proof_host_wall_clock_duration_s','trace_frame_count',
+              'observed_authored_sample_count','authored_sample_slot_coverage_ratio',
+              'missing_authored_sample_indices','maximum_observed_sample_index_jump',
+              'process_frame_dt_ms','max_lid_discrete_state_error_deg',
+              'max_latch_discrete_state_error_deg','endpoint_keeper_drift_m',
+              'endpoint_lever_drift_m','capture_count','truth_boundary']},indent=2))
+          PY
+
+      - name: Retain exact wall-clock playback evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: object-animation-wall-clock-${{ github.event.pull_request.head.sha || github.sha }}
+          path: |
+            assets/modular-equipment-case-001/lid-latch-motion-sequence-001.json
+            animation-proof/generated/object-rigid-components-rebound.glb
+            animation-proof/generated/uc-rigid-scene-handoff-receipt.json
+            animation-proof/generated/lid-latch-motion-evidence.json
+            animation-proof/generated/front-latch-articulation.receipt.json
+            animation-proof/generated/exact-animation-head.txt
+            animation-proof/generated/exact-technical-art-head.txt
+            animation-proof/generated/exact-uc-head.txt
+            animation-proof/wall-clock-target-receipt.json
+            animation-proof/wallclock-request-*.png
+          if-no-files-found: warn
+          retention-days: 30

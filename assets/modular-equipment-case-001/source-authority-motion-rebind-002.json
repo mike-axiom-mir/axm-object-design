@@ -1,0 +1,41 @@
+{
+  "schema": "axm.object-animation-source-authority-rebind/v0.1",
+  "rebind_id": "lid-latch-source-authority-rebind-002",
+  "asset_id": "modular-equipment-case-001",
+  "host_source_sha256": "49b1f9ed9865893d6de6f1ec8f069576732df694853fde4e3fcff366de32644a",
+  "prior_animation_evidence": {
+    "head": "5cb073f9fcf825014556ed165ee081e1eca71cdc",
+    "sequence_id": "lid-latch-open-hold-close-001",
+    "sequence_digest": "0a3523cf792264f610881552fd2ebd438aabdfd05e30e92af9dbb33ded1fa2d3",
+    "role": "EXACT_MOTION_CHOREOGRAPHY_DONOR_ONLY"
+  },
+  "source_interface": {
+    "repository": "mike-axiom-mir/axm-object-design",
+    "pr": 17,
+    "head": "6086f39a3da344c57a68653f90d040e03e04cec2",
+    "path": "assets/modular-equipment-case-001/front-latch-pivot-interface-001.json",
+    "sha256": "bcbbe098371eb702bc9289a97370744093105925202eda6036bdced6e25e34d3",
+    "role": "CURRENT_SOURCE_MECHANICAL_AUTHORITY"
+  },
+  "source_rig_binding": {
+    "repository": "mike-axiom-mir/axm-object-design",
+    "pr": 20,
+    "head": "a1acd2bcb2074f41e536562f2673508e2cb0a4d5",
+    "path": "assets/modular-equipment-case-001/front-latch-source-rig-binding-002.json",
+    "binding_sha256": "615f8ff34cc0897fd399345301efce1ca9cb0aa58e86caca92b914049b89adce",
+    "required_result": "PASS_SOURCE_OWNED_FRONT_LATCH_RIG_REBIND",
+    "role": "CURRENT_RIGGING_ACCEPTANCE_OF_SOURCE_AUTHORITY"
+  },
+  "preservation_contract": {
+    "timing": "NO_RETIME",
+    "target_geometry": "NO_RETARGET",
+    "authored_samples": "NO_KEY_CHANGE_101_ENDPOINT_INCLUSIVE",
+    "sample_rate_hz": 40,
+    "duration_s": 2.5,
+    "latch_envelope_deg": [0.0, 50.0],
+    "lid_envelope_deg": [0.0, 100.0],
+    "policy": "PROVE_NEW_AUTHORITY_EDGE_WITHOUT_REWRITING_HISTORICAL_MOTION_EVIDENCE"
+  },
+  "failure_policy": "FAIL_CLOSED_ON_SOURCE_OR_RIG_AUTHORITY_DRIFT_PRIOR_MOTION_IDENTITY_DRIFT_PIVOT_DRIFT_GEOMETRY_SAMPLE_DRIFT_RETIME_RETARGET_OR_KEY_CHANGE",
+  "truth_boundary": "PASS means only that Animation explicitly rebinds the existing 101-sample lid/latch choreography to the exact current source-owned Hard-Surface pivot interface and exact Rigging source-authority acceptance without changing authored timing, keys, target geometry, release threshold or retained source-space lever motion. Historical Animation evidence remains valid for its old exact dependency chain. This does not prove physical latch behavior, runtime controller/state-machine behavior, wall-clock pacing, gameplay timing or acceptance, final motion direction, CANON, production readiness or Animation mastery."
+}

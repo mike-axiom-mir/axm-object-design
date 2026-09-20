@@ -1,0 +1,54 @@
+name: Object rigging attached-module clearance evidence
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  attached-module-clearance:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.11', '3.13']
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Compile
+        run: python -m compileall -q tools tests
+      - name: Full repository tests
+        run: python -m unittest discover -s tests -v
+      - name: Materialize exact pinned donor rig plan
+        if: matrix.python-version == '3.11'
+        run: |
+          mkdir -p .tmp-rig-donor
+          git fetch --no-tags --depth=1 origin 4b72c9918c5fc1e89bd18a0be24fb4afac6e7775
+          git show 4b72c9918c5fc1e89bd18a0be24fb4afac6e7775:assets/modular-equipment-case-001/articulation.json > .tmp-rig-donor/articulation.json
+      - name: Build exact attached-module articulation evidence
+        if: matrix.python-version == '3.11'
+        run: |
+          OUT=evidence/modular-equipment-case-001-attached-module-clearance
+          mkdir -p "$OUT"
+          python tools/certify_attached_module_lid_clearance.py \
+            --host assets/modular-equipment-case-001/source.json \
+            --module assets/modular-equipment-case-001/utility-module-001.json \
+            --constraint assets/modular-equipment-case-001/attached-module-lid-clearance.json \
+            --rig-plan .tmp-rig-donor/articulation.json \
+            --out "$OUT/continuous-lid-to-module-clearance.certificate.json"
+          cp assets/modular-equipment-case-001/source.json "$OUT/host-source.json"
+          cp assets/modular-equipment-case-001/utility-module-001.json "$OUT/module-source.json"
+          cp assets/modular-equipment-case-001/attached-module-lid-clearance.json "$OUT/constraint.json"
+          cp .tmp-rig-donor/articulation.json "$OUT/donor-articulation-plan.json"
+          git rev-parse HEAD > "$OUT/exact-head.txt"
+      - name: Upload retained exact-head evidence
+        if: matrix.python-version == '3.11'
+        uses: actions/upload-artifact@v4
+        with:
+          name: modular-equipment-case-001-attached-module-clearance-evidence
+          path: evidence/modular-equipment-case-001-attached-module-clearance
+          if-no-files-found: error
+          retention-days: 30
