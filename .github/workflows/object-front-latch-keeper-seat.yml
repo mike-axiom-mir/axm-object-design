@@ -1,0 +1,63 @@
+name: Object front-latch keeper-seat evidence
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  structural:
+    strategy:
+      matrix:
+        python-version: ['3.11', '3.13']
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Compile
+        run: python -m compileall tools tests
+      - name: Test full repository suite
+        run: python -m unittest discover -s tests -v
+      - name: Build exact keeper-seat evidence
+        if: matrix.python-version == '3.11'
+        run: |
+          python tools/verify_front_latch_keeper_seat.py \
+            --host assets/modular-equipment-case-001/source.json \
+            --ownership assets/modular-equipment-case-001/front-latch-ownership-001.json \
+            --contract assets/modular-equipment-case-001/front-latch-keeper-seat-001.json \
+            --out evidence/front-latch-keeper-seat
+          cp assets/modular-equipment-case-001/source.json evidence/front-latch-keeper-seat/host-source.json
+          cp assets/modular-equipment-case-001/front-latch-ownership-001.json evidence/front-latch-keeper-seat/ownership-contract.json
+          cp assets/modular-equipment-case-001/front-latch-keeper-seat-001.json evidence/front-latch-keeper-seat/keeper-seat-contract.json
+          git rev-parse HEAD > evidence/front-latch-keeper-seat/exact-owner-head.txt
+          printf '%s\n' '${{ github.sha }}' > evidence/front-latch-keeper-seat/github-event-sha.txt
+      - name: Validate truth boundary
+        if: matrix.python-version == '3.11'
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          r = json.loads(Path('evidence/front-latch-keeper-seat/receipt.json').read_text())
+          assert r['result'] == 'PASS_SOURCE_OWNED_FRONT_LATCH_KEEPER_ATTACHMENT_SEATS'
+          assert r['station_count'] == 2
+          assert abs(r['minimum_seat_area_m2'] - 0.00172) <= 1e-12
+          assert r['maximum_owner_volume_penetration_m'] <= 1e-12
+          assert r['physical_fastener_or_weld_proven'] is False
+          assert r['retention_force_proven'] is False
+          assert r['manufacturing_tolerance_proven'] is False
+          assert r['rig_motion_proven'] is False
+          assert r['animation_timing_proven'] is False
+          assert r['runtime_parenting_adopted'] is False
+          assert r['source_geometry_changed'] is False
+          PY
+      - name: Upload retained evidence
+        if: matrix.python-version == '3.11'
+        uses: actions/upload-artifact@v4
+        with:
+          name: modular-equipment-case-001-front-latch-keeper-seat-evidence
+          path: evidence/front-latch-keeper-seat
+          if-no-files-found: error
+          retention-days: 30

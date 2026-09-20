@@ -1,0 +1,67 @@
+{
+  "schema": "axm.object-front-latch-keeper-seat/v0.1",
+  "contract_id": "front-latch-keeper-seat-001",
+  "asset_id": "modular-equipment-case-001",
+  "host_source_sha256": "49b1f9ed9865893d6de6f1ec8f069576732df694853fde4e3fcff366de32644a",
+  "ownership_contract_sha256": "0702e4180f858d29c42ff8c38a61eaa16278d6848c8ce6f3ecfae172969ca8ae",
+  "purpose": "make the exact static keeper-to-lid attachment reference seats explicit from the unchanged source proof volumes so downstream rigid-parenting does not infer an attachment datum from ownership alone",
+  "stations": [
+    {
+      "id": "front-latch-left",
+      "source_index": 0,
+      "keeper_component": "latch_0_keeper",
+      "owner_component": "lid_shell",
+      "owner_face": "negative_y_face",
+      "keeper_face": "positive_y_face",
+      "plane_axis": "y",
+      "plane_coordinate_m": -0.24,
+      "owner_outward_normal": [0.0, -1.0, 0.0],
+      "primary_axis": [1.0, 0.0, 0.0],
+      "secondary_axis": [0.0, 0.0, 1.0],
+      "primary_bounds_m": [-0.26, -0.18],
+      "secondary_bounds_m": [0.312, 0.3335],
+      "dimensions_m": [0.08, 0.0215],
+      "area_m2": 0.00172,
+      "center_m": [-0.22, -0.24, 0.32275]
+    },
+    {
+      "id": "front-latch-right",
+      "source_index": 1,
+      "keeper_component": "latch_1_keeper",
+      "owner_component": "lid_shell",
+      "owner_face": "negative_y_face",
+      "keeper_face": "positive_y_face",
+      "plane_axis": "y",
+      "plane_coordinate_m": -0.24,
+      "owner_outward_normal": [0.0, -1.0, 0.0],
+      "primary_axis": [1.0, 0.0, 0.0],
+      "secondary_axis": [0.0, 0.0, 1.0],
+      "primary_bounds_m": [0.18, 0.26],
+      "secondary_bounds_m": [0.312, 0.3335],
+      "dimensions_m": [0.08, 0.0215],
+      "area_m2": 0.00172,
+      "center_m": [0.22, -0.24, 0.32275]
+    }
+  ],
+  "contact_policy": {
+    "require_exact_face_contact": true,
+    "require_zero_owner_volume_penetration": true,
+    "require_positive_planar_overlap": true,
+    "semantics": "static_source_attachment_reference_seat_only_not_retention_or_motion"
+  },
+  "authority": {
+    "physical_fastener_or_weld_defined": false,
+    "retention_force_defined": false,
+    "manufacturing_tolerance_defined": false,
+    "rig_motion_defined": false,
+    "animation_timing_defined": false,
+    "runtime_parenting_adopted": false
+  },
+  "failure_policy": "FAIL_CLOSED_NO_ATTACHMENT_DATUM_INFERENCE_FROM_OWNERSHIP_NO_GEOMETRY_REWRITE_NO_DOWNSTREAM_AUTO_ADOPTION",
+  "truth_boundary": "This contract proves only the exact static planar keeper-to-lid attachment reference seats already implied by the unchanged source proof boxes and explicit ownership. It does not prove a weld, screw, adhesive, hook, retention force, tolerance, load, wear, release path, motion, runtime parenting or production mechanism.",
+  "provenance": {
+    "method": "Object-owned semantic overlay derived deterministically from unchanged source proof-volume face intersection",
+    "external_assets": [],
+    "external_geometry": false
+  }
+}

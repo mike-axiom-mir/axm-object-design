@@ -236,6 +236,13 @@ func _initialize() -> void:
         fail("imported lid pivot does not match exact bound target pivot")
         return
 
+    # World-space evidence is meaningful only after the imported target is inside
+    # a live scene tree. The previous proof sampled global_transform first, which
+    # Godot correctly rejected and which produced a false neutral-return failure.
+    var viewport := make_viewport(imported)
+    for _tree_frame in range(2):
+        await process_frame
+
     var moving_nodes: Array[Node3D] = [lid]
     moving_nodes.append_array(lid_children)
     var neutral_centers := {}
@@ -250,7 +257,6 @@ func _initialize() -> void:
     for node in fixed_nodes:
         fixed_neutral_centers[String(node.name)] = world_mesh_center(node)
 
-    var viewport := make_viewport(imported)
     for _i in range(12):
         await process_frame
     var neutral_image := viewport.get_texture().get_image()
@@ -375,7 +381,11 @@ func _initialize() -> void:
     receipt["godot_version"] = Engine.get_version_info()
     receipt["glb_sha256"] = observed_glb_sha
     receipt["technical_art_donor_head"] = binding.get("technical_art_donor_head")
+    receipt["technical_art_historical_donor_head"] = binding.get("technical_art_historical_donor_head")
+    receipt["technical_art_provenance_rebind"] = binding.get("technical_art_provenance_rebind")
     receipt["lid_rig_donor_head"] = binding.get("lid_rig_donor_head")
+    receipt["lid_rig_plan_file_sha256"] = binding.get("lid_rig_plan_file_sha256")
+    receipt["lid_rig_plan_canonical_sha256"] = binding.get("lid_rig_plan_canonical_sha256")
     receipt["lid_rig_plan_sha256"] = binding.get("lid_rig_plan_sha256")
     receipt["source_sha256"] = binding.get("source_sha256")
     receipt["source_opening_rotation_sign"] = binding.get("source_opening_rotation_sign")
@@ -392,6 +402,8 @@ func _initialize() -> void:
     receipt["changed_pixels_by_source_pose"] = changed_pixels_by_source_pose
     receipt["truth_boundary"] = {
         "exact_source_rig_and_target_identity_preserved": true,
+        "historical_technical_art_identity_retained_separately": true,
+        "historical_receipts_reused_as_current_evidence": false,
         "representative_static_target_poses_observed": true,
         "source_to_target_rotation_sign_conversion_explicit": true,
         "rigid_lid_owned_children_observed": true,

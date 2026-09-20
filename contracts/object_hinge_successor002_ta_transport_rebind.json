@@ -1,0 +1,40 @@
+{
+  "schema": "axm.object-technical-art-hinge-successor002-transport-rebind/v0.1",
+  "asset_id": "modular-equipment-case-001",
+  "successor_id": "modular-equipment-case-001/hinge-bored-knuckle-phase-invariant-source-successor-002",
+  "predecessor_technical_art_head": "dad13ce23a0fd8e0ec3e612ac1e72f01c5155284",
+  "hard_surface_head": "a6d18b9fe729304dc4d95d962ed27527adce211f",
+  "geometry_head": "96abb2830ddabca9ed270b42a9447534d007ce64",
+  "rigging_head": "cf377074f70ce7f7e386f1378c51705b3db4d305",
+  "current_uc_head": "9609998db6677391766e9ee7ff53a5b9b08a3cb9",
+  "owner_results": {
+    "hard_surface": "PASS_SOURCE_OWNED_PHASE_INVARIANT_BORED_HINGE_KNUCKLE_SUCCESSOR",
+    "geometry": "PASS_OBJECT_PHASE_INVARIANT_BORED_KNUCKLE_SUCCESSOR_GENUS1_TOPOLOGY_REBIND",
+    "rigging": "PASS_PHASE_INVARIANT_BORED_KNUCKLE_SUCCESSOR_RIG_1MM_RADIAL_NONCONTACT_CONTINUOUS_0_TO_110"
+  },
+  "component_mapping": {
+    "hinge_body_b0_annular_candidate": "hinge_body_b0",
+    "hinge_lid_l0_annular_candidate": "hinge_lid_l0",
+    "hinge_body_b1_annular_candidate": "hinge_body_b1",
+    "hinge_lid_l1_annular_candidate": "hinge_lid_l1",
+    "hinge_body_b2_annular_candidate": "hinge_body_b2"
+  },
+  "lid_owned_hinge_components": ["hinge_lid_l0", "hinge_lid_l1"],
+  "body_owned_hinge_components": ["hinge_body_b0", "hinge_body_b1", "hinge_body_b2"],
+  "expected_successor_knuckle_count": 5,
+  "expected_triangles_per_knuckle": 96,
+  "expected_successor_hinge_triangles": 480,
+  "authority": {
+    "technical_art_receiver_rebind_only": true,
+    "source_successor_default_adopted": false,
+    "automatic_downstream_adoption": false,
+    "hard_surface_or_geometry_authority_transferred": false,
+    "rigging_authority_transferred": false,
+    "animation_authority_transferred": false,
+    "runtime_or_physics_accepted": false,
+    "visual_or_art_accepted": false,
+    "uc_domain_policy_added": false,
+    "canon_or_production_accepted": false
+  },
+  "truth_boundary": "Technical Art may replace only the five hinge-knuckle receiver primitives with the exact source-owned successor-002 mesh while preserving the established Object component names, source-to-UC coordinate conversion, rigid-scene hierarchy and unrelated receiver primitives. This is an opt-in transport/target-host proof, not source default adoption, generic UC hinge policy, Runtime/physics acceptance, final visual acceptance, CANON or production readiness."
+}

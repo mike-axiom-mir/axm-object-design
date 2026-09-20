@@ -8,15 +8,23 @@ from typing import Any
 
 
 SCHEMA = "axm.object-target-lid-rig-binding/v0.1"
-TECH_ART_HEAD = "965fb2f24dbd0b0cbb748d9f8b8712d62966315f"
+TECH_ART_HEAD = "b9848c62b2adde84e9e0afc219088113216799d6"
+HISTORICAL_TECH_ART_HEAD = "965fb2f24dbd0b0cbb748d9f8b8712d62966315f"
 LID_RIG_HEAD = "4b72c9918c5fc1e89bd18a0be24fb4afac6e7775"
 UC_HEAD = "6dc465987e01362264f88b7cef4213609ae50763"
 SOURCE_SHA256 = "49b1f9ed9865893d6de6f1ec8f069576732df694853fde4e3fcff366de32644a"
-LID_RIG_PLAN_SHA256 = "0ad6dc2ca22676cf301579932e599a441eb7c4bccce31991d1b727aeb22ac422"
+LID_RIG_PLAN_FILE_SHA256 = "05b4daad475c30f4c1ea72826fbafd452bf037e58523e18a0c338dd0d7999c0a"
+LID_RIG_PLAN_CANONICAL_SHA256 = "0ad6dc2ca22676cf301579932e599a441eb7c4bccce31991d1b727aeb22ac422"
 
 
 def sha256_file(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def canonical_json_sha256(value: Any) -> str:
+    return hashlib.sha256(
+        json.dumps(value, sort_keys=True, separators=(",", ":"), allow_nan=False).encode("utf-8")
+    ).hexdigest()
 
 
 def _as_floats(values: Any) -> list[float]:
@@ -34,11 +42,15 @@ def build_binding(
     if observed_source_sha != SOURCE_SHA256:
         raise AssertionError(f"Object source identity drift: {observed_source_sha}")
 
-    observed_plan_sha = sha256_file(lid_rig_plan_path)
-    if observed_plan_sha != LID_RIG_PLAN_SHA256:
-        raise AssertionError(f"lid rig plan identity drift: {observed_plan_sha}")
+    observed_plan_file_sha = sha256_file(lid_rig_plan_path)
+    if observed_plan_file_sha != LID_RIG_PLAN_FILE_SHA256:
+        raise AssertionError(f"lid rig plan byte identity drift: {observed_plan_file_sha}")
 
     plan = json.loads(lid_rig_plan_path.read_text(encoding="utf-8"))
+    observed_plan_canonical_sha = canonical_json_sha256(plan)
+    if observed_plan_canonical_sha != LID_RIG_PLAN_CANONICAL_SHA256:
+        raise AssertionError(f"lid rig plan canonical identity drift: {observed_plan_canonical_sha}")
+
     tech = json.loads(tech_receipt_path.read_text(encoding="utf-8"))
 
     if plan.get("schema") != "axm.object-articulation-plan/v0.1":
@@ -93,8 +105,10 @@ def build_binding(
     source_opening_sign = int(joint["opening_rotation_sign"])
     target_x_rotation_sign = -source_opening_sign
     representative_target_angles = [target_x_rotation_sign * angle for angle in representative_source_angles]
-    target_angle_limit = [target_x_rotation_sign * float(joint["angle_limit_deg"][0]),
-                          target_x_rotation_sign * float(joint["angle_limit_deg"][1])]
+    target_angle_limit = [
+        target_x_rotation_sign * float(joint["angle_limit_deg"][0]),
+        target_x_rotation_sign * float(joint["angle_limit_deg"][1]),
+    ]
 
     lid_owned_children = list(tech.get("lid_owned_children", []))
     keepers = list(tech.get("source_owned_keeper_children", []))
@@ -113,11 +127,21 @@ def build_binding(
         "source_sha256": observed_source_sha,
         "source_repository": "mike-axiom-mir/axm-object-design",
         "technical_art_donor_head": TECH_ART_HEAD,
+        "technical_art_historical_donor_head": HISTORICAL_TECH_ART_HEAD,
+        "technical_art_provenance_rebind": {
+            "historical_head": HISTORICAL_TECH_ART_HEAD,
+            "current_head": TECH_ART_HEAD,
+            "historical_receipts_reused_as_current_evidence": False,
+            "current_receipt_rebuilt_from_current_head": True,
+        },
         "technical_art_receipt_sha256": sha256_file(tech_receipt_path),
         "technical_art_rebound_glb_sha256": observed_glb_sha,
         "uc_donor_head": UC_HEAD,
         "lid_rig_donor_head": LID_RIG_HEAD,
-        "lid_rig_plan_sha256": observed_plan_sha,
+        "lid_rig_plan_file_sha256": observed_plan_file_sha,
+        "lid_rig_plan_canonical_sha256": observed_plan_canonical_sha,
+        "lid_rig_plan_sha256": observed_plan_canonical_sha,
+        "lid_rig_plan_sha256_semantics": "DEPRECATED_COMPATIBILITY_ALIAS_OF_CANONICAL_JSON_SHA256",
         "joint_id": joint["id"],
         "source_axis": [1.0, 0.0, 0.0],
         "source_opening_rotation_sign": source_opening_sign,
@@ -135,11 +159,15 @@ def build_binding(
         "lid_owned_children": lid_owned_children,
         "source_owned_keeper_children": keepers,
         "source_owned_fixed_levers": fixed_levers,
-        "failure_policy": "FAIL_CLOSED_ON_SOURCE_RIG_TECH_ART_UC_GLB_OR_COORDINATE_MAPPING_DRIFT",
+        "failure_policy": "FAIL_CLOSED_ON_SOURCE_RIG_TECH_ART_UC_GLB_COORDINATE_OR_IDENTITY_SEMANTICS_DRIFT",
         "truth_boundary": {
             "exact_source_identity_pinned": True,
-            "exact_lid_rig_identity_pinned": True,
+            "exact_lid_rig_file_byte_identity_pinned": True,
+            "exact_lid_rig_canonical_semantic_identity_pinned": True,
+            "ambiguous_plan_sha_field_retained_only_as_deprecated_compatibility_alias": True,
             "exact_technical_art_target_identity_pinned": True,
+            "historical_technical_art_identity_retained_separately": True,
+            "historical_receipts_reused_as_current_evidence": False,
             "coordinate_handedness_conversion_explicit": True,
             "animation_timing_or_clip_acceptance": False,
             "runtime_controller_or_state_machine_acceptance": False,
