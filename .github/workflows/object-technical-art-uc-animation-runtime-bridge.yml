@@ -228,7 +228,7 @@ jobs:
           printf '%s\n' "$LID_TARGET_RIG_HEAD" > animation-proof/generated/exact-lid-target-rig-head.txt
           printf '%s\n' "$LATCH_TARGET_RIG_HEAD" > animation-proof/generated/exact-latch-target-rig-head.txt
           printf '%s\n' "$CURRENT_LATCH_SOURCE_RIG_HEAD" > animation-proof/generated/exact-current-latch-source-rig-head.txt
-          printf '%s\n' "$UC_HEAD" > animation-proof/generated/exact-uc-head.txt
+          printf '%s\n' "$UC_RIGID_HEAD" > animation-proof/generated/exact-uc-head.txt
 
       - name: Build exact UC animation runtime clock handoff
         run: |
@@ -253,7 +253,7 @@ jobs:
           glb_sha=hashlib.sha256((root/'object-rigid-components-rebound.glb').read_bytes()).hexdigest()
           assert t['result']=='PASS_OBJECT_SOURCE_OWNED_RIGID_PARTS_THROUGH_UC_SCENE_GRAPH',t
           assert t['source_repository_head']==os.environ['TECHNICAL_ART_HEAD'],t
-          assert t['observed_uc_commit']==os.environ['UC_HEAD'],t
+          assert t['observed_uc_commit']==os.environ['UC_RIGID_HEAD'],t
           assert t['rebound_glb_sha256']==os.environ['TECHNICAL_ART_REBOUND_GLB_SHA256']==glb_sha,(t,glb_sha)
           assert s['result']=='PASS_ORDERED_LATCH_RELEASE_LID_CLIP_REENGAGE_SEQUENCE',s
           assert s['exact_receiving_head']==os.environ['EXACT_HEAD_SHA'],s
